@@ -129,7 +129,7 @@ export default function CartSidebar({
 
             const precioItem = parseFloat(item.precio) || 0;
             const totalItem = precioItem * (parseFloat(item.cantidad) || 0);
-            const totalItemBs = totalItem * calculos.tasa;
+            const totalItemBs = calculos.carritoBS[realIndex] || (totalItem * calculos.tasa);
             const step = getStep(item.tipoUnidad);
             const minQty = getMinQty(item.tipoUnidad);
             const isMin = item.cantidad <= minQty;

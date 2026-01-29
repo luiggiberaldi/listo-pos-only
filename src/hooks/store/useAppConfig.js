@@ -87,6 +87,7 @@ export const useAppConfig = () => {
             case 'entero': return Math.ceil(valor);
             case 'm5': return Math.ceil(valor / 5) * 5;
             case 'exacto':
+                return valor;
             default: return valor;
         }
     };
@@ -204,7 +205,10 @@ export const useAppConfig = () => {
 
     const procesarYGuardarTasa = (rawValue, modoUsar, currentConfig, forzar, origenNombre, tipoGuardar) => {
         let rawTasa = parseMoney(rawValue);
-        if (rawTasa > 0) rawTasa = parseFloat(rawTasa.toFixed(2));
+        // NO redondeamos preventivamente si el modo es EXACTO para permitir decimales profundos
+        if (rawTasa > 0 && modoUsar !== 'exacto') {
+            rawTasa = parseFloat(rawTasa.toFixed(2));
+        }
 
         console.log(`💰 Tasa ${tipoGuardar} obtenida:`, rawTasa);
 
