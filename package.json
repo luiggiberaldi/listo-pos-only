@@ -1,0 +1,109 @@
+{
+  "name": "listo-pos",
+  "private": true,
+  "version": "1.4.0",
+  "type": "module",
+  "main": "electron/main.js",
+  "description": "Sistema de Punto de Venta Profesional",
+  "author": "Yoshi",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "vite build",
+    "preview": "vite build && vite preview",
+    "preview:no-build": "vite preview",
+    "dist": "vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.listo.pos",
+    "productName": "Listo POS",
+    "asar": false,
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "Inversiones Luigi C.A.",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@radix-ui/react-accordion": "^1.2.2",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@tanstack/react-query": "^5.62.11",
+    "axios": "^1.13.2",
+    "check-disk-space": "^3.4.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "decimal.js": "^10.6.0",
+    "dexie": "^4.2.1",
+    "dexie-react-hooks": "^4.2.0",
+    "dotenv": "^17.2.3",
+    "firebase": "^12.7.0",
+    "framer-motion": "^12.26.2",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^0.469.0",
+    "lz-string": "^1.5.0",
+    "node-machine-id": "^1.1.12",
+    "puppeteer": "^24.36.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-hook-form": "^7.54.2",
+    "react-router-dom": "^7.1.1",
+    "react-to-print": "^3.0.4",
+    "react-virtualized-auto-sizer": "^2.0.2",
+    "react-window": "^2.2.5",
+    "recharts": "^2.15.0",
+    "sweetalert2": "^11.15.10",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.0.3",
+    "vite-plugin-pwa": "^0.21.1",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@babel/code-frame": "^7.28.6",
+    "@babel/core": "^7.28.6",
+    "@eslint/js": "^9.17.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "postcss": "^8.4.49",
+    "postcss-import": "^16.1.1",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.5",
+    "wait-on": "^8.0.1"
+  }
+}

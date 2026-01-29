@@ -1,0 +1,80 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* CAPA BASE: RESET Y TIPOGRAFÍA */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+    height: 100%;
+  }
+
+  body {
+    /* Fondo base y color de texto predeterminado para evitar parpadeos */
+    @apply bg-app-light dark:bg-app-dark text-content-main antialiased font-sans;
+    height: 100%;
+    overflow: hidden;
+    /* App-like feel */
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  /* Soporte Modo Oscuro Global */
+  .dark body {
+    @apply bg-app-dark text-content-inverse;
+  }
+
+  /* Estilos para inputs numéricos (quitar flechas spin-button) */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* 👆 GLOBAL TOUCH MODE OVERRIDES */
+  .touch-mode input:not([type="checkbox"]):not([type="radio"]),
+  .touch-mode select,
+  .touch-mode textarea {
+    @apply min-h-[56px] text-base py-3 px-4;
+  }
+
+  .touch-mode button {
+    @apply min-h-[56px] text-base font-bold active:scale-95 transition-transform;
+  }
+
+  .touch-mode .btn-icon {
+    @apply w-12 h-12 p-3;
+  }
+
+  /* Increase general spacing */
+  .touch-mode .space-y-4> :not([hidden])~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
+  }
+}
+
+/* UTILIDADES GLOBALES */
+.input-pin {
+  -webkit-text-security: disc;
+  text-security: disc;
+  font-family: monospace;
+}
+
+/* ANIMACIONES GLOBALES */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}

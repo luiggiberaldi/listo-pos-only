@@ -1,0 +1,151 @@
+================================================================================
+                     DESCARGO DE RESPONSABILIDAD FISCAL
+                 LISTO POS - Declaracion ante Autoridades Tributarias
+                         Version 1.1 | Enero 2026
+================================================================================
+
+IDENTIFICACION DEL DESARROLLADOR
+--------------------------------------------------------------------------------
+Desarrollador:          Luigi Beraldi
+Cedula de Identidad:    V-24.457.713
+Direccion:              El Socorro, Calle Sucre, Casa #144, Valencia
+Ciudad/Estado:          Valencia, Estado Carabobo, Venezuela
+Marca Comercial:        LISTO POS (Desde 2025)
+Correo:                 listopos2026@gmail.com
+Telefono/WhatsApp:      +58 412-405-1793
+
+================================================================================
+
+                          *** AVISO IMPORTANTE ***
+
+  LISTO POS ES UN SOFTWARE DE GESTION ADMINISTRATIVA Y NO CONSTITUYE UN 
+  SISTEMA DE FACTURACION FISCAL AUTORIZADO POR EL SERVICIO NACIONAL 
+  INTEGRADO DE ADMINISTRACION ADUANERA Y TRIBUTARIA (SENIAT).
+
+================================================================================
+
+
+1. NATURALEZA DEL SOFTWARE
+--------------------------------------------------------------------------------
+1.1 Herramienta Administrativa
+LISTO POS es una herramienta de GESTION INTERNA disenada para:
+- Registrar transacciones comerciales de forma organizada.
+- Generar reportes de ventas para control interno del negocio.
+- Administrar inventario y flujo de caja.
+- Facilitar la operacion diaria del punto de venta.
+
+1.2 NO es Facturacion Fiscal
+El Software NO ESTA DISENADO NI AUTORIZADO para:
+- Emitir facturas con valor fiscal ante el SENIAT.
+- Sustituir las obligaciones de facturacion legal del contribuyente.
+- Generar documentos que cumplan con la Providencia Administrativa 
+  N SNAT/2011/0071.
+
+
+2. RESPONSABILIDAD DEL USUARIO
+--------------------------------------------------------------------------------
+2.1 Obligaciones Tributarias
+El Usuario reconoce y acepta que es UNICO Y EXCLUSIVO RESPONSABLE de:
+
+1. Cumplir con todas las obligaciones tributarias establecidas en el Codigo 
+   Organico Tributario y demas leyes aplicables.
+2. Emitir facturas fiscales a traves de los medios autorizados por el SENIAT 
+   (impresoras fiscales, facturacion electronica, etc.).
+3. Declarar y pagar impuestos (IVA, ISLR, y otros) en los plazos establecidos.
+4. Mantener los libros contables exigidos por la ley.
+5. RESPONSABILIDAD CAMBIARIA E IGTF: El Usuario es el unico responsable de la 
+   correcta actualizacion, configuracion y aplicacion de las tasas de cambio 
+   oficiales (BCV) o de mercado dentro del sistema, asi como del calculo, 
+   cobro y declaracion del IGTF (Impuesto a las Grandes Transacciones 
+   Financieras) segun la normativa legal vigente. El Desarrollador no asume 
+   responsabilidad alguna por perdidas economicas, multas o discrepancias 
+   derivadas de errores en la tasa de cambio o en el calculo de impuestos.
+
+2.2 Verificacion de Datos
+El Usuario es responsable de:
+- Verificar la exactitud de todos los montos y calculos generados.
+- Conciliar los reportes del Software con su sistema de facturacion fiscal.
+- Detectar y corregir cualquier discrepancia antes de declaraciones.
+
+
+3. EXENCION DE RESPONSABILIDAD
+--------------------------------------------------------------------------------
+3.1 Multas y Sanciones
+El desarrollador Luigi Beraldi NO ASUME NINGUNA RESPONSABILIDAD por:
+- Multas impuestas por el SENIAT o cualquier autoridad tributaria.
+- Sanciones derivadas del incumplimiento de obligaciones fiscales.
+- Cierres temporales o definitivos del establecimiento.
+- Intereses moratorios o recargos por declaraciones tardias o incorrectas.
+
+3.2 Errores de Calculo
+El desarrollador NO SERA RESPONSABLE por:
+- Errores en el calculo de impuestos (IVA, retenciones, etc.).
+- Discrepancias entre los reportes del Software y la realidad contable.
+- Perdidas economicas derivadas de decisiones basadas en datos del Software.
+
+3.3 Perdida de Datos
+El desarrollador NO SERA RESPONSABLE por perdida de informacion causada por:
+- Cortes de energia electrica (el Usuario DEBE contar con UPS).
+- Fallas de hardware del equipo del Usuario.
+- Virus informaticos o ataques ciberneticos.
+- Errores de operacion por parte del Usuario.
+
+
+4. RECOMENDACIONES IMPORTANTES
+--------------------------------------------------------------------------------
+4.1 Sistema de Respaldo Electrico (UPS)
+ES OBLIGATORIO que el Usuario cuente con un Sistema de Alimentacion 
+Ininterrumpida (UPS) para:
+- Proteger los datos ante cortes de luz.
+- Permitir el cierre seguro del sistema en emergencias.
+- Evitar corrupcion de la base de datos local.
+
+4.2 Respaldos de Informacion
+Se recomienda encarecidamente:
+- Realizar respaldos DIARIOS de la informacion.
+- Almacenar copias de seguridad en ubicaciones externas.
+- Verificar periodicamente la integridad de los respaldos.
+
+4.3 Asesoria Profesional
+El Usuario debe consultar con un CONTADOR PUBLICO COLEGIADO para:
+- Determinar sus obligaciones tributarias especificas.
+- Configurar correctamente las tasas impositivas en el Software.
+- Interpretar los reportes generados para fines fiscales.
+
+
+5. DECLARACION DEL USUARIO
+--------------------------------------------------------------------------------
+Al utilizar LISTO POS, el Usuario declara que:
+
+1. Ha leido y comprendido este descargo de responsabilidad.
+2. Entiende que el Software es una herramienta administrativa, no fiscal.
+3. Asume la total responsabilidad de sus obligaciones tributarias.
+4. Exime al desarrollador Luigi Beraldi de cualquier consecuencia derivada 
+   del uso del Software en materia fiscal.
+
+
+6. BASE LEGAL
+--------------------------------------------------------------------------------
+Este descargo se fundamenta en:
+- Codigo Organico Tributario de Venezuela.
+- Ley de Impuesto al Valor Agregado (IVA).
+- Providencias Administrativas del SENIAT sobre facturacion.
+- Codigo Civil de Venezuela (articulos sobre responsabilidad contractual).
+
+
+7. CONTACTO
+--------------------------------------------------------------------------------
+Para consultas:
+
+Correo Electronico:     listopos2026@gmail.com
+Telefono/WhatsApp:      +58 412-405-1793
+Sitio Web:              www.kiplystart.com
+
+================================================================================
+EL USO CONTINUADO DEL SOFTWARE IMPLICA LA ACEPTACION TOTAL DE ESTE DESCARGO 
+DE RESPONSABILIDAD FISCAL.
+================================================================================
+
+(C) 2025-2026 Luigi Beraldi. Todos los derechos reservados.
+LISTO POS es una marca comercial de Luigi Beraldi.
+Documento generado automaticamente. Ultima actualizacion: Enero 2026.

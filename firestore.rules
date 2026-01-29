@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 🌍 REGLAS UNIVERSALES PARA LISTO GO
+    // Permitimos lectura/escritura si el usuario está autenticado (aunque sea anónimo).
+    // En producción, esto debería restringirse más (ej: solo el dueño del UID X puede escribir en X doc),
+    // pero para este MVP con auth anónima en ambas puntas, esto es lo necesario.
+    
+    match /merchants/{merchantId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
