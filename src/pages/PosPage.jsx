@@ -100,6 +100,36 @@ export default function PosPage() {
     if (!busqueda || busqueda.length < 3) return;
     if (!cajaAbierta || isProcessing) return;
 
+    // ⚖️ [SCALE ENGINE]: Soporte para Etiquetas de Peso Variable (EAN-13/14 Prefijo 21)
+    if (busqueda.length >= 13 && busqueda.startsWith('21')) {
+      let plu = '';
+      let peso = 0;
+
+      if (busqueda.length === 14) {
+        // Estructura 14 digitos: 21 (2) + filler (1) + PLU (5) + Peso (5) + Check (1)
+        // Ejemplo: 21 0 00001 00930 4
+        plu = busqueda.substring(3, 8);
+        peso = parseInt(busqueda.substring(8, 13)) / 1000;
+      } else {
+        // Estructura 13 digitos: 21 (2) + PLU (5) + Peso (5) + Check (1)
+        plu = busqueda.substring(2, 7);
+        peso = parseInt(busqueda.substring(7, 12)) / 1000;
+      }
+
+      // Buscar producto por PLU (normalizando ceros a la izquierda)
+      const pluNormalizado = plu.replace(/^0+/, '') || '0';
+      const producto = productos.find(p => {
+        const pCodigoNormalizado = (p.codigo || '').replace(/^0+/, '') || '0';
+        return pCodigoNormalizado === pluNormalizado || p.codigo === plu || p.codigo === `0${plu}`;
+      });
+
+      if (producto) {
+        console.log("⚖️ [SCALE SCAN] Match:", producto.nombre, "| PLU:", plu, "| Peso:", peso, "kg");
+        actions.autoAgregarPesado(producto, peso);
+        return;
+      }
+    }
+
     const exactMatch = productos.find(p => p.codigo?.toLowerCase() === busqueda.toLowerCase());
 
     if (exactMatch) {

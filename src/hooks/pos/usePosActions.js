@@ -140,7 +140,15 @@ export const usePosActions = (
         playSound,
         agregarAlCarrito,
         eliminarDelCarrito,
-        cambiarUnidad: cambiarUnidadCarrito
+        cambiarUnidad: cambiarUnidadCarrito,
+        autoAgregarPesado: (producto, peso) => {
+            if (!cajaAbierta || isProcessing) return;
+            // Limpia el buscador y agrega directamente
+            setBusqueda('');
+            agregarAlCarrito(producto, peso, 'peso', parseFloat(producto.precio));
+            setSelectedIndex(0);
+            setTimeout(() => { if (searchInputRef.current) searchInputRef.current.blur(); }, 10);
+        }
     };
 
     // 📡 [SCANNER ENGINE]
