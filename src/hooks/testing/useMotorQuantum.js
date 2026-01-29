@@ -139,7 +139,7 @@ export const useMotorQuantum = () => {
                 const montoApertura = 50 + (dia * 10); // $60, $70...
 
                 // Reset diario de "Lo que hay en caja" para el test (simulate new day)
-                const truthDia = { sales: 0, usdCash: 0, vesCash: 0 };
+                const truthDia = { sales: 0, usdCash: 0, vesCash: 0, gastosUSD: 0, consumosUSD: 0 };
 
                 // USAR REF AQUÍ
                 await cajaRef.current.abrirCaja({ usdCash: montoApertura, vesCash: 0 }, authRef.current.usuario);
@@ -217,7 +217,7 @@ export const useMotorQuantum = () => {
                         usuario: authRef.current.usuario
                     });
                     truthDia.usdCash -= montoGasto;
-                    truthRef.current.totalGastosUSD += montoGasto;
+                    truthDia.gastosUSD += montoGasto;
                 }
 
                 // 📦 CONSUMO ALEATORIO (20% prob)
@@ -228,7 +228,7 @@ export const useMotorQuantum = () => {
                         'Simulación Quantum: Vencimiento',
                         authRef.current.usuario
                     );
-                    truthRef.current.totalConsumosUSD += 1.75; // Costo estimado
+                    truthDia.consumosUSD += 1.75; // Costo estimado
                 }
 
                 // ⚔️ RÁFAGA
@@ -274,20 +274,25 @@ export const useMotorQuantum = () => {
                 const errVentas = Math.abs(sysSales - realSales) > 0.1;
                 const errUsd = Math.abs(sysUsd - realUsd) > 0.1;
                 const errBs = Math.abs(sysBs - realBs) > 0.1;
-                const errGastos = Math.abs(sysGastos - truthRef.current.totalGastosUSD) > 0.1;
+                const errGastos = Math.abs(sysGastos - truthDia.gastosUSD) > 0.1;
+                const errConsumos = Math.abs(sysConsumos - truthDia.consumosUSD) > 0.1;
 
-                if (errVentas || errUsd || errBs || errGastos) {
+                const hasError = errVentas || errUsd || errBs || errGastos || errConsumos;
+
+                if (hasError) {
                     addLog(`💀 ERROR EN CIERRE:`);
                     if (errVentas) addLog(`   📉 Ventas: Sistema $${sysSales} vs Real $${realSales}`);
                     if (errUsd) addLog(`   📉 Caja USD: Sistema $${sysUsd} vs Real $${realUsd}`);
                     if (errBs) addLog(`   📉 Caja Bs: Sistema Bs ${sysBs} vs Real Bs ${realBs}`);
-                    if (errGastos) addLog(`   📉 Gastos: Sistema $${sysGastos} vs Real $${truthRef.current.totalGastosUSD}`);
+                    if (errGastos) addLog(`   📉 Gastos: Sistema $${sysGastos} vs Real $${truthDia.gastosUSD}`);
+                    if (errConsumos) addLog(`   📉 Consumos: Sistema $${sysConsumos} vs Real $${truthDia.consumosUSD}`);
                 } else {
                     addLog(`✅ CIERRE EXITOSO (Día ${dia})`);
                     addLog(`   📊 Ventas: $${sysSales} OK`);
                     addLog(`   📊 Caja USD: $${sysUsd} OK`);
                     addLog(`   📊 Caja Bs: Bs ${sysBs} OK`);
                     addLog(`   📊 Gastos: $${sysGastos} OK`);
+                    addLog(`   📊 Merma: $${sysConsumos} OK`);
                 }
 
                 addLog('---------------------------------------');

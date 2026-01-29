@@ -179,7 +179,7 @@ export const useSalesProcessor = (
 
                 // 🧮 CALCULO PRECISO DE TOTAL PAGADO (Normalized to USD)
                 const totalPagadoUSD = rawPagos.reduce((acc, p) => {
-                    const amt = parseFloat(p.amount || p.monto || 0);
+                    const amt = parseFloat(p.amount || p.monto || p.montoBS || p.amountBS || 0);
                     const rate = parseFloat(p.rate || p.tasa || tasaVenta);
                     const currency = p.currency || (p.tipo === 'BS' ? 'VES' : 'USD');
                     return acc + (currency === 'USD' ? amt : (rate > 0 ? amt / rate : 0));
@@ -189,7 +189,7 @@ export const useSalesProcessor = (
                 if (Number.isNaN(totalFactura) || ventaFinal.total === null) {
                     throw new Error("CHAOS_GUARD: Detectadas matemáticas corruptas (Total is NaN/Null).");
                 }
-                if (rawPagos.some(p => Number.isNaN(parseFloat(p.amount || p.monto)))) {
+                if (rawPagos.some(p => Number.isNaN(parseFloat(p.amount || p.monto || p.montoBS || p.amountBS)))) {
                     throw new Error("CHAOS_GUARD: Detectadas matemáticas corruptas (Payment Amount is NaN/Null).");
                 }
 
@@ -217,7 +217,7 @@ export const useSalesProcessor = (
                     return {
                         id: crypto.randomUUID(),
                         method: p.metodo || 'Desconocido',
-                        amount: parseFloat(p.amount || p.monto || 0), // Valor nominal en la moneda original
+                        amount: parseFloat(p.amount || p.monto || p.montoBS || p.amountBS || 0), // Valor nominal en la moneda original
                         currency: p.currency || (p.tipo === 'BS' ? CURRENCY.VES : CURRENCY.USD),
                         medium: p.medium || (isCash ? MEDIUM.CASH : MEDIUM.DIGITAL),
                         rate: parseFloat(ventaFinal.tasa) || 1,
