@@ -1,153 +1,148 @@
-
 import { useState, useCallback } from 'react';
-import { useStore } from '../../context/StoreContext'; // ✅ Corrected path
-import { useRBAC } from '../store/useRBAC';   // Adjust path if needed
-import { PERMISOS, ROLES } from '../../config/permissions';
+import { useStore } from '../../context/StoreContext';
+import { PERMISOS, ROLES, ROLE_PERMISSIONS, ROLE_META } from '../../config/permissions';
 
 /**
- * 🕵️‍♂️ useRBACValidator
- * Hook de auditoría profunda para simular y validar permisos en tiempo real.
+ * 🕵️‍♂️ useRBACValidator V2.0 (DEEP SCAN)
+ * Suite de auditoría para validar la integridad del sistema de permisos.
  */
 export const useRBACValidator = () => {
-    const { usuario, agregarUsuario, eliminarUsuario, usuarios } = useStore();
+    const { usuarios, agregarUsuario, eliminarUsuario } = useStore();
     const [testUser, setTestUser] = useState(null);
     const [logs, setLogs] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [stats, setStats] = useState({ passed: 0, failed: 0, total: 0 });
 
-    // Helper para logs estructurados
     const log = (msg, type = 'INFO', details = null) => {
         const timestamp = new Date().toLocaleTimeString();
-        setLogs(prev => [`[${timestamp}] [${type}] ${msg} ${details ? JSON.stringify(details) : ''}`, ...prev]);
+        const icons = { INFO: 'ℹ️', SUCCESS: '✅', ERROR: '❌', WARNING: '⚠️', SECURITY: '🛡️', ACTOR: '👤' };
+        const icon = icons[type] || '•';
+        setLogs(prev => [`[${timestamp}] ${icon} ${msg}${details ? ' ' + JSON.stringify(details) : ''}`, ...prev]);
     };
 
-    /**
-     * 1. CREAR SUJETO DE PRUEBA
-     * Crea un usuario "Sujeto de Prueba" con rol CUSTOM (0 permisos).
-     */
-    const createTestSubject = async () => {
-        setIsRunning(true);
-        log('=== INICIANDO AUDITORÍA RBAC ===', 'INFO');
+    const createTestSubject = async (roleId, customPerms = []) => {
+        const name = `AUDIT_USER_${roleId}`;
+        const existing = usuarios.find(u => u.nombre === name);
+        if (existing) await eliminarUsuario(existing.id);
 
-        // Limpiar si ya existe
-        const existing = usuarios.find(u => u.nombre === 'TEST_SUBJECT');
-        if (existing) {
-            log('Limpiando sujeto de prueba anterior...', 'WARNING');
-            eliminarUsuario(existing.id);
-        }
+        log(`Preparando Actor: ${ROLE_META[roleId]?.label || roleId}`, 'ACTOR');
 
-        log('Creando TEST_SUBJECT (Rol: CUSTOM - Sin Permisos)...', 'INFO');
-        const res = await agregarUsuario({
-            nombre: 'TEST_SUBJECT',
-            pin: '000000',
-            roleId: ROLES.CUSTOM,
-            rol: 'Personalizado',
-            customLabel: 'Sujeto de Prueba',
-            customPermissions: [] // INCIO VACÍO
-        });
+        const testSubjectData = {
+            id: Date.now(),
+            nombre: name,
+            pin: '123456',
+            roleId: roleId,
+            rol: ROLE_META[roleId]?.label || 'Test',
+            customPermissions: customPerms
+        };
 
-        if (res.success) {
-            const newUser = usuarios.find(u => u.nombre === 'TEST_SUBJECT'); // Re-fetch para tener ID
-            setTestUser(newUser);
-            log('Sujeto de prueba creado con éxito.', 'SUCCESS');
-            return newUser;
-        } else {
-            log(`Error creando sujeto: ${res.msg}`, 'ERROR');
-            setIsRunning(false);
-            return null;
-        }
+        const res = await agregarUsuario(testSubjectData);
+
+        // 🛡️ DEVUELVO EL DATO LOCAL: El state de context es asíncrono y no estará listo en este frame.
+        return res.success ? testSubjectData : null;
     };
 
-    /**
-     * 2. SIMULACIÓN DE ACTORES (The Actor Model)
-     * En lugar de loguearnos, instanciamos un useRBAC temporal con el usuario test.
-     */
-    const runScenario = (subject, scenarioName, permissionsToGrant, checks) => {
+    const checkPermissionInternal = (user, permission) => {
+        if (!user) return false;
+        // Lógica espejo de useRBAC.js
+        if (user.roleId === ROLES.OWNER) return true;
+        const basePerms = ROLE_PERMISSIONS[user.roleId] || [];
+        const customPerms = user.customPermissions || [];
+        return basePerms.includes(permission) || customPerms.includes(permission);
+    };
+
+    const runScenario = (subject, scenarioName, checks) => {
         if (!subject) {
-            log('No hay sujeto de prueba. Abortando escenario.', 'ERROR');
-            return;
+            log(`Abordando Escenario: ${scenarioName} (Sujeto no creado)`, 'ERROR');
+            return { passed: 0, failed: 0 };
         }
-
         log(`\n--- ESCENARIO: ${scenarioName} ---`, 'INFO');
-
-        // A. Asignar Permisos Virtualmente
-        const simulatedUser = {
-            ...subject,
-            roleId: ROLES.CUSTOM, // Forzar CUSTOM para el test sintético
-            customPermissions: permissionsToGrant
-        };
-
-        // B. Instanciar Cerebro RBAC con el usuario simulado
-        // Mini implementación de hasPermission pura para el test
-        const checkPermission = (perm) => {
-            const userRole = simulatedUser.roleId;
-            // Si es CUSTOM, solo mira customPermissions
-            // Si es otro rol, mira base + custom.
-            // Para simplificar test subject es CUSTOM siempre.
-            return simulatedUser.customPermissions.includes(perm);
-        };
-
-        // C. Ejecutar Chequeos
-        let passed = 0;
-        let failed = 0;
+        let scenarioPassed = 0;
+        let scenarioFailed = 0;
 
         checks.forEach(check => {
-            const hasAccess = checkPermission(check.permission);
-            const expected = check.shouldPass;
+            const hasAccess = checkPermissionInternal(subject, check.permission);
+            const success = hasAccess === check.shouldPass;
 
-            if (hasAccess === expected) {
-                log(`[PASS] ${check.desc} -> ${hasAccess ? 'Permitido' : 'Bloqueado'} (Correcto)`, 'SUCCESS');
-                passed++;
+            if (success) {
+                log(`[PASS] ${check.desc} -> ${hasAccess ? 'PERMITIDO' : 'BLOQUEADO'}`, 'SUCCESS');
+                scenarioPassed++;
             } else {
-                log(`[FAIL] ${check.desc} -> ${hasAccess ? 'Permitido' : 'Bloqueado'} (Esperaba: ${expected ? 'Permitido' : 'Bloqueado'})`, 'ERROR');
-                failed++;
+                log(`[FAIL] ${check.desc} -> ${hasAccess ? 'PERMITIDO' : 'BLOQUEADO'} (Esperaba: ${check.shouldPass ? 'PERMITIDO' : 'BLOQUEADO'})`, 'ERROR');
+                scenarioFailed++;
             }
         });
 
-        return { passed, failed };
+        return { passed: scenarioPassed, failed: scenarioFailed };
     };
 
-    /**
-     * 3. ORQUESTADOR DE PRUEBAS
-     */
     const runFullAudit = async () => {
-        const subject = await createTestSubject();
-        if (!subject) return;
+        setIsRunning(true);
+        setLogs([]);
+        setStats({ passed: 0, failed: 0, total: 0 });
+        log('🚀 INICIANDO AUDITORÍA RBAC V2.0 (DEEP SCAN)', 'SECURITY');
 
-        // --- NIVEL 0: BLOQUEO TOTAL ---
-        runScenario(subject, 'NIVEL 0: BLOQUEO TOTAL', [], [
-            { permission: PERMISOS.POS_ACCESS, shouldPass: false, desc: 'Entrar al POS' },
-            { permission: PERMISOS.REP_VER_DASHBOARD, shouldPass: false, desc: 'Ver Dashboard' },
-            { permission: PERMISOS.INV_VER, shouldPass: false, desc: 'Ver Inventario' }
-        ]);
+        let totalPassed = 0;
+        let totalFailed = 0;
 
-        // --- NIVEL 1: CAJERO BÁSICO ---
-        runScenario(subject, 'NIVEL 1: CAJA REGISTRADORA', [PERMISOS.POS_ACCESS, PERMISOS.CAJA_TURNO], [
-            { permission: PERMISOS.POS_ACCESS, shouldPass: true, desc: 'Entrar al POS' },
-            { permission: PERMISOS.POS_VOID_ITEM, shouldPass: false, desc: 'Anular Ítem (Debe fallar)' },
-            { permission: PERMISOS.POS_VOID_TICKET, shouldPass: false, desc: 'Vaciar Cesta (Debe fallar)' }
-        ]);
+        try {
+            // 0. TEST DE BLOQUEO TOTAL (CUSTOM SIN PERMISOS)
+            const ghost = await createTestSubject(ROLES.CUSTOM);
+            const res0 = runScenario(ghost, 'NIVEL 0: BLOQUEO TOTAL (Sin Permisos)', [
+                { permission: PERMISOS.POS_ACCESO, shouldPass: false, desc: 'Entrar al POS' },
+                { permission: PERMISOS.INV_VER, shouldPass: false, desc: 'Ver Catálogo' },
+                { permission: PERMISOS.CONF_ACCESO, shouldPass: false, desc: 'Configuración' }
+            ]);
+            totalPassed += res0.passed; totalFailed += res0.failed;
 
-        // --- NIVEL 2: SUPERVISOR POS ---
-        runScenario(subject, 'NIVEL 2: SUPERVISOR DE CAJA', [PERMISOS.POS_ACCESS, PERMISOS.POS_VOID_ITEM, PERMISOS.POS_VOID_TICKET], [
-            { permission: PERMISOS.POS_VOID_ITEM, shouldPass: true, desc: 'Anular Ítem' },
-            { permission: PERMISOS.POS_VOID_TICKET, shouldPass: true, desc: 'Vaciar Cesta' },
-            { permission: PERMISOS.REP_VER_TOTAL_DIARIO, shouldPass: false, desc: 'Ver Total Financiero (Debe fallar)' }
-        ]);
+            // 1. TEST DE CAJERO (BASE)
+            const cashier = await createTestSubject(ROLES.CASHIER);
+            const res1 = runScenario(cashier, 'ROL: CAJERO (Mínimo Privilegio)', [
+                { permission: PERMISOS.POS_ACCESO, shouldPass: true, desc: 'Operar Ventas' },
+                { permission: PERMISOS.POS_VOID_ITEM, shouldPass: false, desc: 'Anular (Protección PIN)' },
+                { permission: PERMISOS.INV_EDITAR, shouldPass: false, desc: 'Modificar Precios' },
+                { permission: PERMISOS.REP_VER_TOTAL_DIARIO, shouldPass: false, desc: 'Ver Bóveda' }
+            ]);
+            totalPassed += res1.passed; totalFailed += res1.failed;
 
-        // --- NIVEL 3: INVENTARIO PARCIAL ---
-        runScenario(subject, 'NIVEL 3: INVENTARIO CIEGO', [PERMISOS.INV_VER], [
-            { permission: PERMISOS.INV_VER, shouldPass: true, desc: 'Ver Catálogo' },
-            { permission: PERMISOS.INV_VER_COSTOS, shouldPass: false, desc: 'Ver Costos de Compra (Debe fallar)' },
-            { permission: PERMISOS.INV_EDITAR, shouldPass: false, desc: 'Editar Productos (Debe fallar)' }
-        ]);
+            // 2. TEST DE ENCARGADO (SUPERVISOR)
+            const manager = await createTestSubject(ROLES.MANAGER);
+            const res2 = runScenario(manager, 'ROL: ENCARGADO (Gestión Completa)', [
+                { permission: PERMISOS.POS_VOID_ITEM, shouldPass: true, desc: 'Anulaciones' },
+                { permission: PERMISOS.INV_EDITAR, shouldPass: true, desc: 'Editar Inventario' },
+                { permission: PERMISOS.CLI_CREDITO, shouldPass: true, desc: 'Gestionar Créditos' },
+                { permission: PERMISOS.CONF_USUARIOS_EDITAR, shouldPass: false, desc: 'Gestionar Equipo (Dueño)' }
+            ]);
+            totalPassed += res2.passed; totalFailed += res2.failed;
 
-        log('\n=== AUDITORÍA COMPLETADA ===', 'INFO');
-        setIsRunning(false);
+            // 3. TEST DE ESCALAMIENTO (SNEAKY CUSTOM)
+            log('Inyectando permisos "Sneaky" a un Cajero...', 'WARNING');
+            const customCashier = await createTestSubject(ROLES.CASHIER, [PERMISOS.REP_VER_TOTAL_DIARIO]);
+            const res3 = runScenario(customCashier, 'Cajero con Acceso a Bóveda', [
+                { permission: PERMISOS.POS_ACCESO, shouldPass: true, desc: 'Hereda POS' },
+                { permission: PERMISOS.REP_VER_TOTAL_DIARIO, shouldPass: true, desc: 'Inyección de permiso' },
+                { permission: PERMISOS.CONF_SISTEMA_EDITAR, shouldPass: false, desc: 'Sigue bloqueado de Admin' }
+            ]);
+            totalPassed += res3.passed; totalFailed += res3.failed;
+
+            // 4. TEST DE DUEÑO (GOD MODE)
+            const owner = await createTestSubject(ROLES.OWNER);
+            const res4 = runScenario(owner, 'ROL: DUEÑO (God Mode)', [
+                { permission: PERMISOS.SETTINGS_DB_RESET, shouldPass: true, desc: 'Reset de Fábrica' },
+                { permission: PERMISOS.CONF_USUARIOS_EDITAR, shouldPass: true, desc: 'Control Total Personal' }
+            ]);
+            totalPassed += res4.passed; totalFailed += res4.failed;
+
+            setStats({ passed: totalPassed, failed: totalFailed, total: totalPassed + totalFailed });
+            log('\n🏁 AUDITORÍA COMPLETADA FINALIZADA', 'SECURITY');
+            log(`RESUMEN: ${totalPassed} Pasaron | ${totalFailed} Fallaron`, totalFailed > 0 ? 'ERROR' : 'SUCCESS');
+
+        } catch (error) {
+            log(`CRITICAL TEST FAILURE: ${error.message}`, 'ERROR');
+        } finally {
+            setIsRunning(false);
+        }
     };
 
-    return {
-        logs,
-        runFullAudit,
-        isRunning
-    };
+    return { logs, runFullAudit, isRunning, stats };
 };

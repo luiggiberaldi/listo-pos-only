@@ -147,19 +147,50 @@ export const CajaEstadoProvider = ({ children }) => {
     });
   }, []);
 
+  // --- 💸 REGISTRO DE GASTOS/SALIDAS (ATOMIC) ---
+  const registrarSalidaCaja = useCallback(async (monto, moneda = 'USD', medio = 'CASH', _motivo = 'Gasto') => {
+    return await db.transaction('rw', db.caja_sesion, async () => {
+      const currentSession = await db.caja_sesion.get('actual');
+      if (!currentSession || !currentSession.isAbierta) {
+        console.warn('[CAJA] No se puede registrar salida: Caja cerrada.');
+        // TODO: Quizás permitir gastos con caja cerrada en el futuro, por ahora STRICT MODE.
+        return false;
+      }
+
+      const amount = parseFloat(monto);
+      if (isNaN(amount) || amount <= 0) return false;
+
+      const newBalances = { ...currentSession.balances };
+
+      // Lógica de Descuento (Espejo de actualizarBalances pero solo negativo)
+      if (moneda === 'USD') {
+        if (medio === 'CASH') newBalances.usdCash = Math.max(0, newBalances.usdCash - amount);
+        else newBalances.usdDigital -= amount; // Digital puede ir negativo (deuda/crédito)
+      } else if (moneda === 'VES') {
+        if (medio === 'CASH') newBalances.vesCash = Math.max(0, newBalances.vesCash - amount);
+        else newBalances.vesDigital -= amount;
+      }
+
+      await db.caja_sesion.update('actual', { balances: newBalances });
+      return true;
+    });
+  }, []);
+
   // --- 🔥 MÉTODO CRÍTICO: CERRAR CAJA + GUARDAR EN DB (ATOMIC) ---
   const cerrarCaja = useCallback(async (datosExtra = {}) => {
     return await db.transaction('rw', db.caja_sesion, db.cortes, async () => {
       const currentSession = await db.caja_sesion.get('actual');
       if (!currentSession || !currentSession.isAbierta) return false;
 
-      // 1. Construir el Corte Z Final
+
+      // 1. Construir el Corte Z Final (Basado en el objeto de reporte recibido)
       const nuevoCorte = {
         id: `Z-${Date.now()}`,
         fecha: new Date().toISOString(),
         idApertura: currentSession.idApertura,
         balancesApertura: currentSession.balancesApertura,
         usuario: currentSession.usuarioApertura,
+        balancesFinales: currentSession.balances, // Snapshot final real
         ...datosExtra,
       };
 
@@ -183,8 +214,10 @@ export const CajaEstadoProvider = ({ children }) => {
     abrirCaja,
     cerrarCaja,
     cerrarSesionCaja,
-    actualizarBalances
-  }), [estado, cortes, isCajaAbierta, getEstadoCaja, abrirCaja, cerrarCaja, cerrarSesionCaja, actualizarBalances]);
+    cerrarSesionCaja,
+    actualizarBalances,
+    registrarSalidaCaja
+  }), [estado, cortes, isCajaAbierta, getEstadoCaja, abrirCaja, cerrarCaja, cerrarSesionCaja, actualizarBalances, registrarSalidaCaja]);
 
   return (
     <CajaEstadoContext.Provider value={value}>

@@ -6,7 +6,7 @@ import RBACAuditCard from '../components/testing/RBACAuditCard'; // 🆕 IMPORT
 import { useConfigContext } from '../context/ConfigContext';
 import {
   Activity, Terminal, Check, Clipboard, Square, Microscope, Zap, Siren, ShieldCheck, PackagePlus, Users, PlusCircle, Skull, Lock,
-  Scale, AlertTriangle, Database, Settings // 🆕 Added Icons for Chaos
+  Scale, AlertTriangle, Database, Settings, DollarSign // 🆕 Added icons
 } from 'lucide-react';
 import { db } from '../db';
 import Swal from 'sweetalert2';
@@ -244,6 +244,16 @@ const SimulationPage = () => {
                     <Microscope size={32} className="group-hover:animate-bounce" />
                     <span className="text-lg tracking-tighter">ESCENARIO Z</span>
                     <div className="text-[9px] font-bold bg-white/20 text-white px-2 py-0.5 rounded border border-white/20 uppercase">Debug Profundo</div>
+                  </button>
+
+                  <button
+                    disabled={vMain.isRunning || vChaos.isRunning}
+                    onClick={() => vMain.simularEscenarioEgresos()}
+                    className="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-6 rounded-3xl font-black shadow-xl transition-all flex flex-col items-center justify-center gap-2 hover:scale-[1.02] disabled:opacity-50 group relative overflow-hidden"
+                  >
+                    <DollarSign size={32} className="group-hover:rotate-12 transition-transform" />
+                    <span className="text-lg tracking-tighter">FINANZAS & EGRESOS</span>
+                    <div className="text-[9px] font-bold bg-white/20 text-white px-2 py-0.5 rounded border border-white/20 uppercase">Validar Arqueo</div>
                   </button>
                 </div>
 

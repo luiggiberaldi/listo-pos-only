@@ -174,14 +174,22 @@ export const useSalesProcessor = (
                 // 🧾 1. NORMALIZACIÓN STRICTA (Sin Adivinanzas)
                 // 🛡️ LOGIC GUARDS (CHAOS PROOF)
                 const rawPagos = ventaFinal.pagos || ventaFinal.metodos || [];
-                const totalPagado = rawPagos.reduce((acc, p) => acc + (parseFloat(p.amount || p.monto) || 0), 0);
                 const totalFactura = parseFloat(ventaFinal.total || 0);
+                const tasaVenta = parseFloat(ventaFinal.tasa) || 1;
+
+                // 🧮 CALCULO PRECISO DE TOTAL PAGADO (Normalized to USD)
+                const totalPagadoUSD = rawPagos.reduce((acc, p) => {
+                    const amt = parseFloat(p.amount || p.monto || 0);
+                    const rate = parseFloat(p.rate || p.tasa || tasaVenta);
+                    const currency = p.currency || (p.tipo === 'BS' ? 'VES' : 'USD');
+                    return acc + (currency === 'USD' ? amt : (rate > 0 ? amt / rate : 0));
+                }, 0);
 
                 // G0: NO Toxic Math (NaN Checks - RAW INPUT)
-                if (Number.isNaN(ventaFinal.total) || ventaFinal.total === null) {
+                if (Number.isNaN(totalFactura) || ventaFinal.total === null) {
                     throw new Error("CHAOS_GUARD: Detectadas matemáticas corruptas (Total is NaN/Null).");
                 }
-                if (rawPagos.some(p => Number.isNaN(p.amount || p.monto) || (p.amount === null && p.monto === null))) {
+                if (rawPagos.some(p => Number.isNaN(parseFloat(p.amount || p.monto)))) {
                     throw new Error("CHAOS_GUARD: Detectadas matemáticas corruptas (Payment Amount is NaN/Null).");
                 }
 
@@ -220,7 +228,7 @@ export const useSalesProcessor = (
                 const vueltosProcesados = [];
                 // ⚠️ VUELTO HÍBRIDO: Puede haber parte físico y parte digital
                 const dist = ventaFinal.distribucionVuelto || {};
-                const tasaVenta = parseFloat(ventaFinal.tasa) || 1;
+                // tasaVenta ya fue declarada arriba.
 
                 // Vueltos físicos (Salen de Caja)
                 if (parseFloat(dist.usd || 0) > 0.001) {
@@ -246,7 +254,9 @@ export const useSalesProcessor = (
                     (vueltosProcesados.find(v => v.currency === CURRENCY.VES)?.amount || 0) / tasaVenta
                 );
 
-                const totalDebeVueltoUSD = fixFloat(ventaFinal.cambio || 0);
+                // 🔥 FALLBACK DE VUELTO (Si no viene de UI, calculamos la diferencia real)
+                // Usamos Math.max(0) para evitar que ventas a crédito (bajo pago) generen "vuelto negativo"
+                const totalDebeVueltoUSD = fixFloat(ventaFinal.cambio || ventaFinal.montoVueltoDigital || Math.max(0, totalPagadoUSD - totalFactura));
                 let remanenteVueltoUSD = fixFloat(totalDebeVueltoUSD - totalEntregadoFisicoUSD);
 
                 // G2: NO unassigned change without Client

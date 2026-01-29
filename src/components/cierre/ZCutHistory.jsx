@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { Printer, Calendar, Search, AlertCircle, FileText, TrendingUp, DollarSign } from 'lucide-react';
+import { Printer, Calendar, Search, AlertCircle, FileText, TrendingUp, DollarSign, Eye, X } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import ReporteZUniversal from './ReporteZUniversal';
 import Swal from 'sweetalert2';
 import { useStore } from '../../context/StoreContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * Normaliza un objeto de corte histórico para garantizar que tenga la estructura
@@ -29,7 +30,6 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
     };
 
     // 3. RECONSTRUCCIÓN DE IGTF (Si es un corte antiguo o incompleto)
-    // Si igtf es 0, intentamos calcularlo basado en las ventas guardadas
     if ((!fiscal.igtf || fiscal.igtf === 0) && Array.isArray(corteRaw.ventas)) {
         let igtfCalculado = 0;
         let baseImponibleRecalculada = 0;
@@ -39,8 +39,6 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
         corteRaw.ventas.forEach(v => {
             const totalVenta = parseFloat(v.total || 0);
 
-            // Reconstrucción de Impuestos Base (IVA vs Exento)
-            // Solo si el fiscal original parece vacío o inválido
             if (v.status !== 'ANULADA') {
                 if (v.esExento) {
                     exentoRecalculado += totalVenta;
@@ -52,12 +50,9 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
                 }
             }
 
-            // Cálculo IGTF
             let igtfVenta = parseFloat(v.igtfTotal || 0);
 
-            // Si la venta no tiene igtfTotal guardado (Legacy), lo estimamos por pagos
             if (igtfVenta === 0 && Array.isArray(v.pagos)) {
-                // Filtrar pagos en Divisa Efectivo
                 const pagosDivisa = v.pagos.filter(p => {
                     const m = (p.metodo || p.nombre || '').toLowerCase();
                     const isCash = m.includes('efectivo') || m.includes('cash');
@@ -73,7 +68,6 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
             igtfCalculado += igtfVenta;
         });
 
-        // Aplicamos los valores calculados al objeto fiscal final
         fiscal = {
             ...fiscal,
             ventasExentas: fiscal.ventasExentas || exentoRecalculado,
@@ -94,8 +88,11 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
 export default function ZCutHistory() {
     const { configuracion } = useStore(); // Get Config
     const [searchTerm, setSearchTerm] = useState('');
-    const [corteSeleccionado, setCorteSeleccionado] = useState(null);
+    const [corteSeleccionado, setCorteSeleccionado] = useState(null); // Para imprimir (invisible)
+    const [viewCorte, setViewCorte] = useState(null); // Para ver en modal
+    const [paperSize, setPaperSize] = useState('80mm'); // 🆕 Selector de Tamaño
     const printRef = useRef();
+    const viewRef = useRef();
 
     // Consultar DB
     const historialRaw = useLiveQuery(() => db.cortes.limit(50).reverse().toArray()) || [];
@@ -117,7 +114,7 @@ export default function ZCutHistory() {
     }, [historialProcesado, searchTerm]);
 
 
-    // Manejador de Impresión
+    // Manejador de Impresión (Invisible)
     const handlePrintRequest = (corte) => {
         setCorteSeleccionado(corte);
     };
@@ -136,6 +133,14 @@ export default function ZCutHistory() {
     }, [corteSeleccionado, printFn]);
 
 
+    // Manejador de Impresión desde Modal (Visible)
+    const handleModalPrint = useReactToPrint({
+        contentRef: viewRef,
+        content: () => viewRef.current,
+        documentTitle: `Corte-Z-${viewCorte?.id || 'Visual'}`
+    });
+
+
     // --- RENDER ---
     return (
         <div className="space-y-6">
@@ -152,6 +157,23 @@ export default function ZCutHistory() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+
+                {/* Selector de Tamaño de Papel */}
+                <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button
+                        onClick={() => setPaperSize('80mm')}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${paperSize === '80mm' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        80mm
+                    </button>
+                    <button
+                        onClick={() => setPaperSize('58mm')}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${paperSize === '58mm' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        58mm
+                    </button>
+                </div>
+
                 <div className="text-sm text-content-secondary font-medium">
                     Mostrando últimos {cortesFiltrados.length} cierres
                 </div>
@@ -183,8 +205,6 @@ export default function ZCutHistory() {
                                 </tr>
                             ) : (
                                 cortesFiltrados.map((corte) => {
-                                    // Cálculo visual para la columna "Venta Total"
-                                    // Sumamos IGTF si y solo si está activo
                                     const igtfAmount = parseFloat(corte.fiscal?.igtf || 0);
                                     const totalVisual = corte.totalUSD + igtfAmount;
 
@@ -215,13 +235,22 @@ export default function ZCutHistory() {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <button
-                                                    onClick={() => handlePrintRequest(corte)}
-                                                    className="bg-white dark:bg-surface-dark border border-border-DEFAULT hover:border-primary hover:text-primary text-content-secondary p-2 rounded-lg transition-all shadow-sm active:scale-95"
-                                                    title="Reimprimir Z"
-                                                >
-                                                    <Printer size={18} />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => setViewCorte(corte)}
+                                                        className="bg-white dark:bg-surface-dark border border-border-DEFAULT hover:border-indigo-500 hover:text-indigo-600 text-content-secondary p-2 rounded-lg transition-all shadow-sm active:scale-95"
+                                                        title="Ver Ticket"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handlePrintRequest(corte)}
+                                                        className="bg-white dark:bg-surface-dark border border-border-DEFAULT hover:border-primary hover:text-primary text-content-secondary p-2 rounded-lg transition-all shadow-sm active:scale-95"
+                                                        title="Reimprimir Z"
+                                                    >
+                                                        <Printer size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -234,8 +263,56 @@ export default function ZCutHistory() {
 
             {/* COMPONENTE OCULTO PARA IMPRESIÓN - Estilo CierrePage */}
             <div style={{ display: 'none' }}>
-                <ReporteZUniversal ref={printRef} corte={corteSeleccionado} formato="ticket" />
+                <ReporteZUniversal ref={printRef} corte={corteSeleccionado} formato="ticket" paperWidth={paperSize} />
             </div>
+
+            {/* MODAL DE PREVISUALIZACIÓN */}
+            <AnimatePresence>
+                {viewCorte && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-700">
+                                <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                    <FileText size={20} className="text-primary" />
+                                    Vista Previa: #{String(viewCorte.id).slice(-6)}
+                                </h3>
+                                <button
+                                    onClick={() => setViewCorte(null)}
+                                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900/50 flex justify-center">
+                                <div className="bg-white shadow-lg origin-top scale-90 sm:scale-100 transition-transform">
+                                    <ReporteZUniversal ref={viewRef} corte={viewCorte} formato="ticket" paperWidth={paperSize} />
+                                </div>
+                            </div>
+
+                            <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-800">
+                                <button
+                                    onClick={() => setViewCorte(null)}
+                                    className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-all"
+                                >
+                                    Cerrar
+                                </button>
+                                <button
+                                    onClick={handleModalPrint}
+                                    className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg shadow hover:bg-primary-dark flex items-center gap-2"
+                                >
+                                    <Printer size={16} /> Imprimir
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
         </div>
     );

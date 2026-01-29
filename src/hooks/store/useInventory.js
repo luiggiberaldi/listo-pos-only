@@ -289,6 +289,47 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         await db.logs.bulkDelete(ids);
     };
 
+    // --- 📦 CONSUMO INTERNO / MERMAS ---
+    const registrarConsumoInterno = async (item, motivo, usuarioActor) => {
+        verify(PERMISSIONS.INVENTORY_ADJUST, 'Registrar Consumo Interno');
+
+        await db.transaction('rw', db.productos, db.logs, async () => {
+            const idKey = Number(item.id) || item.id;
+            const prod = await db.productos.get(idKey);
+
+            if (prod) {
+                // Cálculo de reducción de stock
+                const factor = convertirABase(1, item.unidadVenta || 'unidad', prod.jerarquia);
+                const cantidadTotal = fixFloat(item.cantidad * factor);
+                const nuevoStock = fixFloat(prod.stock - cantidadTotal);
+
+                await db.productos.update(idKey, { stock: nuevoStock });
+
+                // Metadata para rastreo de costo
+                const smartMetadata = {
+                    unidad: item.unidadVenta || 'unidad',
+                    factor: factor,
+                    cantidadOriginal: item.cantidad,
+                    costoSnapshot: prod.costo || 0, // Importante para reportes de pérdida
+                    motivoExplicito: motivo
+                };
+
+                await logMovimientoInternal(
+                    'CONSUMO_INTERNO',
+                    prod.id,
+                    prod.nombre,
+                    cantidadTotal,
+                    nuevoStock,
+                    'INTERNO',
+                    motivo,
+                    usuarioActor,
+                    smartMetadata
+                );
+            }
+        });
+        return { success: true };
+    };
+
     return {
         productos,
         categorias,
@@ -302,6 +343,7 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         transaccionVenta,
         transaccionAnulacion,
         eliminarMovimiento,
-        eliminarMovimientos
+        eliminarMovimientos,
+        registrarConsumoInterno
     };
 };

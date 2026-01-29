@@ -80,8 +80,15 @@ export const usePOS = (
                 const p = productos.find(prod => prod.id === item.id);
                 if (!p) return item;
 
-                // Guard Clauss for Data Integrity
-                if (!p.jerarquia) throw new Error(`Producto ${p.nombre} corrupto (No jerarquía)`);
+                // 🛡️ [REPAIR] Gentle Sync: If hierarchy is missing, we assume it's a simple product
+                if (!p.jerarquia) {
+                    // console.warn(`[POS] Producto ${p.nombre} sin jerarquía. Usando valores base.`);
+                    if (item.nombre !== p.nombre || Math.abs(item.stock - p.stock) > 0.01) {
+                        cambioDetectado = true;
+                        return { ...item, nombre: p.nombre, stock: p.stock };
+                    }
+                    return item;
+                }
 
                 // Recalcular Precio Esperado según Jerarquía Actual
                 let precioEsperado = parseFloat(p.precio);

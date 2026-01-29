@@ -3,13 +3,17 @@
 // Auditoría: Corrección de doble conversión en Bs y suma de apertura en USD.
 
 import React, { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { TrendingUp, Users, CreditCard, Clock, Wallet, ArrowRight, Banknote } from 'lucide-react';
+import { TrendingUp, Users, CreditCard, Clock, Wallet, ArrowRight, Banknote, DollarSign, Activity } from 'lucide-react';
 import { useConfigContext } from '../../context/ConfigContext';
 import { calcularKPIs, agruparPorHora, agruparPorMetodo, calcularTesoreia } from '../../utils/reportUtils';
+
+// ... (rest of imports/constants)
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -43,13 +47,28 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
   const { configuracion } = useConfigContext();
   const tasa = configuracion?.tasa || 1;
 
-  const { kpis, salesByHour, salesByMethod, tesoreria } = useMemo(() => {
+  // 🔴 LIVE QUERY: Obtener Gastos del Día
+  const gastosHoy = useLiveQuery(async () => {
+    const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
+    const finDia = new Date(); finDia.setHours(23, 59, 59, 999);
+
+    return await db.logs
+      .where('fecha')
+      .between(inicioDia.toISOString(), finDia.toISOString())
+      .and(l => l.tipo === 'GASTO_CAJA' || l.tipo === 'CONSUMO_INTERNO')
+      .toArray();
+  }, []) || [];
+
+  const { kpis, salesByHour, salesByMethod, tesoreria, totalGastos } = useMemo(() => {
+    const _gastos = gastosHoy.reduce((acc, g) => acc + (parseFloat(g.cantidad) || 0), 0);
+
     if (!ventas || ventas.length === 0) {
       return {
         kpis: calcularKPIs([]),
         salesByHour: agruparPorHora([]),
         salesByMethod: [],
-        tesoreria: { cajaUSD: 0, cajaBS: 0 }
+        tesoreria: { cajaUSD: 0, cajaBS: 0 },
+        totalGastos: _gastos
       };
     }
 
@@ -65,35 +84,55 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
       kpis: { ..._kpis, peakHour: peakHourLabel },
       salesByHour: _salesByHour,
       salesByMethod: _salesByMethod,
-      tesoreria: _tesoreria
+      tesoreria: _tesoreria,
+      totalGastos: _gastos
     };
-  }, [ventas, balancesApertura]);
+  }, [ventas, balancesApertura, gastosHoy]);
 
-  const renderTooltipFormatter = (value, name) => {
-    const nameLower = name.toLowerCase();
-    const esBs = nameLower.includes('bs') || nameLower.includes('pago móvil') || nameLower.includes('punto');
-    if (esBs) return [`Bs ${(value * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, name];
-    return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, name];
-  };
+  const renderTooltipFormatter = (value, name) => [
+    `$${value.toFixed(2)}`,
+    name
+  ];
+
+  const utilidadOperativa = kpis.totalVentas - totalGastos;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 
-        {/* Venta Neta (Flujo de Ventas solamente) */}
+        {/* Venta Neta */}
         <KPICard
-          title="Venta Neta"
+          title="Ingresos"
           value={`$${kpis.totalVentas.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
           subtext={`~ Bs ${(kpis.totalVentas * tasa).toLocaleString('es-VE', { minimumFractionDigits: 0 })}`}
           icon={TrendingUp}
           color={{ bg: 'bg-blue-500', text: 'text-blue-500', badge: 'bg-blue-50 text-blue-700 border border-blue-100' }}
         />
 
+        {/* Gastos y Consumos */}
+        <KPICard
+          title="Egresos / Gastos"
+          value={`$${totalGastos.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          subtext={`${gastosHoy.length} movimientos`}
+          icon={Activity}
+          color={{ bg: 'bg-rose-500', text: 'text-rose-500', badge: 'bg-rose-50 text-rose-700 border border-rose-100' }}
+        />
+
+        {/* Utilidad Operativa */}
+        <KPICard
+          title="Utilidad Operativa"
+          value={`$${utilidadOperativa.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          subtext={utilidadOperativa >= 0 ? 'En Verde' : 'Déficit'}
+          icon={DollarSign}
+          color={{ bg: utilidadOperativa >= 0 ? 'bg-emerald-600' : 'bg-red-600', text: utilidadOperativa >= 0 ? 'text-emerald-600' : 'text-red-600', badge: 'bg-slate-100 text-slate-600' }}
+        />
+
+        {/* Tesorería (Fondos) */}
         <KPICard
           title="Fondo Divisas"
           value={`$${((tesoreria.usdCash || 0) + (tesoreria.usdDigital || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext={`Físico: $${(tesoreria.usdCash || 0).toFixed(2)} | Dig: $${(tesoreria.usdDigital || 0).toFixed(2)}`}
+          subtext={`Físico: $${(tesoreria.usdCash || 0).toFixed(2)}`}
           icon={Wallet}
           color={{ bg: 'bg-emerald-500', text: 'text-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border border-emerald-100' }}
         />
@@ -101,17 +140,9 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         <KPICard
           title="Fondo Bolívares"
           value={`Bs ${((tesoreria.vesCash || 0) + (tesoreria.vesDigital || 0)).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`}
-          subtext={`Físico: Bs ${(tesoreria.vesCash || 0).toLocaleString('es-VE', { maximumFractionDigits: 0 })} | Dig: Bs ${(tesoreria.vesDigital || 0).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`}
+          subtext={`Físico: Bs ${(tesoreria.vesCash || 0).toLocaleString('es-VE', { maximumFractionDigits: 0 })}`}
           icon={Banknote}
           color={{ bg: 'bg-purple-500', text: 'text-purple-500', badge: 'bg-purple-50 text-purple-700 border border-purple-100' }}
-        />
-
-        <KPICard
-          title="Hora Pico"
-          value={kpis.peakHour}
-          subtext="Máxima Afluencia"
-          icon={Clock}
-          color={{ bg: 'bg-orange-500', text: 'text-orange-500', badge: 'bg-orange-50 text-orange-700 border border-orange-100' }}
         />
       </div>
 

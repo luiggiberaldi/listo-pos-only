@@ -17,6 +17,7 @@ import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 
 import DashboardStats from '../components/dashboard/DashboardStats';
+import ModalGasto from '../components/finanzas/ModalGasto'; // [NEW]
 import { agruparPorMetodo, calcularTesoreia } from '../utils/reportUtils';
 
 const formatVencimiento = (fechaIso) => {
@@ -38,12 +39,13 @@ export default function Dashboard() {
 
   const canSeeFinance = tienePermiso(PERMISOS.REP_VER_DASHBOARD);
 
+
+
   const [rango, setRango] = useState('hoy');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [showRateConfig, setShowRateConfig] = useState(false);
-
-  // 📥 MANEJO DE TASA
+  const [showGastoModal, setShowGastoModal] = useState(false); // [NEW]
   const handleManualTasa = async () => {
     const { value: nuevaTasa } = await Swal.fire({
       title: 'Tasa Personalizada',
@@ -237,6 +239,15 @@ export default function Dashboard() {
             <span className="ml-2 px-3 py-1 bg-surface-light dark:bg-surface-dark border border-border-subtle rounded-lg text-sm font-black text-content-main shadow-sm">
               Bs {configuracion.tasa}
             </span>
+
+            {/* BOTÓN GASTOS [NEW] */}
+            <button
+              onClick={() => setShowGastoModal(true)}
+              className="ml-2 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-black border border-amber-200 transition-colors flex items-center gap-1 shadow-sm"
+              title="Registrar Gasto o Consumo"
+            >
+              💸 Gastos
+            </button>
           </div>
 
           {/* ⚙️ PANEL DE CONFIGURACIÓN DE TASA */}
@@ -364,7 +375,13 @@ export default function Dashboard() {
           <AlertCard title="SE AGOTÓ" items={alertas.agotados} icon={PackageX} variant="danger" msgEmpty="Nada falta" />
         </div>
       </div>
-    </div>
+
+
+      <ModalGasto
+        isOpen={showGastoModal}
+        onClose={() => setShowGastoModal(false)}
+      />
+    </div >
   );
 }
 

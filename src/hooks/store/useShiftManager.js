@@ -39,8 +39,29 @@ export const useShiftManager = (
                 // Filter pending sales for Z Cut
                 const ventasParaCierre = ventasFrescas.filter(v => !v.corteId && v.status === 'COMPLETADA');
 
+                // 0. Calcular Totales de Egresos Atómicos del Turno
+                const inicioSesion = new Date(sesion.fechaApertura);
+                const finSesion = new Date();
+
+                const logsTurno = await db.logs
+                    .where('fecha')
+                    .between(inicioSesion.toISOString(), finSesion.toISOString())
+                    .toArray();
+
+                const egresos = {
+                    gastosUSD: logsTurno
+                        .filter(l => l.tipo === 'GASTO_CAJA' && (!l.meta?.moneda || l.meta?.moneda === 'USD'))
+                        .reduce((acc, l) => acc + (parseFloat(l.cantidad) || 0), 0),
+                    gastosBS: logsTurno
+                        .filter(l => l.tipo === 'GASTO_CAJA' && l.meta?.moneda === 'VES')
+                        .reduce((acc, l) => acc + (parseFloat(l.cantidad) || 0), 0),
+                    totalConsumoInterno: logsTurno
+                        .filter(l => l.tipo === 'CONSUMO_INTERNO')
+                        .reduce((acc, l) => acc + (parseFloat(l.meta?.costoSnapshot || 0) * parseFloat(l.meta?.cantidadOriginal || 0)), 0)
+                };
+
                 // Generate Report
-                const nuevoCorte = generarReporteZ(ventasParaCierre, sesion, usuario);
+                const nuevoCorte = generarReporteZ(ventasParaCierre, sesion, usuario, {}, egresos);
                 Object.assign(nuevoCorte, datosInyectados);
 
                 // 1. Save Log

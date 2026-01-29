@@ -60,15 +60,15 @@ export const StoreProvider = ({ children }) => {
   return (
     <ConfigProvider>
       <AuthProvider>
-        <InventoryProvider>
-          <CajaEstadoProvider>
+        <CajaEstadoProvider>
+          <InventoryProvider>
             <POSProvider>
               <AuditProvider>
                 {children}
               </AuditProvider>
             </POSProvider>
-          </CajaEstadoProvider>
-        </InventoryProvider>
+          </InventoryProvider>
+        </CajaEstadoProvider>
       </AuthProvider>
     </ConfigProvider>
   );

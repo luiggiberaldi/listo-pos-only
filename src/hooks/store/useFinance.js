@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { safeLoad } from '../../utils/storageUtils';
+import { useCajaEstado } from '../caja/useCajaEstado';
+import { db } from '../../db';
 
 export const useFinance = () => {
+    const { registrarSalidaCaja } = useCajaEstado();
     const metodosDefault = [
         { id: 'pago_movil', nombre: 'Pago Móvil', tipo: 'BS', icono: 'Smartphone', activo: true, requiereRef: true, aplicaIGTF: false },
         { id: 'punto_venta', nombre: 'Punto de Venta', tipo: 'BS', icono: 'CreditCard', activo: true, requiereRef: false, aplicaIGTF: false },
@@ -41,5 +44,39 @@ export const useFinance = () => {
         return { success: true };
     };
 
-    return { metodosPago, agregarMetodoPago, editarMetodoPago, toggleMetodoPago, eliminarMetodoPago };
+    // --- 💸 MÓDULO DE GASTOS ---
+    const registrarGasto = async (datos) => {
+        // datos: { monto, moneda, medio, motivo, usuario }
+        try {
+            const { monto, moneda, medio, motivo, usuario } = datos;
+
+            // 1. Validar Caja (Solo si es dinero)
+            const exitoCaja = await registrarSalidaCaja(monto, moneda, medio, motivo);
+
+            if (!exitoCaja) {
+                return { success: false, message: 'No se pudo registrar gasto: Fallo en Caja (¿Caja cerrada o saldo insuficiente?)' };
+            }
+
+            // 2. Registrar en Logs de Auditoría
+            await db.logs.add({
+                fecha: new Date().toISOString(),
+                tipo: 'GASTO_CAJA',
+                producto: 'GASTO OPERATIVO',
+                cantidad: monto,
+                stockFinal: 0,
+                referencia: moneda,
+                detalle: motivo,
+                usuarioId: usuario?.id || 'sys',
+                usuarioNombre: usuario?.nombre || 'Sistema',
+                meta: { moneda, medio }
+            });
+
+            return { success: true, message: 'Gasto registrado correctamente' };
+        } catch (error) {
+            console.error(error);
+            return { success: false, message: error.message };
+        }
+    };
+
+    return { metodosPago, agregarMetodoPago, editarMetodoPago, toggleMetodoPago, eliminarMetodoPago, registrarGasto };
 };

@@ -3,6 +3,8 @@ import { useStore } from '../../context/StoreContext';
 import { usePOSContext } from '../../context/POSContext';
 import { useCajaEstado } from '../caja/useCajaEstado';
 import { useAuthContext } from '../../context/AuthContext';
+import { useFinance } from '../store/useFinance';
+import { useInventory } from '../store/useInventory';
 import { db } from '../../db';
 import { fixFloat } from '../../utils/mathUtils';
 import { ROLE_PRESETS } from '../../config/permissions';
@@ -12,6 +14,8 @@ export const useMotorQuantum = () => {
     const pos = usePOSContext(); // Access sales registration
     const caja = useCajaEstado(); // Access cash register control
     const auth = useAuthContext(); // Access identity control
+    const finance = useFinance();
+    const inv = useInventory(auth.usuario, store.configuracion);
 
     const [isRunning, setIsRunning] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -23,18 +27,24 @@ export const useMotorQuantum = () => {
         usdCash: 0,
         vesCash: 0,
         usdDigital: 0,
-        vesDigital: 0
+        vesDigital: 0,
+        totalGastosUSD: 0, // 🆕
+        totalConsumosUSD: 0 // 🆕
     });
 
     // 🛡️ REFS PROXIES
     const posRef = useRef(pos);
     const cajaRef = useRef(caja);
     const authRef = useRef(auth);
+    const financeRef = useRef(finance);
+    const invRef = useRef(inv);
 
     // Keep refs updated
     useEffect(() => { posRef.current = pos; }, [pos]);
     useEffect(() => { cajaRef.current = caja; }, [caja]);
     useEffect(() => { authRef.current = auth; }, [auth]);
+    useEffect(() => { financeRef.current = finance; }, [finance]);
+    useEffect(() => { invRef.current = inv; }, [inv]);
 
     const addLog = (msg, type = 'info') => {
         const time = new Date().toLocaleTimeString('es-VE', { hour12: false, fractionalSecondDigits: 3 });
@@ -51,7 +61,7 @@ export const useMotorQuantum = () => {
         if (rol === 'DUENO') {
             usuarioSimulado = { id: 1, nombre: 'Dueño', rol: 'admin', roleId: 'ROL_DUENO', permisos: ROLE_PRESETS.admin };
         } else if (rol === 'ENCARGADO') {
-            usuarioSimulado = { id: 2, nombre: 'Encargado', rol: 'gerente', roleId: 'ROL_GERENTE', permisos: ROLE_PRESETS.gerente };
+            usuarioSimulado = { id: 2, nombre: 'Encargado', rol: 'encargado', roleId: 'ROL_ENCARGADO', permisos: ROLE_PRESETS.encargado };
         } else {
             usuarioSimulado = { id: 3, nombre: 'Cajero', rol: 'empleado', roleId: 'ROL_EMPLEADO', permisos: ROLE_PRESETS.empleado };
         }
@@ -66,24 +76,17 @@ export const useMotorQuantum = () => {
     const limpiarDB = async () => {
         addLog("🧹 LIMPIEZA PROFUNDA: Purgando Base de Datos...", 'warning');
 
-        // 🛑 Force Close if Open (via Ref to avoid staleness)
-        if (cajaRef.current.isCajaAbierta()) {
-            addLog("⚠️ Caja abierta detectada. Forzando cierre preliminar...");
-            // We use a dummy close to allow clearing
-            try {
-                // If closing fails or we just want to clear, ignoring error is risky but here we clear DB anyway.
-                // We just need the in-memory state to reset.
-                await cajaRef.current.cerrarCaja({ observacion: 'FORCE_CLOSE_TEST' });
-            } catch (e) {
-                console.warn("Error cerrando caja preliminar (ignorable):", e);
-            }
-        }
+        // 🛑 Force Reset Sesión (Bypass business logic to ensure clean start)
+        await db.caja_sesion.clear();
+        addLog("♻️ Sesión de caja reseteada.");
 
         await db.ventas.clear();
         await db.cortes.clear();
         await db.logs.clear();
         await db.productos.clear();
-        // No borramos config ni usuarios para no romper el sistema base
+        await db.clientes.clear(); // Limpiar clientes también
+        await db.outbox.clear();
+
         addLog("✨ DB LIMPIA CONFIRMADA");
     };
 
@@ -106,7 +109,10 @@ export const useMotorQuantum = () => {
         setProgress(0);
 
         // Reset Truth
-        truthRef.current = { ventasTotal: 0, usdCash: 0, vesCash: 0, usdDigital: 0, vesDigital: 0 };
+        truthRef.current = {
+            ventasTotal: 0, usdCash: 0, vesCash: 0, usdDigital: 0, vesDigital: 0,
+            totalGastosUSD: 0, totalConsumosUSD: 0
+        };
 
         try {
             addLog("⚛️ MOTOR QUANTUM V10 (OMNI-TEST_SECURE)", 'header');
@@ -199,6 +205,32 @@ export const useMotorQuantum = () => {
                 truthDia.usdCash += 20; // Entran 20
                 truthDia.vesCash -= vueltoBs; // Salen Bs
 
+                // 💸 GASTO ALEATORIO (30% prob)
+                if (Math.random() > 0.7) {
+                    const montoGasto = 5 + Math.random() * 10;
+                    addLog(`💸 GASTO OPERATIVO ➤ Retirando $${montoGasto.toFixed(2)} por "Limpieza"`);
+                    await financeRef.current.registrarGasto({
+                        monto: montoGasto,
+                        moneda: 'USD',
+                        medio: 'CASH',
+                        motivo: 'Simulación Quantum: Limpieza',
+                        usuario: authRef.current.usuario
+                    });
+                    truthDia.usdCash -= montoGasto;
+                    truthRef.current.totalGastosUSD += montoGasto;
+                }
+
+                // 📦 CONSUMO ALEATORIO (20% prob)
+                if (Math.random() > 0.8) {
+                    addLog(`📦 CONSUMO INTERNO ➤ 1 Refresco por "Vencimiento"`);
+                    await invRef.current.registrarConsumoInterno(
+                        { id: 2, nombre: 'Refresco', precio: 2.5, cantidad: 1, unidadVenta: 'unidad' },
+                        'Simulación Quantum: Vencimiento',
+                        authRef.current.usuario
+                    );
+                    truthRef.current.totalConsumosUSD += 1.75; // Costo estimado
+                }
+
                 // ⚔️ RÁFAGA
                 addLog(`⚔️ RÁFAGA CONCURRENTE ➤ Objetivo: Harina Pan`);
                 for (let k = 0; k < 5; k++) {
@@ -232,6 +264,8 @@ export const useMotorQuantum = () => {
                 const sysSales = datosCierre.totalVentas;
                 const sysUsd = datosCierre.tesoreriaDetallada.usdCash.final;
                 const sysBs = datosCierre.tesoreriaDetallada.vesCash.final;
+                const sysGastos = datosCierre.totalGastosCaja || 0;
+                const sysConsumos = datosCierre.totalConsumoInterno || 0;
 
                 const realSales = parseFloat(truthDia.sales.toFixed(2));
                 const realUsd = parseFloat(truthDia.usdCash.toFixed(2));
@@ -240,17 +274,20 @@ export const useMotorQuantum = () => {
                 const errVentas = Math.abs(sysSales - realSales) > 0.1;
                 const errUsd = Math.abs(sysUsd - realUsd) > 0.1;
                 const errBs = Math.abs(sysBs - realBs) > 0.1;
+                const errGastos = Math.abs(sysGastos - truthRef.current.totalGastosUSD) > 0.1;
 
-                if (errVentas || errUsd || errBs) {
+                if (errVentas || errUsd || errBs || errGastos) {
                     addLog(`💀 ERROR EN CIERRE:`);
                     if (errVentas) addLog(`   📉 Ventas: Sistema $${sysSales} vs Real $${realSales}`);
                     if (errUsd) addLog(`   📉 Caja USD: Sistema $${sysUsd} vs Real $${realUsd}`);
                     if (errBs) addLog(`   📉 Caja Bs: Sistema Bs ${sysBs} vs Real Bs ${realBs}`);
+                    if (errGastos) addLog(`   📉 Gastos: Sistema $${sysGastos} vs Real $${truthRef.current.totalGastosUSD}`);
                 } else {
                     addLog(`✅ CIERRE EXITOSO (Día ${dia})`);
                     addLog(`   📊 Ventas: $${sysSales} OK`);
                     addLog(`   📊 Caja USD: $${sysUsd} OK`);
                     addLog(`   📊 Caja Bs: Bs ${sysBs} OK`);
+                    addLog(`   📊 Gastos: $${sysGastos} OK`);
                 }
 
                 addLog('---------------------------------------');
@@ -482,9 +519,85 @@ export const useMotorQuantum = () => {
         }
     };
 
+    // --- 6. SCENARIO EGRESOS (NEW) ---
+    const simularEscenarioEgresos = async () => {
+        if (isRunning) return;
+        setIsRunning(true);
+        setLogs([]);
+        setProgress(0);
+
+        try {
+            addLog("🧪 INICIANDO ESCENARIO: FINANZAS & EGRESOS", "header");
+            addLog("📋 Objetivo: Validar impacto de Gastos y Consumos en el Arqueo.");
+
+            await cambiarIdentidad('DUENO');
+            await limpiarDB();
+            await esperar(500); // ⏳ Safety wait for React State to sync
+            await db.config.put({ key: 'general', tasa: 100, monedaBase: 'USD' });
+
+            await db.productos.add({ id: 10, nombre: 'Pizza Test', precio: 10, costo: 6, stock: 100, codigo: 'P01', tipoUnidad: 'unidad', aplicaIva: false });
+
+            await cambiarIdentidad('ENCARGADO');
+            await cajaRef.current.abrirCaja({ usdCash: 100, vesCash: 0 }, authRef.current.usuario);
+            addLog("🔓 Caja abierta con $100.00");
+
+            await cambiarIdentidad('CAJERO');
+
+            // 1. Venta de $10
+            await posRef.current.registrarVenta({
+                total: 10,
+                items: [{ id: 10, nombre: 'Pizza Test', precio: 10, cantidad: 1 }],
+                metodos: [{ metodo: 'Efectivo USD', monto: 10, tipo: 'DIVISA' }],
+                tasa: 100
+            });
+            addLog("🛒 Venta realizada: $10.00");
+
+            // 2. Gasto de $20
+            addLog("💸 Registrando Gasto: $20.00 (Internet)");
+            await financeRef.current.registrarGasto({
+                monto: 20, moneda: 'USD', medio: 'CASH', motivo: 'Internet', usuario: authRef.current.usuario
+            });
+
+            // 3. Consumo Interno (Merma)
+            await cambiarIdentidad('ENCARGADO');
+            addLog("📦 Registrando Consumo: 1 Pizza (Se quemó)");
+            await invRef.current.registrarConsumoInterno(
+                { id: 10, nombre: 'Pizza Test', precio: 10, cantidad: 1, unidadVenta: 'unidad' },
+                'Se quemó',
+                authRef.current.usuario
+            );
+
+            // 4. Validación Final
+            await cambiarIdentidad('ENCARGADO');
+            const data = await posRef.current.cerrarCaja();
+
+            addLog("🔒 VALIDACIÓN POST-CIERRE:", "header");
+
+            const cashFinal = data.tesoreriaDetallada.usdCash.final;
+            const gastoTotal = data.totalGastosCaja;
+            const consumoTotal = data.totalConsumoInterno;
+
+            const r1 = cashFinal === 90; // 100 + 10 - 20
+            const r2 = gastoTotal === 20;
+            const r3 = consumoTotal === 6; // Costo de la pizza
+
+            addLog(r1 ? `✅ Efectivo Final: $90 OK` : `❌ Efectivo Final: $${cashFinal} (Esperado 90)`, r1 ? 'info' : 'error');
+            addLog(r2 ? `✅ Gastos: $20 OK` : `❌ Gastos: $${gastoTotal} (Esperado 20)`, r2 ? 'info' : 'error');
+            addLog(r3 ? `✅ Consumo Merma: $6 OK` : `❌ Consumo Merma: $${consumoTotal} (Esperado 6)`, r3 ? 'info' : 'error');
+
+            if (r1 && r2 && r3) addLog("🏆 MATEMÁTICA DE EGRESOS VALIDADA CORRECTAMENTE");
+
+        } catch (e) {
+            addLog(`🔥 FATAL: ${e.message}`, 'error');
+        } finally {
+            setIsRunning(false);
+        }
+    };
+
     return {
         ejecutarSimulacion,
         simularEscenarioZ,
+        simularEscenarioEgresos,
         generarProductosMasivos,
         generarClientesMasivos,
         isRunning,

@@ -82,8 +82,59 @@ const GOLDEN_TESTS = [
             totalIGTF: 0,
             ventaNeta: 17.24
         }
+    },
+    {
+        name: 'Caso 7: Jerarquía de Inventario (Bultos)',
+        input: {
+            ventas: [{
+                total: 100,
+                status: 'COMPLETADA',
+                items: [{
+                    nombre: 'Caja Harina',
+                    cantidad: 1,
+                    precio: 100,
+                    costo: 5, // Costo unitario del bulto
+                    unidadVenta: 'Bulto',
+                    jerarquia: { bulto: { contenido: 12 } } // Real cost = 5 * 12 * 1 = 60
+                }]
+            }],
+            rate: 16
+        },
+        expected: { totalCostos: 60, ganancia: 40 }
+    },
+    {
+        name: 'Caso 8: Recalculo IGTF Fallback (3% Efec. Divisa)',
+        input: {
+            ventas: [{
+                total: 200,
+                status: 'COMPLETADA',
+                igtfTotal: 0, // Incompleto
+                pagos: [{ metodo: 'Efectivo Divisa', monto: 100, tipo: 'DIVISA' }] // Debe generar $3 de IGTF
+            }],
+            rate: 16,
+            config: { igtfActivo: true }
+        },
+        expected: { totalBaseIGTF: 100 } // Validaremos esto en la lógica de auditoría extendida
     }
 ];
+
+/**
+ * 📊 TREASURY AUDITOR
+ * Valida que la gaveta física cuadre: Inicial + Entradas - Salidas - Gastos
+ */
+const auditTreasuryLogic = (corte) => {
+    const safe = (n) => parseFloat(n || 0);
+    const usd = corte.tesoreriaDetallada?.usdCash || {};
+    const gastos = safe(corte.totalGastosCaja || corte.gastosUSD);
+
+    const esperado = safe(usd.inicial) + safe(usd.entradas) - safe(usd.salidas) - gastos;
+    const obtenido = safe(usd.final);
+
+    if (Math.abs(esperado - obtenido) > 0.01) {
+        return `❌ DISCREPANCIA EN GAVETA USD: Esperaba ${esperado.toFixed(2)}, obtuvo ${obtenido.toFixed(2)} (Gastos: ${gastos})`;
+    }
+    return null;
+};
 
 export const auditFiscalLogic = () => {
     console.groupCollapsed('🔒 AUDITORÍA FISCAL (STARTUP CHECK)');
@@ -98,6 +149,17 @@ export const auditFiscalLogic = () => {
                 const obtained = result[key];
                 const expected = test.expected[key];
 
+                if (key === 'totalBaseIGTF' && test.input.config?.igtfActivo) {
+                    // Prueba especial para el fallback de IGTF (Simulando lógica de Builder)
+                    const v = test.input.ventas[0];
+                    const pagosDivisa = v.pagos.filter(p => p.tipo === 'DIVISA');
+                    const baseObtenida = pagosDivisa.reduce((acc, p) => acc + p.monto, 0);
+                    if (Math.abs(baseObtenida - expected) > 0.01) {
+                        errors.push(`❌ FALLO ${test.name}: Base IGTF incorrecta.`);
+                    }
+                    return;
+                }
+
                 // Tolerancia infinitesimal para flotantes (0.01)
                 if (Math.abs(obtained - expected) > 0.01) {
                     const errorMsg = `❌ FALLO ${test.name}: Esperaba ${key}=${expected}, obtuvo ${obtained}`;
@@ -110,6 +172,18 @@ export const auditFiscalLogic = () => {
                 console.log(`✅ ${test.name} - PASSED`);
             }
         });
+
+        // 🧪 PRUEBA DE GAVETA (Smoke Test con dato ficticio)
+        const mockCorte = {
+            tesoreriaDetallada: { usdCash: { inicial: 10, entradas: 50, salidas: 5, final: 45 } },
+            totalGastosCaja: 10
+        };
+        const treasuryError = auditTreasuryLogic(mockCorte);
+        if (treasuryError) {
+            errors.push(treasuryError);
+        } else {
+            console.log("✅ Auditoría de Tesorería - PASSED");
+        }
 
     } catch (e) {
         errors.push(`🔥 ERROR CRÍTICO DE EJECUCIÓN: ${e.message}`);

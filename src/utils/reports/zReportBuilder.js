@@ -4,9 +4,14 @@ import { agruparPorMetodo, analizarFlujoVueltos } from './treasuryEngine';
 
 const d = (val) => new Decimal(val || 0);
 
-export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, config = {}) => {
+export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, config = {}, egresos = {}) => {
     const fechaCierre = new Date();
     const taxRate = config.porcentajeIva !== undefined ? parseFloat(config.porcentajeIva) : 16;
+
+    // Egresos (Default if not provided)
+    const gastosUSD = d(egresos.gastosUSD || 0);
+    const gastosBS = d(egresos.gastosBS || 0);
+    const consumoInterno = d(egresos.totalConsumoInterno || 0);
 
     const kpis = calcularKPIs(ventas, taxRate);
     const metodos = agruparPorMetodo(ventas);
@@ -41,13 +46,15 @@ export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, confi
             inicial: opening.usdCash,
             entradas: flujoCaja.usdCash.in,
             salidas: flujoCaja.usdCash.out,
-            final: calcTotal(opening.usdCash, flujoCaja.usdCash)
+            gastos: gastosUSD.toNumber(),
+            final: d(opening.usdCash).plus(d(flujoCaja.usdCash.total)).minus(gastosUSD).toNumber()
         },
         vesCash: {
             inicial: opening.vesCash,
             entradas: flujoCaja.vesCash.in,
             salidas: flujoCaja.vesCash.out,
-            final: calcTotal(opening.vesCash, flujoCaja.vesCash)
+            gastos: gastosBS.toNumber(),
+            final: d(opening.vesCash).plus(d(flujoCaja.vesCash.total)).minus(gastosBS).toNumber()
         },
         usdDigital: {
             inicial: opening.usdDigital,
@@ -158,6 +165,11 @@ export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, confi
         ticketPromedio: kpis.ticketPromedio,
 
         metodosPago: metodos,
+
+        // 🔥 GASTOS Y MERMAS
+        totalGastosCaja: gastosUSD.toNumber(),
+        totalGastosBS: gastosBS.toNumber(),
+        totalConsumoInterno: consumoInterno.toNumber(),
 
         // 🔥 EL NUEVO NÚCLEO: 4 CUADRANTES
         tesoreriaDetallada: finalBalances,

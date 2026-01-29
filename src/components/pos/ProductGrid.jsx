@@ -11,7 +11,8 @@ export default function ProductGrid({
   setRef,
   onSelectProducto,
   tasa,
-  permitirSinStock // 🆕
+  permitirSinStock, // 🆕
+  compactMode = false // 🆕
 }) {
   return (
     <>
@@ -39,12 +40,14 @@ export default function ProductGrid({
         )}
       </div>
 
-      <div className="bg-surface-light dark:bg-surface-dark px-4 py-3 border-t border-border-subtle flex flex-wrap gap-4 justify-center text-[11px] uppercase font-bold text-content-secondary font-mono select-none shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <span className="flex items-center gap-1 bg-app-light dark:bg-app-dark px-2 py-1 rounded border border-border-subtle"><Search size={12} /> [F2] Buscar</span>
-        <span className="flex items-center gap-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-1 rounded border border-amber-100 dark:border-amber-900/50 font-bold"><Zap size={12} /> [*] Ciclar Unidad</span>
-        <span className="flex items-center gap-1 bg-app-light dark:bg-app-dark px-2 py-1 rounded border border-border-subtle"><Plus size={12} /> [Enter] Agregar</span>
-        <span className="flex items-center gap-1 bg-status-successBg text-status-success px-2 py-1 rounded border border-status-successBg"><Save size={12} /> [F9] Cobrar</span>
-      </div>
+      {!compactMode && (
+        <div className="bg-surface-light dark:bg-surface-dark px-4 py-3 border-t border-border-subtle flex flex-wrap gap-4 justify-center text-[11px] uppercase font-bold text-content-secondary font-mono select-none shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <span className="flex items-center gap-1 bg-app-light dark:bg-app-dark px-2 py-1 rounded border border-border-subtle"><Search size={12} /> [F2] Buscar</span>
+          <span className="flex items-center gap-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-1 rounded border border-amber-100 dark:border-amber-900/50 font-bold"><Zap size={12} /> [*] Ciclar Unidad</span>
+          <span className="flex items-center gap-1 bg-app-light dark:bg-app-dark px-2 py-1 rounded border border-border-subtle"><Plus size={12} /> [Enter] Agregar</span>
+          <span className="flex items-center gap-1 bg-status-successBg text-status-success px-2 py-1 rounded border border-status-successBg"><Save size={12} /> [F9] Cobrar</span>
+        </div>
+      )}
     </>
   );
 }
