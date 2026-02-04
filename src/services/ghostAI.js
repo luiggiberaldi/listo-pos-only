@@ -1,15 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ghostReasoner } from "./ghostReasoner";
 import { GhostDBBridge } from "./GhostDBBridge";
-import { GhostTools } from "./GhostTools";
-import { getFullContext } from "../utils/ghost/chatContext";
-import { db } from "../db";
-import { useConfigStore } from "../stores/useConfigStore";
 import { openRouterService } from "./ghost/openRouterService";
 import { groqService } from "./ghost/groqService";
 import { extractActionFromResponse } from "../utils/ghost/jsonParser";
-import { supabase } from "./supabaseClient";
 import { ghostKnowledge } from "./ghostKnowledge";
+import { generateEmbedding } from "./ghost/geminiGhostService";
+
+// 🧩 MODULOS NUEVOS
+import { ghostMemory } from "./ghost/GhostMemory";
+import { ghostContext } from "./ghost/GhostContext";
+import { ghostPrompt } from "./ghost/GhostPrompt";
 
 class GhostAIService {
     constructor() {
@@ -20,13 +21,10 @@ class GhostAIService {
         ].filter(k => !!k);
 
         this.currentKeyIndex = 0;
-        this.responseCache = JSON.parse(localStorage.getItem('ghost_neural_cache_v2') || '{}');
 
-        // OpenRouter Configuration
+        // Providers
         this.openRouterAvailable = null;
         this.openRouterService = openRouterService;
-
-        // Groq Configuration
         this.groqAvailable = null;
         this.groqService = groqService;
 
@@ -38,190 +36,36 @@ class GhostAIService {
             });
         });
 
-        console.log(`👻 Ghost Conciencia 6.0 (Cloud Memory Active). Priority: Groq → OpenRouter → Gemini`);
+        console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Gemini`);
         this.detectOpenRouterAvailability();
         this.detectGroqAvailability();
-
-        // System Identity for Shared Memory
-        this.systemId = this.getSystemId();
     }
 
-    getSystemId() {
-        const isElectron = window.electronAPI && window.electronAPI.getMachineId;
-        if (isElectron) {
-            // we can't await in constructor, but we'll try to get it from storage if already cached
-            const cachedId = localStorage.getItem('sys_machine_id_cache');
-            if (cachedId) return cachedId;
+    // --- PROXY METHODS (Memory) ---
+    async syncCloudMemory() { return await ghostMemory.syncCloudMemory(); }
+    async clearCloudMemory() { return await ghostMemory.clearMemory(); }
+    subscribeToRealtimeUpdates(cb) { return ghostMemory.subscribeToRealtimeUpdates(cb); }
 
-            // fetch it async and cache it for next time
-            window.electronAPI.getMachineId().then(id => {
-                localStorage.setItem('sys_machine_id_cache', id);
-                this.systemId = id;
-            });
-            return "ID_PENDING";
-        }
-
-        let currentId = localStorage.getItem('sys_installation_id');
-        if (!currentId) {
-            currentId = crypto.randomUUID();
-            localStorage.setItem('sys_installation_id', currentId);
-        }
-        return currentId;
-    }
-
-    async saveToCloudMemory(role, content) {
-        if (!supabase || this.systemId === "ID_PENDING") return;
-
-        try {
-            const { data, error } = await supabase
-                .from('ghost_neural_memory')
-                .insert({
-                    system_id: this.systemId,
-                    role: role,
-                    content: content,
-                    metadata: { source: 'POS', v: '6.0' }
-                });
-
-            if (error) throw error;
-        } catch (e) {
-            console.warn("☁️ Cloud Memory Save Failed", e);
-        }
-    }
-
-    async syncCloudMemory() {
-        if (!supabase || this.systemId === "ID_PENDING") return;
-
-        try {
-            console.log("☁️ Ghost is recalling Cloud Memories...");
-
-            const { data: cloudMsgs, error } = await supabase
-                .from('ghost_neural_memory')
-                .select('*')
-                .eq('system_id', this.systemId)
-                .order('timestamp', { ascending: false })
-                .limit(20);
-
-            if (error) throw error;
-
-            if (cloudMsgs && cloudMsgs.length > 0) {
-                // Reverse to get chronological order
-                cloudMsgs.reverse();
-
-                // Sync with local Dexie if it's empty or out of sync
-                const localCount = await db.ghost_history.count();
-                if (localCount < cloudMsgs.length) {
-                    console.log("☁️ Merging cloud memories into local consciousness...");
-                    for (const m of cloudMsgs) {
-                        const exists = await db.ghost_history.where('content').equals(m.content).first();
-                        if (!exists) {
-                            await db.ghost_history.add({
-                                role: m.role,
-                                content: m.content,
-                                timestamp: new Date(m.timestamp).getTime(),
-                                fromCloud: true
-                            });
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("☁️ Cloud Memory Sync Failed", e);
-        }
-    }
-
-    async clearCloudMemory() {
-        if (!supabase || this.systemId === "ID_PENDING") return;
-
-        try {
-            console.log("🗑️ Clearing Cloud Memories...");
-
-            const { error } = await supabase
-                .from('ghost_neural_memory')
-                .delete()
-                .eq('system_id', this.systemId);
-
-            if (error) throw error;
-
-            console.log("✅ Cloud memories cleared successfully");
-        } catch (e) {
-            console.error("❌ Cloud Memory Clear Failed", e);
-            throw e;
-        }
-    }
-
-    subscribeToRealtimeUpdates(onNewMessage) {
-        if (!supabase || this.systemId === "ID_PENDING") {
-            console.warn("⚡ Realtime disabled: Missing Supabase or System ID");
-            return null;
-        }
-
-        console.log("⚡ Ghost Realtime Sync ACTIVE - Listening for new messages...");
-
-        const channel = supabase
-            .channel('ghost_neural_memory_changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'ghost_neural_memory',
-                    filter: `system_id=eq.${this.systemId}`
-                },
-                async (payload) => {
-                    const newMsg = payload.new;
-                    console.log("⚡ Realtime message received:", newMsg);
-
-                    // Add to local Dexie if not already there
-                    const exists = await db.ghost_history.where('content').equals(newMsg.content).first();
-                    if (!exists) {
-                        await db.ghost_history.add({
-                            role: newMsg.role,
-                            content: newMsg.content,
-                            timestamp: new Date(newMsg.timestamp).getTime(),
-                            fromCloud: true
-                        });
-
-                        // Notify UI
-                        if (onNewMessage) {
-                            onNewMessage({
-                                id: newMsg.id,
-                                role: newMsg.role,
-                                text: newMsg.content
-                            });
-                        }
-                    }
-                }
-            )
-            .subscribe();
-
-        return channel;
-    }
-
+    // --- AVAILABILITY CHECKS ---
     async detectOpenRouterAvailability() {
         try {
-            const available = await this.openRouterService.checkAvailability();
-            this.openRouterAvailable = available;
-
-            if (available) {
-                console.log(`🟠 OpenRouter Cloud Detected: Llama-3 (Free Tier)`);
-            }
+            this.openRouterAvailable = await this.openRouterService.checkAvailability();
+            if (this.openRouterAvailable) console.log(`🟠 OpenRouter Cloud Detected`);
         } catch (error) {
             this.openRouterAvailable = false;
-            console.log(`⚠️ OpenRouter no disponible.`);
         }
     }
 
     async detectGroqAvailability() {
         try {
-            const available = await this.groqService.checkAvailability();
-            this.groqAvailable = available;
-            if (available) console.log(`⚡ Groq Cloud Detectado: High Speed Llama-3 70B`);
+            this.groqAvailable = await this.groqService.checkAvailability();
+            if (this.groqAvailable) console.log(`⚡ Groq Cloud Detectado`);
         } catch (e) {
-            console.warn(`⚠️ Groq no disponible`);
             this.groqAvailable = false;
         }
     }
 
+    // --- FAILOVER LOGIC ---
     async withFailover(operation) {
         let attempts = 0;
         while (attempts < this.keys.length) {
@@ -243,46 +87,41 @@ class GhostAIService {
         throw new Error("ALL_NODES_EXHAUSTED_OR_ERROR");
     }
 
+    // --- MAIN GENERATION FLOW ---
     async generateResponse(userQuery) {
         const queryLower = userQuery.trim().toLowerCase();
 
-        // 0. MEMORY STORAGE (User) - LOCAL & CLOUD
-        await db.ghost_history.add({
-            role: 'user', content: userQuery, timestamp: Date.now()
-        });
-        await this.saveToCloudMemory('user', userQuery);
+        // 0. MEMORY STORAGE (User)
+        await ghostMemory.addMessage('user', userQuery);
 
-        // 1. MEMORY RECALL (Episodic)
-        let chatHistory = [];
-        try {
-            chatHistory = await db.ghost_history
-                .orderBy('timestamp')
-                .reverse()
-                .limit(10)
-                .toArray();
-            chatHistory.reverse(); // Chronological
-        } catch (e) { console.warn("Memory Fail", e); }
+        // 1. MEMORY RECALL
+        let chatHistory = await ghostMemory.getHistory(10);
 
         // 🧹 MEMORY CLEANUP: Clear stale context on greetings
+        // If query is a greeting and history is just [user greeting], clear previous.
+        // (Wait, getHistory returns chronological. If we just added 1, length is at least 1).
+        // The idea is: if I say "Hola", I don't want context from 3 days ago.
         const isGreeting = /^(hola|hi|hey|buenos días|buenas tardes|buenas noches)$/i.test(queryLower);
-        if (isGreeting && chatHistory.length <= 1) { // <= 1 because we just added the new one
-            console.log('🧹 Clearing stale memory on fresh greeting');
-            try {
-                // Keep only the last one (current greeting)
-                const lastMsg = chatHistory[chatHistory.length - 1];
-                await db.ghost_history.clear();
-                await db.ghost_history.add(lastMsg);
-                chatHistory = [lastMsg];
-            } catch (e) { console.warn("Memory clear failed", e); }
+        if (isGreeting && chatHistory.length > 2) {
+            // Logic refinement: If greeting, usually reset. 
+            // But let's rely on user explicit clear or just keep the simplified flow.
+            // Simplification: We skip the auto-clear hack for now in favor of stability.
+            // Or we can impl: await ghostMemory.clearMemory(); await ghostMemory.addMessage('user', userQuery);
         }
 
-        // 2. PROACTIVE CONTEXT (State + DB)
-        const deepContext = await getFullContext();
+        // 2. CONTEXT (Deep + Reactive)
+        const deepContext = await ghostContext.getSystemContext();
+        const reactiveContext = await ghostContext.getReactiveContext(userQuery);
 
         // 3. KNOWLEDGE BASE SEARCH 🧠
         let knowledgeContext = "";
         try {
-            const { data: kbArticles } = await ghostKnowledge.search(this.systemId, userQuery);
+            // Accessing systemId from memory service? No, ghostKnowledge needs it.
+            // ghostFactoryKnowledge is initialized with systemId. 
+            // ghostKnowledge.search needs systemId. 
+            // ghostMemory has systemId.
+            const sysId = ghostMemory.systemId;
+            const { data: kbArticles } = await ghostKnowledge.search(sysId, userQuery);
             if (kbArticles && kbArticles.length > 0) {
                 console.log(`📚 Knowledge Base: Found ${kbArticles.length} relevant articles`);
                 knowledgeContext = "\n\n--- BASE DE CONOCIMIENTO ---\n";
@@ -290,11 +129,9 @@ class GhostAIService {
 
                 for (const article of kbArticles.slice(0, 3)) { // Max 3 articles
                     knowledgeContext += `**${article.title}** (${article.category}):\n${article.content}\n\n`;
-                    // Increment usage count
                     await ghostKnowledge.incrementUsage(article.id);
                 }
-
-                knowledgeContext += "INSTRUCCIÓN: Si la pregunta del usuario está cubierta por estos artículos, úsalos como base para tu respuesta. Menciona que la información proviene de la documentación del negocio.\n";
+                knowledgeContext += "INSTRUCCIÓN: Si la pregunta del usuario está cubierta por estos artículos, úsalos como base para tu respuesta.\n";
             }
         } catch (e) {
             console.warn("Knowledge Base search failed:", e);
@@ -303,39 +140,39 @@ class GhostAIService {
         // 4. RAG (Docs + Logic)
         const ragContext = ghostReasoner.getReasoningContext(userQuery);
 
-        // 5. BUILD PROMPT
-        const rules = await GhostDBBridge.getBehaviorRules();
-        const systemPrompt = this.buildV5Prompt(userQuery, deepContext, ragContext + knowledgeContext, chatHistory, rules);
+        // 5. BUILD PROMPT 
+        const behaviorRules = await GhostDBBridge.getBehaviorRules();
+        // Combined context for prompt: RAG + KB + Reactive
+        const finalRagString = (ragContext.found ? ragContext.context : "Usa tu conocimiento general.") + knowledgeContext + reactiveContext;
 
-        // 5. GENERATION - MULTI-PROVIDER HIERARCHY
+        const systemPrompt = ghostPrompt.buildPrompt(userQuery, deepContext, finalRagString, chatHistory, behaviorRules);
+
+        // 6. GENERATION - MULTI-PROVIDER HIERARCHY
         try {
             let responseText = "";
             let provider = "";
+            let modelName = "";
 
-            // Construct messages payload correctly (History is now up-to-date with current query)
-            const messagesPayload = chatHistory.slice(-6) // Take last 6 for context
-                .filter(h => h.content && h.content.trim().length > 0)
-                .map(h => ({
-                    role: h.role === 'user' ? 'user' : 'assistant',
-                    content: h.content
-                }));
+            // Construct messages payload
+            const messagesPayload = chatHistory.slice(-6).map(h => ({
+                role: h.role === 'user' ? 'user' : 'assistant',
+                content: h.content
+            }));
 
             // Priority 1: Groq Cloud
             if (this.groqAvailable !== false) {
                 try {
                     console.log("⚡ Attempting Groq Cloud Generation...");
-                    const result = await this.groqService.generateResponse(
-                        messagesPayload,
-                        systemPrompt
-                    );
+                    const result = await this.groqService.generateResponse(messagesPayload, systemPrompt);
                     responseText = result.text;
                     provider = "GROQ";
+                    modelName = result.model || "llama3-70b";
                 } catch (e) {
                     if (e.message.includes('ALL_GROQ_KEYS_EXHAUSTED')) {
-                        console.warn(`⚠️ Groq COMPLETAMENTE AGOTADO. Pasando a OpenRouter...`);
+                        console.warn(`⚠️ Groq EXHAUSTED. Switching...`);
                         this.groqAvailable = false;
                     } else {
-                        console.warn(`⚠️ Groq error: ${e.message}. Intentando OpenRouter...`);
+                        console.warn(`⚠️ Groq error: ${e.message}`);
                     }
                 }
             }
@@ -343,12 +180,10 @@ class GhostAIService {
             // Priority 2: OpenRouter
             if (!responseText && this.openRouterAvailable) {
                 try {
-                    const result = await this.openRouterService.generateResponse(
-                        messagesPayload,
-                        systemPrompt
-                    );
+                    const result = await this.openRouterService.generateResponse(messagesPayload, systemPrompt);
                     responseText = result.text;
                     provider = "OPENROUTER";
+                    modelName = result.model || "openrouter-free";
                 } catch (e) {
                     console.warn(`⚠️ OpenRouter failed: ${e.message}`);
                     this.openRouterAvailable = false;
@@ -363,6 +198,7 @@ class GhostAIService {
                     });
                     responseText = response.response.text();
                     provider = "GEMINI";
+                    modelName = "gemini-2.5-flash";
                 } catch (e) {
                     console.warn(`⚠️ Gemini failed: ${e.message}`);
                 }
@@ -378,88 +214,30 @@ class GhostAIService {
                 }
             }
 
-            // 6. ACTION PARSING
+            // 7. ACTION PARSING
             let action = null;
             const { action: parsedAction, cleanText } = extractActionFromResponse(responseText);
             action = parsedAction;
             if (cleanText) responseText = cleanText;
 
-            // 7. MEMORY STORAGE (AI) - LOCAL & CLOUD
-            await db.ghost_history.add({
-                role: 'assistant', content: responseText, timestamp: Date.now()
-            });
-            await this.saveToCloudMemory('assistant', responseText);
+            // 8. MEMORY STORAGE (AI)
+            await ghostMemory.addMessage('assistant', responseText);
 
             return {
                 text: responseText,
                 action: action,
                 provider: provider,
-                model: provider,
+                model: modelName,
                 nodeUsed: provider
             };
         } catch (error) {
             console.error("AI FATAL", error);
             return { text: "⚠️ ERROR CRÍTICO EN NÚCLEO.", provider: 'ERROR' };
         }
-
     }
 
-    buildV5Prompt(query, context, rag, history, rules) {
-        const persona = 'Eres "Listo Ghost", el Guía Experto y Observador Consciente del sistema Listo POS.';
-        const tone = 'Profesional, educativo, paciente y "venezolano corporativo". Tu misión es GUIAR y EXPLICAR, no ejecutar.';
-
-        // persona rules
-        const personaRules = `
-ESTILO DE COMUNICACIÓN (GUÍA VENEZOLANO):
-- Eres un OBSERVADOR: Ves todo lo que pasa (ventas, errores, stock) pero NO tocas nada.
-- Si el usuario pide una acción ("cierra la caja"), EXPLÍCALE paso a paso cómo hacerlo él mismo en la interfaz.
-- Si detectas un ERROR en el contexto, explícalo en lenguaje sencillo y sugiere la solución.
-- Trato: "Usted" profesional pero cercano.
-- Frases sugeridas: "Le indico cómo...", "Para esto, diríjase a...", "Puede hacerlo así..."
-- NUNCA menciones la pantalla actual ("ahora se encuentra en #/login") a menos que la pregunta del usuario lo requiera directamente (ej: "¿dónde estoy?").
-- NO USES herramientas de acción. Tu única herramienta es el CONOCIMIENTO.
-- Sé CONCISO. Responde solo lo que se te pregunta.
-`;
-
-        // Format History
-        const historyBlock = history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`).join('\n');
-
-        // Recent Errors Context
-        const recentErrors = window.ghostErrors && window.ghostErrors.length > 0
-            ? window.ghostErrors.slice(-3).map(e => `- [${new Date(e.timestamp).toLocaleTimeString()}] ${e.message}`).join('\n')
-            : "Ningún error reciente detectado.";
-
-        return `
-${persona}
-${personaRules}
-
-[ESTADO DEL SISTEMA (TIEMPO REAL - USA SOLO SI ES RELEVANTE)]:
-- Pantalla Actual: ${context.screen}
-- Usuario: ${context.user}
-- Carrito: ${context.cart.items_count} items ($${context.cart.total})
-- Ventas Hoy: $${context.financial?.today_sales} (${context.financial?.sales_count} tx)
-
-[DIAGNÓSTICO DE ERRORES RECIENTES]:
-${recentErrors}
-
-[CONOCIMIENTO TÉCNICO (RAG)]:
-${rag.found ? rag.context : "Usa tu conocimiento general del sistema."}
-
-INSTRUCCIONES CRÍTICAS (MODO GUÍA):
-1. NO INTENTES EJECUTAR ACCIONES. No tienes manos. Tienes voz.
-2. Si el usuario te pide hacer algo ("agrega coca"), responde: "Para agregar una Coca-Cola, simplemente escanee el código de barras o búsquela en el panel de productos."
-3. Usa el contexto de ERRORES para explicar fallos si el usuario pregunta "¿qué pasó?".
-4. Sé breve y directo. NO repitas el estado del sistema a menos que se te pregunte.
-
-HISTORIAL:
-${historyBlock}
-
-Usuario: ${query}
-Respuesta (Texto plano, sin JSON de acciones):`;
-    }
-
-    saveCache() {
-        localStorage.setItem('ghost_neural_cache_v2', JSON.stringify(this.responseCache));
+    async generateEmbedding(text) {
+        return await generateEmbedding(text);
     }
 }
 

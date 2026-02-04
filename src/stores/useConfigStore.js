@@ -113,11 +113,11 @@ export const useConfigStore = create(
             },
 
             // TASA LOGIC
-            obtenerTasaBCV: async (forzar = false) => {
+            obtenerTasaBCV: async (forzar = false, monedaOverride = null) => {
                 const { configuracion, setConfiguracion } = get();
                 if (!forzar && !configuracion.autoUpdateTasa) return false;
 
-                const tipoMoneda = configuracion.tipoTasa || 'USD';
+                const tipoMoneda = monedaOverride || configuracion.tipoTasa || 'USD';
 
                 if (forzar) {
                     Swal.fire({
@@ -170,6 +170,7 @@ export const useConfigStore = create(
 
                     setConfiguracion({
                         tasa: tasaFinal,
+                        tipoTasa: tipoMoneda, // 🟢 Ensured consistency
                         fechaTasa: new Date().toISOString()
                     });
 

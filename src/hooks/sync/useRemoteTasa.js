@@ -141,7 +141,7 @@ export const useRemoteTasa = () => {
                     }));
 
                     const executeAutoSync = async () => {
-                        const tasaResult = await obtenerTasaBCV(true, null, currency);
+                        const tasaResult = await obtenerTasaBCV(true, currency);
                         if (tasaResult) {
                             try {
                                 updateDoc(doc(dbClient, 'merchants', systemId), {

@@ -107,7 +107,10 @@ export class OpenRouterService {
     async checkAvailability() {
         if (!this.apiKey) return false;
 
-        const checkModel = async (model) => {
+        // Try models in order until one works
+        for (let i = 0; i < FREE_MODELS_QUEUE.length; i++) {
+            const model = FREE_MODELS_QUEUE[i];
+
             try {
                 const response = await fetch(OPENROUTER_ENDPOINT, {
                     method: 'POST',
@@ -123,21 +126,23 @@ export class OpenRouterService {
                         max_tokens: 5
                     })
                 });
-                return response.status === 200; // Only strict success counting
-            } catch {
-                return false;
-            }
-        };
 
-        // Try models in order until one works
-        for (let i = 0; i < FREE_MODELS_QUEUE.length; i++) {
-            const model = FREE_MODELS_QUEUE[i];
-            if (await checkModel(model)) {
-                this.currentModelIndex = i;
-                console.log(`✅ OpenRouter Available via: ${model}`);
-                return true;
+                if (response.status === 401) {
+                    console.error("⛔ OpenRouter API Key Invalid (401). Disabling service.");
+                    return false; // STOP LOOP IMMEDIATELY
+                }
+
+                if (response.ok) {
+                    this.currentModelIndex = i;
+                    console.log(`✅ OpenRouter Available via: ${model}`);
+                    return true;
+                }
+
+                console.warn(`🔸 Model check failed for: ${model} (${response.status})`);
+
+            } catch (e) {
+                console.warn(`🔸 Network/Check error for ${model}`);
             }
-            console.warn(`🔸 Model check failed for: ${model}`);
         }
 
         console.error(`❌ OpenRouter Unavailable (All free models query failed)`);

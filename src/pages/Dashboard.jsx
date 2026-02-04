@@ -66,11 +66,11 @@ export default function Dashboard() {
   };
 
   const handleDolar = async () => {
-    await obtenerTasaBCV(true, null, 'USD');
+    await obtenerTasaBCV(true, 'USD');
   };
 
   const handleEuro = async () => {
-    await obtenerTasaBCV(true, null, 'EUR');
+    await obtenerTasaBCV(true, 'EUR');
   };
 
   const ventasFiltradas = useMemo(() => {

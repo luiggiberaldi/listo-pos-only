@@ -11,6 +11,7 @@
 import { useCartStore } from '../../stores/useCartStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useConfigStore } from '../../stores/useConfigStore'; // 🟢 Added Config Store
 import { db } from '../../db'; // 🔌 Phase 3: DB Access
 
 export const getChatContext = () => {
@@ -57,12 +58,17 @@ export const getFullContext = async () => {
 
         const totalSales = sales.reduce((acc, s) => acc + (s.totalVenta || 0), 0);
 
+        // 💰 Get Config (Exchange Rate)
+        const configState = useConfigStore.getState().configuracion;
+
         return {
             ...syncCtx,
             financial: {
                 today_sales: totalSales,
                 sales_count: sales.length,
-                low_stock_items: lowStock
+                low_stock_items: lowStock,
+                exchange_rate: configState?.tasa || 0,
+                currency_type: configState?.tipoTasa || 'USD'
             },
             timestamp: new Date().toISOString()
         };

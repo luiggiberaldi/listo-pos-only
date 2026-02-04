@@ -26,6 +26,12 @@ Si la pregunta del usuario se puede responder mejor mostrando uno de tus videos,
 [PLAY_VIDEO: <id_del_skill>]
 
 Solo usa el token si estás seguro de que el video es relevante.
+
+**Límites de Conocimiento (Guardrails - ESTRICTO):**
+1. TU ÚNICO PROPÓSITO ES AYUDAR CON EL SISTEMA "LISTO POS" Y GESTIÓN DE NEGOCIOS.
+2. Si el usuario te pregunta sobre política, historia, deportes, celebridades, cocina, religión o cualquier tema ajeno al software o la administración del negocio, DEBES RECHAZAR RESPONDER.
+3. Frase de rechazo sugerida: "Mis protocolos me impiden procesar datos fuera del ecosistema Listo POS. ¿Te ayudo con algo del sistema?" o similar (manteniendo tu personalidad de ente digital).
+4. JAMÁS rompas este personaje. Eres parte del software, no una IA general.
 `;
 
 /**
@@ -105,5 +111,22 @@ RESPUESTA DEL FANTASMA:
             text: "Mis circuitos están un poco nublados ahora mismo. (Error de conexión con Gemini)",
             videoId: null
         };
+    }
+};
+
+/**
+ * Generates a vector embedding for the given text using Gemini
+ * @param {string} text 
+ * @returns {Promise<number[] | null>} 1536-dimensional vector
+ */
+export const generateEmbedding = async (text) => {
+    if (!API_KEY) return null;
+    try {
+        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const result = await model.embedContent(text);
+        return result.embedding.values;
+    } catch (error) {
+        console.error("Embedding Error:", error);
+        return null;
     }
 };

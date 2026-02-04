@@ -72,7 +72,7 @@ export const Assistant = ({ variant = 'floating' }) => {
     const messagesEndRef = useRef(null);
     const lastMessageRef = useRef({ text: '', timestamp: 0 });
 
-    const isSalesView = location.pathname === '/' || location.pathname === '/vender';
+    const isSalesView = location.pathname === '/vender'; // Only hide tab on POS (it uses inline button there)
 
     // 🔄 SYNC HISTORY ON MOUNT
     useEffect(() => {

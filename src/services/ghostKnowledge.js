@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { generateEmbedding } from './ghost/geminiGhostService'; // 🟢 Semantic Core
 
 /**
  * Ghost Knowledge Base Service
@@ -13,6 +14,10 @@ class GhostKnowledgeService {
         if (!supabase) return { data: null, error: 'Supabase not configured' };
 
         try {
+            // 🧠 Generate Embedding
+            const textToEmbed = `${title} ${content} ${keywords.join(' ')}`;
+            const embedding = await generateEmbedding(textToEmbed);
+
             const { data, error } = await supabase
                 .from('ghost_knowledge_base')
                 .insert({
@@ -21,7 +26,8 @@ class GhostKnowledgeService {
                     category,
                     keywords,
                     system_id: systemId,
-                    created_by: createdBy
+                    created_by: createdBy,
+                    embedding // 🟢 Vector
                 })
                 .select()
                 .single();
@@ -89,9 +95,25 @@ class GhostKnowledgeService {
         if (!supabase) return { data: null, error: 'Supabase not configured' };
 
         try {
+            // 🧠 Update Embedding if content changed
+            let updatesWithEmbedding = { ...updates };
+            if (updates.title || updates.content || updates.keywords) {
+                const current = await this.getArticleById(id);
+                // Ensure we handle potential null data if article not found, though unlikely if id exists
+                if (!current.data) throw new Error("Article not found");
+
+                const merged = { ...current.data, ...updates };
+                const textToEmbed = `${merged.title} ${merged.content} ${merged.keywords?.join(' ') || ''}`;
+
+                const embedding = await generateEmbedding(textToEmbed);
+                if (embedding) {
+                    updatesWithEmbedding.embedding = embedding;
+                }
+            }
+
             const { data, error } = await supabase
                 .from('ghost_knowledge_base')
-                .update(updates)
+                .update(updatesWithEmbedding)
                 .eq('id', id)
                 .select()
                 .single();
@@ -131,14 +153,28 @@ class GhostKnowledgeService {
         if (!supabase) return { data: [], error: 'Supabase not configured' };
 
         try {
-            // Extract keywords from query (simple tokenization)
+            // 1. 🧠 Semantic Search (Deep Understanding)
+            const embedding = await generateEmbedding(query);
+            let semanticResults = [];
+
+            if (embedding) {
+                const { data: rpcData, error: rpcError } = await supabase.rpc('match_ghost_knowledge', {
+                    query_embedding: embedding,
+                    match_threshold: 0.5, // 50% simil
+                    match_count: 5,
+                    filter_system_id: systemId
+                });
+                if (!rpcError) semanticResults = rpcData || [];
+            }
+
+            // 2. 🔍 Keyword Search (Exact Match Fallback)
             const keywords = query
                 .toLowerCase()
                 .split(/\s+/)
                 .filter(word => word.length > 3); // Only words longer than 3 chars
 
             // Search using text search and keyword matching
-            const { data, error } = await supabase
+            const { data: keywordResults, error } = await supabase
                 .from('ghost_knowledge_base')
                 .select('*')
                 .eq('system_id', systemId)
@@ -147,7 +183,21 @@ class GhostKnowledgeService {
                 .order('usage_count', { ascending: false })
                 .limit(5);
 
-            return { data: data || [], error };
+            // 3. 🤝 Hybrid Merge (Deduplicate)
+            const allResults = [...semanticResults, ...(keywordResults || [])];
+
+            // Deduplicate by ID
+            const uniqueResultsMap = new Map();
+            allResults.forEach(item => {
+                if (!uniqueResultsMap.has(item.id)) {
+                    uniqueResultsMap.set(item.id, item);
+                }
+            });
+
+            const uniqueResults = Array.from(uniqueResultsMap.values());
+
+            // Prioritize Semantic score if available, else usage count
+            return { data: uniqueResults.slice(0, 5), error: error };
         } catch (e) {
             console.error('Error searching knowledge base:', e);
             return { data: [], error: e.message };
@@ -167,7 +217,7 @@ class GhostKnowledgeService {
             // Fallback to manual increment
             const { data: article } = await this.getArticleById(id);
             if (article) {
-                return await this.updateArticle(id, { usage_count: article.usage_count + 1 });
+                return await this.updateArticle(id, { usage_count: (article.usage_count || 0) + 1 });
             }
             return { data: null, error: e.message };
         }
@@ -197,6 +247,46 @@ class GhostKnowledgeService {
         } catch (e) {
             console.error('Error grouping by category:', e);
             return { data: {}, error: e.message };
+        }
+    }
+
+    /**
+     * Regenerate Embeddings for ALL articles of a system
+     * Useful for backfilling or updating model
+     */
+    async regenerateAllEmbeddings(systemId) {
+        console.log("🔄 Starting Embedding Backfill for System:", systemId);
+        if (!supabase) return { success: false, error: 'Supabase not configured' };
+
+        try {
+            const { data: articles, error } = await this.getArticles(systemId, { activeOnly: false });
+            if (error) throw error;
+            console.log(`Found ${articles.length} articles to process.`);
+
+            let count = 0;
+            for (const article of articles) {
+                const textToEmbed = `${article.title} ${article.content} ${article.keywords?.join(' ') || ''}`;
+                console.log(`Processing ${count + 1}/${articles.length}: ${article.title}`);
+
+                const embedding = await generateEmbedding(textToEmbed);
+
+                if (embedding) {
+                    const { error: updateError } = await supabase
+                        .from('ghost_knowledge_base')
+                        .update({ embedding })
+                        .eq('id', article.id);
+
+                    if (updateError) console.error("Update failed", updateError);
+                    else count++;
+                } else {
+                    console.warn(`Failed to generate vector for: ${article.title}`);
+                }
+            }
+            console.log(`✅ Backfill complete. Updated ${count} articles.`);
+            return { success: true, count };
+        } catch (e) {
+            console.error('Error regenerating embeddings:', e);
+            return { success: false, error: e.message };
         }
     }
 }

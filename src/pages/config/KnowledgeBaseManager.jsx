@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ghostKnowledge } from '../../services/ghostKnowledge';
 import { ghostService } from '../../services/ghostAI';
 import { initializeFactoryKnowledge } from '../../services/ghostFactoryKnowledge';
-import { Book, Plus, Edit2, Trash2, Search, Save, X, TrendingUp, RefreshCw } from 'lucide-react';
+import { Book, Plus, Edit2, Trash2, Search, Save, X, TrendingUp, RefreshCw, Zap } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const CATEGORIES = ['Ventas', 'Inventario', 'Clientes', 'Políticas', 'Procedimientos', 'Reportes', 'Otros'];
@@ -84,6 +84,35 @@ export default function KnowledgeBaseManager() {
                 loadArticles();
             } else {
                 Swal.fire('Error', 'No se pudo inicializar la base de conocimiento', 'error');
+            }
+        }
+    };
+
+    const handleRegenerateEmbeddings = async () => {
+        const result = await Swal.fire({
+            title: '🧠 Generar Cerebro Semántico',
+            text: 'Esto leerá todos tus artículos y creará "vectores de pensamiento" para entender el significado detrás de las palabras. Puede tardar unos segundos.',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Generar Vectores',
+            confirmButtonColor: '#8b5cf6', // purple
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando...',
+                html: 'Mejorando inteligencia de Ghost...',
+                timerProgressBar: true,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const { success, count, error } = await ghostKnowledge.regenerateAllEmbeddings(systemId);
+
+            if (success) {
+                Swal.fire('¡Cerebro Actualizado!', `Se vectorizaron ${count} artículos. Ahora Ghost entiende mejor el contexto.`, 'success');
+            } else {
+                Swal.fire('Error', `Fallo en vectorización: ${error}`, 'error');
             }
         }
     };
@@ -191,11 +220,19 @@ export default function KnowledgeBaseManager() {
                 </div>
                 <div className="flex gap-3">
                     <button
+                        onClick={handleRegenerateEmbeddings}
+                        className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg"
+                        title="Generar Embeddings Vectoriales (IA)"
+                    >
+                        <Zap size={20} />
+                        Optimizar IA
+                    </button>
+                    <button
                         onClick={handleInitializeFactory}
                         className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg"
                     >
                         <RefreshCw size={20} />
-                        Inicializar KB de Fábrica
+                        Inicializar KB
                     </button>
                     <button
                         onClick={() => setShowForm(true)}
