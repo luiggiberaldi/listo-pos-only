@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2'; // 🔔 IMPORTANTE: Alertas
 import { dbMaster } from '../../services/firebase'; // 📡 Antena B
+import { supabase } from '../../services/supabaseClient'; // 🟢 Supabase Client for Cascade Deletion Support
 import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '../../context/AuthContext';
 // import { useStore } from '../../context/StoreContext'; // 🗑️ DEPRECATED: Avoid circular dependency
@@ -135,6 +136,24 @@ export const useMasterTelemetry = () => {
             } catch (error) {
                 console.error("📡 [MASTER-LINK] ❌ Error de conexión/permisos:", error);
                 setStatus('error');
+            }
+
+            // 🟢 SUPABASE HEARTBEAT (For Cascade Deletion Support)
+            // Upsert client to ensure it exists in 'listo_clients' so FKs work
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('listo_clients')
+                        .upsert({
+                            system_id: payload.id,
+                            business_name: payload.nombreNegocio,
+                            last_sync: new Date().toISOString(),
+                            // Don't overwrite status or created_at if exists
+                        }, { onConflict: 'system_id' });
+                    // console.log("🟢 [SUPABASE-LINK] Heartbeat sent");
+                } catch (sbError) {
+                    console.warn("⚠️ [SUPABASE-LINK] Sync failed:", sbError);
+                }
             }
         };
 
