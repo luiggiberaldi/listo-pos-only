@@ -19,14 +19,14 @@ const clientConfig = {
 };
 
 // 📡 ANTENA B: MASTER APP (Telemetría de Listo POS)
-// Configuración fija (Hardcoded Safety)
+// Configuración dinámica desde .env (Secured)
 const masterConfig = {
-    apiKey: "AIzaSyBuSsNqH9uWOYnROjvWFxTHvke3fXCGB6I",
-    authDomain: "listo-pos-prod.firebaseapp.com",
-    projectId: "listo-pos-prod",
-    storageBucket: "listo-pos-prod.firebasestorage.app",
-    messagingSenderId: "579228744504",
-    appId: "1:579228744504:web:eba981935893b38f6e1fcd"
+    apiKey: import.meta.env.VITE_MASTER_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_MASTER_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_MASTER_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_MASTER_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_MASTER_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_MASTER_FIREBASE_APP_ID
 };
 
 let dbClient = null;

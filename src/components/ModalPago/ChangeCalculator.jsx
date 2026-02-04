@@ -138,7 +138,7 @@ export default function ChangeCalculator({
             </span>
 
             <span className="text-base font-bold text-slate-500 font-numbers">
-              ~ Bs {(cambioUSD * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+              ~ Bs {Math.round(cambioUSD * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
             </span>
           </div>
         ) : (
@@ -148,7 +148,7 @@ export default function ChangeCalculator({
               <p className="text-[10px] font-bold uppercase tracking-wide opacity-50 text-slate-700">Vuelto Total</p>
               <div className="flex items-baseline gap-2">
                 <span className={`text-lg font-black font-numbers ${isCredited ? 'text-indigo-900' : 'text-emerald-900'}`}>${cambioUSD.toFixed(2)}</span>
-                <span className="text-[10px] font-bold opacity-60">~ Bs {(cambioUSD * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                <span className="text-[10px] font-bold opacity-60">~ Bs {Math.round(cambioUSD * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -322,7 +322,7 @@ export default function ChangeCalculator({
               <span className="text-xs font-bold text-red-500 uppercase flex items-center gap-1"><X size={14} /> Falta entregar:</span>
               <div className="text-right leading-none">
                 <div className="text-base font-black text-red-600 font-numbers">${remanente.toFixed(2)}</div>
-                <div className="text-[10px] font-bold text-red-400">~ Bs {(remanente * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
+                <div className="text-[10px] font-bold text-red-400">~ Bs {Math.round(remanente * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
               </div>
             </div>
           ) : excede ? (

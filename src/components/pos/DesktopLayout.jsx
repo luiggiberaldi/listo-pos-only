@@ -1,5 +1,5 @@
-import React from 'react';
-import { Trash2, Clock } from 'lucide-react';
+import React, { useCallback } from 'react';
+import { Trash2, Clock, HelpCircle } from 'lucide-react';
 import Ticket from '../Ticket';
 import TicketSaldoFavor from '../TicketSaldoFavor';
 // File structure:
@@ -57,8 +57,14 @@ export default function DesktopLayout({
     clientePreseleccionado, // 🆕
     handlePrintSaldo, // 🖨️
     onCloseSuccess, // ❌
-    permitirSinStock // 🆕
+    permitirSinStock, // 🆕
+    handlers, // ✅ NEW: Atomic Handlers
+    children
 }) {
+    const {
+        cerrarPago, cerrarEspera, cerrarPesaje, cerrarJerarquia, toggleAyuda,
+        abrirEspera // ✅ Added opener
+    } = handlers || {};
     return (
         <div className="flex h-screen bg-app-light dark:bg-app-dark overflow-hidden font-sans relative">
 
@@ -113,10 +119,11 @@ export default function DesktopLayout({
 
             {cajaAbierta && (
                 <>
-                    {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); setModales(m => ({ ...m, pesaje: null })); }} onClose={() => setModales(m => ({ ...m, pesaje: null }))} />}
-                    {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); setModales(m => ({ ...m, jerarquia: null })); }} onClose={() => setModales(m => ({ ...m, jerarquia: null }))} />}
-                    {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} totalImpuesto={calculos.totalImpuesto} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} onClose={() => setModales(m => ({ ...m, pago: false }))} />}
-                    {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={() => setModales(m => ({ ...m, espera: false }))} />}
+                    {/* ✅ ATOMIC MODAL HANDLING */}
+                    {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); cerrarPesaje(); }} onClose={cerrarPesaje} />}
+                    {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); cerrarJerarquia(); }} onClose={cerrarJerarquia} />}
+                    {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} totalImpuesto={calculos.totalImpuesto} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} onClose={cerrarPago} />}
+                    {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={cerrarEspera} />}
                 </>
             )}
 
@@ -151,9 +158,14 @@ export default function DesktopLayout({
                         </div>
 
                         <div className="flex items-center justify-between px-4 pb-2 gap-2">
-                            <button onClick={() => setModales(m => ({ ...m, espera: true }))} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-status-warningBg text-status-warning hover:bg-status-warningBg/80 border border-status-warning" title="Ver Tickets en Espera">
-                                <Clock size={14} /> ESPERA {ticketsEspera.length > 0 && <span className="bg-status-warning text-black px-1.5 rounded-full text-[9px]">{ticketsEspera.length}</span>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={abrirEspera} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-status-warningBg text-status-warning hover:bg-status-warningBg/80 border border-status-warning" title="Ver Tickets en Espera">
+                                    <Clock size={14} /> ESPERA {ticketsEspera.length > 0 && <span className="bg-status-warning text-black px-1.5 rounded-full text-[9px]">{ticketsEspera.length}</span>}
+                                </button>
+                                <button onClick={toggleAyuda} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30" title="Ver Atajos de Teclado">
+                                    <HelpCircle size={14} /> AYUDA (?)
+                                </button>
+                            </div>
                             <button onClick={actions.limpiar} disabled={carrito.length === 0 || isProcessing} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${carrito.length > 0 && !isProcessing ? 'bg-status-dangerBg text-status-danger hover:bg-status-dangerBg/80 cursor-pointer' : 'bg-app-light text-content-secondary cursor-not-allowed'}`} title="Vaciar Cesta Completa">
                                 <Trash2 size={14} /> VACIAR CESTA (F4)
                             </button>
@@ -161,10 +173,11 @@ export default function DesktopLayout({
                         <ProductGrid
                             filtrados={filtrados}
                             selectedIndex={selectedIndex}
-                            setRef={(el, idx) => productRefs.current[idx] = el}
+                            setRef={useCallback((el, idx) => { if (productRefs.current) productRefs.current[idx] = el; }, [productRefs])}
                             onSelectProducto={actions.prepararAgregar}
                             tasa={calculos.tasa}
-                            permitirSinStock={permitirSinStock} // 🆕
+                            permitirSinStock={permitirSinStock}
+                            isProcessing={isProcessing} // 🆕
                         />
                     </>
                 )}
@@ -177,10 +190,11 @@ export default function DesktopLayout({
                 onChangeQty={actions.cambiarCant}
                 onChangeUnit={actions.cambiarUnidad} // 🆕
                 onCheckout={actions.cobrar}
-                onHold={actions.espera}
+                onHold={() => actions.espera(calculos?.totalUSD)} // ✅ Fix: Pass value, not Event!
                 isProcessing={isProcessing}
                 className={`transition-all duration-500 ${!cajaAbierta ? 'opacity-30 grayscale pointer-events-none filter blur-[1px]' : ''}`}
             />
+            {children}
         </div>
     );
 }

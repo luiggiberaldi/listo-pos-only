@@ -2,15 +2,26 @@
 // Archivo: src/pages/PosPage.jsx
 // Objetivo: Conectar el botón de pago con el Generador de Correlativos Fiscales.
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useStore } from '../context/StoreContext';
+// import { useStore } from '../context/StoreContext'; // 🗑️ DEPRECATED
+import { useCartStore } from '../stores/useCartStore';
+import { useInventoryStore } from '../stores/useInventoryStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useAuthStore } from '../stores/useAuthStore';
+import { useTicketStore } from '../stores/useTicketStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuthContext } from '../context/AuthContext';
+
+import { useSalesProcessor } from '../hooks/store/useSalesProcessor';
+import { useInventory } from '../hooks/store/useInventory';
 import Swal from 'sweetalert2';
 
 // --- LAYOUTS ---
 import DesktopLayout from '../components/pos/DesktopLayout';
 import TouchLayout from '../components/pos/TouchLayout';
 import TicketSaldoFavor from '../components/TicketSaldoFavor';
+import ShortcutGuide from '../components/pos/ShortcutGuide';
 
 // --- HOOKS ---
 import { useCartCalculations } from '../hooks/pos/useCartCalculations';
@@ -24,19 +35,51 @@ import { usePosModals } from '../hooks/ui/usePosModals';
 import { usePosSearch } from '../hooks/pos/usePosSearch';
 import { usePosActions } from '../hooks/pos/usePosActions';
 import { useSaleFinalizer } from '../hooks/pos/useSaleFinalizer';
+import { useDemoShieldNotifications } from '../hooks/useDemoShieldNotifications';
 
 export default function PosPage() {
-  const {
-    productos, carrito, agregarAlCarrito, eliminarDelCarrito,
-    cambiarCantidadCarrito, limpiarCarrito, registrarVenta,
-    abrirCajaPOS, configuracion, playSound, usuario,
-    isProcessing,
-    ticketsEspera, guardarEnEspera, recuperarDeEspera, eliminarTicketEspera,
-    generarCorrelativo, cambiarUnidadCarrito // 🆕
-  } = useStore();
+  // 🛡️ DEMO SHIELD MONITOR
+  useDemoShieldNotifications();
 
-  const { isCajaAbierta } = useCajaEstado();
+  // ⚡ ATOMIC STATE SUBSCRIPTION (Zustand)
+  const productos = useInventoryStore(state => state.productos);
+
+  const carrito = useCartStore(state => state.carrito);
+  const { agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, limpiarCarrito, cambiarUnidadCarrito } = useCartStore();
+
+  const configuracion = useConfigStore(state => state.configuracion);
+  const generarCorrelativo = useConfigStore(state => state.generarCorrelativo);
+
+  const { usuario } = useAuthContext(); // ⚡ LEGACY AUTH BRIDGE
+  // const usuario = useAuthStore(state => state.usuario); 
+
+  // 🚀 HYDRATION: Ensure Stores are populated on mount
+  useEffect(() => {
+    useInventoryStore.getState().loadProductos();
+    useConfigStore.getState().loadConfig();
+  }, []);
+
+  const { ticketsEspera, guardarEnEspera, recuperarDeEspera, eliminarTicketEspera } = useTicketStore();
+
+  const { playSound, isProcessing } = useUIStore();
+
+  // 🏗️ LEGACY HOOK INSTANTIATION (Bridge to ZUSTAND)
+  // We instantiate logic hooks using data from ZUSTAND instead of Context
+  const { transaccionVenta, transaccionAnulacion } = useInventory(usuario, configuracion, () => { });
+  const cajaMethods = useCajaEstado();
+
+  const { registrarVenta } = useSalesProcessor(
+    usuario,
+    configuracion,
+    { transaccionVenta, transaccionAnulacion, playSound, generarCorrelativo },
+    cajaMethods,
+    carrito,
+    (newCart) => useCartStore.getState().setCarrito(newCart) // Adapter for setCarrito
+  );
+
+  const { isCajaAbierta, abrirCaja } = useCajaEstado();
   const cajaAbierta = isCajaAbierta();
+  const abrirCajaPOS = abrirCaja; // Alias for backward compatibility
   const { ejecutarAccionSegura } = useSecureAction();
   const { tienePermiso } = useRBAC(usuario);
 
@@ -59,7 +102,7 @@ export default function PosPage() {
 
   const {
     modales, setModales, abrirPago, cerrarPago, abrirEspera, cerrarEspera,
-    abrirPesaje, cerrarPesaje, abrirJerarquia, cerrarJerarquia
+    abrirPesaje, cerrarPesaje, abrirJerarquia, cerrarJerarquia, toggleAyuda
   } = usePosModals();
 
   // 🆕 PRE-SELECCION CLIENTE (Restored)
@@ -79,20 +122,21 @@ export default function PosPage() {
   const {
     busqueda, setBusqueda, categoriaActiva, setCategoriaActiva,
     categorias, filtrados, selectedIndex, setSelectedIndex
-  } = usePosSearch(productos);
+  } = usePosSearch();
 
   const {
     actions, multiplicadorPendiente, setMultiplicadorPendiente
   } = usePosActions(
     { productos, carrito, agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, limpiarCarrito, configuracion, playSound, cajaAbierta, isProcessing, guardarEnEspera, cambiarUnidadCarrito },
-    { ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, setBusqueda, setSelectedIndex, searchInputRef }
+    { ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, toggleAyuda, setBusqueda, setSelectedIndex, searchInputRef }
   );
 
   const {
     ticketData, setTicketData, ventaExitosa, setVentaExitosa,
     finalizarVenta, handlePrint, handlePrintSaldo, handleRecuperarTicket
   } = useSaleFinalizer({
-    carrito, calculos, registrarVenta, limpiarCarrito, playSound, generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera, searchInputRef, ticketRef, ticketSaldoRef
+    carrito, calculos, registrarVenta, limpiarCarrito, playSound, generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera, searchInputRef, ticketRef, ticketSaldoRef,
+    setCarrito: (items) => useCartStore.getState().setCarrito(items)
   });
 
   // 📡 [SCANNER ENGINE]: Monitoreo de búsqueda en tiempo real para agregado automático
@@ -124,7 +168,6 @@ export default function PosPage() {
       });
 
       if (producto) {
-        console.log("⚖️ [SCALE SCAN] Match:", producto.nombre, "| PLU:", plu, "| Peso:", peso, "kg");
         actions.autoAgregarPesado(producto, peso);
         return;
       }
@@ -133,7 +176,6 @@ export default function PosPage() {
     const exactMatch = productos.find(p => p.codigo?.toLowerCase() === busqueda.toLowerCase());
 
     if (exactMatch) {
-      console.log("🚀 [SCANNER] Match detectado:", exactMatch.nombre);
       setBusqueda(''); // 🛑 STOP LOOP (Early Clear)
       actions.prepararAgregar(exactMatch);
     }
@@ -155,7 +197,10 @@ export default function PosPage() {
 
   if (!tieneAccesoPos) return null;
 
-  // 🖱️ SWITCHER DE MODO TÁCTIL O ESCRITORIO
+  // 🏮 SHORTCUT GUIDE (Global para ambos modos)
+  const guideComponent = <ShortcutGuide isOpen={modales.ayuda} onClose={toggleAyuda} />;
+
+  // 🖖️ SWITCHER DE MODO TÁCTIL O ESCRITORIO
   if (configuracion.modoTouch) {
     return (
       <TouchLayout
@@ -164,7 +209,15 @@ export default function PosPage() {
         ventaExitosa={ventaExitosa}
         ticketData={ticketData}
         modales={modales}
-        setModales={setModales}
+        setModales={setModales} // ⚠️ DEPRECATED
+        // ✅ ATOMIC HANDLERS
+        handlers={{
+          abrirPago, cerrarPago,
+          abrirEspera, cerrarEspera,
+          abrirPesaje, cerrarPesaje,
+          abrirJerarquia, cerrarJerarquia,
+          toggleAyuda
+        }}
         actions={actions}
         busqueda={busqueda}
         setBusqueda={setBusqueda}
@@ -195,7 +248,9 @@ export default function PosPage() {
         handlePrintSaldo={handlePrintSaldo} // 🖨️ Manual Print
         onCloseSuccess={() => { setVentaExitosa(false); limpiarCarrito(); searchInputRef.current?.focus(); }} // Manual close handler
         permitirSinStock={configuracion?.permitirSinStock} // 🆕
-      />
+      >
+        {guideComponent}
+      </TouchLayout>
     );
   }
 
@@ -206,7 +261,15 @@ export default function PosPage() {
       ventaExitosa={ventaExitosa}
       ticketData={ticketData}
       modales={modales}
-      setModales={setModales}
+      setModales={setModales} // ⚠️ DEPRECATED
+      // ✅ ATOMIC HANDLERS (New Architecture)
+      handlers={{
+        abrirPago, cerrarPago,
+        abrirEspera, cerrarEspera,
+        abrirPesaje, cerrarPesaje,
+        abrirJerarquia, cerrarJerarquia,
+        toggleAyuda
+      }}
       actions={actions}
       busqueda={busqueda}
       setBusqueda={setBusqueda}
@@ -234,8 +297,10 @@ export default function PosPage() {
       agregarAlCarrito={agregarAlCarrito}
       clientePreseleccionado={clientePreseleccionado} // 🆕
       handlePrintSaldo={handlePrintSaldo} // 🖨️ Manual Print
-      onCloseSuccess={() => { setVentaExitosa(false); limpiarCarrito(); searchInputRef.current?.focus(); }} // Manual close handler
+      onCloseSuccess={useCallback(() => { setVentaExitosa(false); limpiarCarrito(); searchInputRef.current?.focus(); }, [setVentaExitosa, limpiarCarrito])} // Manual close handler
       permitirSinStock={configuracion?.permitirSinStock} // 🆕
-    />
+    >
+      {guideComponent}
+    </DesktopLayout>
   );
 }

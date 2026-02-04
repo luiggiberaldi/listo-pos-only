@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import { PERMISOS } from '../store/useRBAC';
 
 export const usePosActions = (
     { productos, carrito, agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, limpiarCarrito, configuracion, playSound, cajaAbierta, isProcessing, buscarEnEspera, guardarEnEspera, cambiarUnidadCarrito },
-    { ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, setBusqueda, setSelectedIndex, searchInputRef }
+    { ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, toggleAyuda, setBusqueda, setSelectedIndex, searchInputRef }
 ) => {
     const [multiplicadorPendiente, setMultiplicadorPendiente] = useState(1);
 
-    const actions = {
+    const actions = useMemo(() => ({
         limpiar: () => {
             if (carrito.length === 0 || isProcessing) return;
             ejecutarAccionSegura({
@@ -52,7 +52,24 @@ export const usePosActions = (
         espera: async (totalUSD) => {
             if (carrito.length === 0) return;
             const { value: nota } = await Swal.fire({ title: 'Poner en Espera', input: 'text', inputPlaceholder: 'Nota opcional...', showCancelButton: true, confirmButtonText: 'Guardar', confirmButtonColor: '#f97316' });
-            if (nota !== undefined) guardarEnEspera(nota, null, totalUSD);
+
+            if (nota !== undefined) {
+                // 🏗️ CONSTRUCT FULL TICKET OBJECT (Fixes "Missing Data")
+                const ticketCompleto = {
+                    id: Date.now(), // Generate ID
+                    fecha: new Date().toISOString(),
+                    items: [...carrito], // Clone items
+                    totalSnapshot: totalUSD,
+                    tasaSnapshot: configuracion?.tasa || 0,
+                    nota: nota || '',
+                    cliente: null, // Basic version
+                    usuarioNombre: 'Cajero' // Placeholder until context is injected
+                };
+
+                guardarEnEspera(ticketCompleto);
+                limpiarCarrito(); // Ensure we clear after saving
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Ticket en Espera', timer: 2000, showConfirmButton: false });
+            }
         },
         cambiarCant: (idx, cant) => {
             if (isProcessing) return;
@@ -148,8 +165,9 @@ export const usePosActions = (
             agregarAlCarrito(producto, peso, 'peso', parseFloat(producto.precio));
             setSelectedIndex(0);
             setTimeout(() => { if (searchInputRef.current) searchInputRef.current.blur(); }, 10);
-        }
-    };
+        },
+        toggleAyuda
+    }), [carrito, isProcessing, configuracion, cajaAbierta, multiplicadorPendiente, searchInputRef, playSound, agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, cambiarUnidadCarrito, limpiarCarrito, ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, toggleAyuda, setBusqueda, setSelectedIndex, buscarEnEspera, guardarEnEspera]);
 
     // 📡 [SCANNER ENGINE]
     useEffect(() => {

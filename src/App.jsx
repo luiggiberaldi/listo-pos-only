@@ -9,6 +9,8 @@ import { useListoGoSync } from './hooks/sync/useListoGoSync'; // 🔄 MOBILE APP
 import { useRemoteLockListener } from './hooks/security/useRemoteLockListener'; // 🛡️ REMOTE LOCK (DEADLOCK PROOF)
 import { PERMISSIONS } from './config/permissions';
 import RouteGuard from './components/security/RouteGuard';
+import { GhostEye } from './components/ghost/GhostEye';
+import { Assistant } from './components/ghost/Assistant';
 
 // Layouts & Pages
 import MainLayout from './layout/MainLayout';
@@ -23,6 +25,7 @@ import TotalDiarioPage from './pages/TotalDiarioPage';
 import ReportesPage from './pages/ReportesPage';
 import SimulationPage from './pages/SimulationPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
+import IAPage from './pages/config/IAPage';
 
 
 // Security Gate
@@ -39,6 +42,61 @@ function App() {
   // 🔒 RUNTIME INTEGRITY CHECK (Fiscal Lock)
   React.useEffect(() => {
     auditFiscalLogic();
+  }, []);
+
+  // 👻 GHOST MODE TOOLS
+  // Expose tools for Playwright/Manual Testing
+  React.useEffect(() => {
+    // Dynamically import to ensure circular deps work if needed, or just use imports
+    import('./db').then(({ toggleGhostMode, isGhostMode }) => {
+      import('./utils/TimeProvider').then(({ timeProvider }) => {
+        window.GhostTools = {
+          timeProvider,
+          toggleMode: toggleGhostMode,
+          isGhost: isGhostMode
+        };
+
+        if (isGhostMode) {
+          console.log("👻 GHOST MODE ACTIVE");
+          document.body.style.border = '5px solid red';
+          document.body.style.boxSizing = 'border-box';
+          document.body.setAttribute('data-ghost-mode', 'true');
+
+          // Floating Indicator just in case
+          const div = document.createElement('div');
+          div.style.position = 'fixed';
+          div.style.bottom = '10px';
+          div.style.right = '10px';
+          div.style.zIndex = '99999';
+          div.style.background = 'red';
+          div.style.color = 'white';
+          div.style.padding = '5px 10px';
+          div.style.fontWeight = 'bold';
+          div.style.pointerEvents = 'none';
+          div.innerText = '👻 GHOST MODE';
+          document.body.appendChild(div);
+        }
+      });
+    });
+  }, []);
+
+  // 🚨 GLOBAL ERROR TRAP FOR GHOST
+  React.useEffect(() => {
+    window.ghostErrors = [];
+    const handleError = (event) => {
+      const errorMsg = event.reason ? `Promise Rejection: ${event.reason}` : event.message;
+      console.log('🚨 [GHOST EYE] Error Captured:', errorMsg);
+      window.ghostErrors.push({ message: errorMsg, timestamp: Date.now() });
+      if (window.ghostErrors.length > 10) window.ghostErrors.shift(); // Keep last 10
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleError);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleError);
+    };
   }, []);
 
   return (
@@ -137,6 +195,16 @@ function App() {
                   }
                 />
 
+                {/* 🧠 INTELIGENCIA ARTIFICIAL */}
+                <Route
+                  path="ia"
+                  element={
+                    <RouteGuard requiredPermiso={PERMISSIONS.CONF_ACCESO}>
+                      <IAPage />
+                    </RouteGuard>
+                  }
+                />
+
                 {/* 🧪 LABORATORIO */}
                 <Route path="simulation" element={<SimulationPage />} />
 
@@ -145,8 +213,10 @@ function App() {
               </Route>
             )}
           </Routes>
+          <Assistant variant="floating" />
         </HashRouter>
       </ContractGuard>
+      <GhostEye />
     </LicenseGate>
   );
 }

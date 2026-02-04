@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getMachineId: () => ipcRenderer.invoke('get-machine-id'),
     getDiskInfo: () => ipcRenderer.invoke('get-disk-info'),
 
+    // 🤖 AI Control
+    restartLocalAI: () => ipcRenderer.invoke('restart-ai'),
+
 
     // ☁️ Secure Cloud Sync (Renderer -> Main -> Firebase)
     // Permite enviar datos a la nube sin exponer credenciales en el cliente web

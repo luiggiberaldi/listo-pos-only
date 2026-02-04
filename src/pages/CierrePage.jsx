@@ -16,6 +16,7 @@ import ZCutHistory from '../components/cierre/ZCutHistory';
 import ReporteZUniversal from '../components/cierre/ReporteZUniversal';
 import { useSecureAction } from '../hooks/security/useSecureAction';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
+import { timeProvider } from '../utils/TimeProvider';
 import { db } from '../db';
 
 export default function CierrePage() {
@@ -30,7 +31,7 @@ export default function CierrePage() {
     const handlePrint = useReactToPrint({
         contentRef: ticketRef,
         content: () => ticketRef.current,
-        documentTitle: `Cierre_Z_${new Date().toISOString()}`,
+        documentTitle: `Cierre_Z_${timeProvider.toISOString()}`,
         onAfterPrint: () => setCorteParaImprimir(null)
     });
 
@@ -72,25 +73,38 @@ export default function CierrePage() {
             accion: () => {
                 Swal.fire({
                     title: '¿Cerrar Turno?',
-                    text: "Se generará el reporte Z y se reiniciarán los contadores.",
+                    html: `
+                        <div class="space-y-3">
+                            <p class="text-slate-600 dark:text-slate-400">Se generará el reporte Z y se reiniciarán los contadores.</p>
+                            <label class="flex items-center justify-center gap-2 cursor-pointer p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-blue-400 transition-all group">
+                                <input type="checkbox" id="no-print-checkbox" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 transition-colors">No imprimir comprobante</span>
+                            </label>
+                        </div>
+                    `,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#3085d6',
                     cancelButtonColor: '#d33',
                     confirmButtonText: 'Sí, cerrar',
-                    cancelButtonText: 'Cancelar'
+                    cancelButtonText: 'Cancelar',
+                    preConfirm: () => {
+                        return {
+                            noPrint: document.getElementById('no-print-checkbox').checked
+                        }
+                    }
                 }).then(async (result) => {
                     if (result.isConfirmed) {
+                        const noPrint = result.value.noPrint;
+
                         // 1. Obtener ID correlativo
                         const numeroZ = await generarCorrelativo('z');
-                        const nuevoIdCorte = `Z-${numeroZ.toString().padStart(6, '0')}`; // Aseguramos formato Z-000000
+                        const nuevoIdCorte = `Z-${numeroZ.toString().padStart(6, '0')}`;
 
-                        // 2. Generar Reporte Z usando el Motor Auditado (reportUtils.js)
-                        // 🔒 AUDITADO: La lógica proviene exclusivamente de reportUtils, validada por fiscal_lock.js
+                        // 2. Generar Reporte Z
                         const reporteBase = generarReporteZ(ventasValidas, estado, usuario, configuracion);
 
                         // RANGOS FACTURAS
-                        // (Mantenemos la lógica de obtener refs aquí para asegurar compatibilidad de visualización.)
                         const primeraVenta = ventasSesionTotal.length > 0 ? ventasSesionTotal[ventasSesionTotal.length - 1] : null;
                         const ultimaVenta = ventasSesionTotal.length > 0 ? ventasSesionTotal[0] : null;
 
@@ -102,27 +116,26 @@ export default function CierrePage() {
                         };
 
                         const datosTicket = {
-                            ...reporteBase, // 👈 INHERIT ALL AUDITED MATH
+                            ...reporteBase,
                             id: nuevoIdCorte,
                             corteRef: nuevoIdCorte,
                             tasa: configuracion.tasa,
                             totalUSD: resumen.totalVentas,
                             totalBS: resumen.totalVentasBS,
-
-                            // Metadata Específica de Impresión
                             rangoFacturas: {
                                 desde: getRef(primeraVenta),
                                 hasta: getRef(ultimaVenta)
                             }
-
-                            // 🗑️ DELETED: Manual Fiscal Overrides
-                            // Ahora confiamos 100% en reporteBase.fiscal (Calculado por el Auditor)
                         };
-                        // 3. Persistencia y Renderizado
-                        setCorteParaImprimir(datosTicket);
+
+                        // 3. Persistencia y Renderizado Condicional
+                        if (!noPrint) {
+                            setCorteParaImprimir(datosTicket);
+                        }
+
                         await cerrarCaja(datosTicket);
 
-                        // SELLADO DE VENTAS (Sella TODAS para limpiar la pantalla)
+                        // SELLADO DE VENTAS
                         if (db && db.ventas) {
                             try {
                                 const idsParaActualizar = ventasSesionTotal.map(v => v.id);
@@ -139,7 +152,7 @@ export default function CierrePage() {
                         Swal.fire({
                             icon: 'success',
                             title: `¡Cierre ${nuevoIdCorte} Exitoso!`,
-                            text: 'Turno cerrado y auditoría guardada.',
+                            text: noPrint ? 'Turno cerrado (Sin impresión).' : 'Turno cerrado y auditoría guardada.',
                             timer: 2000,
                             showConfirmButton: false
                         });

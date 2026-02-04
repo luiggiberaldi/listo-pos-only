@@ -17,7 +17,7 @@ Dirección:              El Socorro, Calle Sucre, Casa #144, Valencia
 Ciudad/Estado:          Valencia, Estado Carabobo, Venezuela
 Marca Comercial:        LISTO POS (Desde 2025)
 Sitio Web:              www.kiplystart.com
-Correo:                 listopos2026@gmail.com
+Correo:                 TechSupport@kiplystart.com
 Teléfono/WhatsApp:      +58 412-405-1793
 
 ==========================================================
@@ -178,7 +178,7 @@ Usted tiene derecho a:
 • Eliminación: Solicitar borrado de sus datos.
 • Portabilidad: Exportar datos en formato estándar.
 
-Contacto: listopos2026@gmail.com
+Contacto: TechSupport@kiplystart.com
 
 ==========================================================
 

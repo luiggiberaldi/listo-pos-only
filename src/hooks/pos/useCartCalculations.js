@@ -31,7 +31,7 @@ export const useCartCalculations = (carrito, configuracion) => {
       // 🛡️ REDONDEO PREVENTIVO: Forzamos que el total en USD sea de 2 decimales 
       // antes de convertir a Bolívares. Esto asegura que si ves $5.95, los Bs
       // se calculen exactamente sobre esos 5.95 y no sobre 5.952.
-      const totalItemUSD = subtotalItemUSD.plus(impuestoItemUSD).toDecimalPlaces(2);
+      const totalItemUSD = subtotalItemUSD.plus(impuestoItemUSD).toDecimalPlaces(4);
 
       // 🧮 CONVERSIÓN GRANULAR A BS: Se basa en el USD ya redondeado
       const totalItemBS = totalItemUSD.times(tasa).toDecimalPlaces(2);

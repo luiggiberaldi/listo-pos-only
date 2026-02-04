@@ -131,7 +131,7 @@ Para consultas:
 
 | Canal | Información |
 |-------|-------------|
-| **Correo Electrónico** | listopos2026@gmail.com |
+| **Correo Electrónico** | TechSupport@kiplystart.com |
 | **Teléfono / WhatsApp** | +58 412-405-1793 |
 | **Sitio Web** | www.kiplystart.com |
 

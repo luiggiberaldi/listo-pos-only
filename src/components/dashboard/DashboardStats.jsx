@@ -60,7 +60,21 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
   }, []) || [];
 
   const { kpis, salesByHour, salesByMethod, tesoreria, totalGastos } = useMemo(() => {
-    const _gastos = gastosHoy.reduce((acc, g) => acc + (parseFloat(g.cantidad) || 0), 0);
+    const _gastos = gastosHoy.reduce((acc, g) => {
+      if (g.tipo === 'GASTO_CAJA') {
+        const monto = parseFloat(g.cantidad) || 0;
+        const moneda = g.meta?.moneda || g.referencia || 'USD';
+        if (moneda === 'VES' || moneda === 'BS') {
+          return acc + (monto / (tasa || 1));
+        }
+        return acc + monto;
+      } else if (g.tipo === 'CONSUMO_INTERNO') {
+        const unidades = parseFloat(g.cantidad) || 0;
+        const costoUnitario = parseFloat(g.meta?.costoSnapshot) || 0;
+        return acc + (unidades * costoUnitario);
+      }
+      return acc;
+    }, 0);
 
     if (!ventas || ventas.length === 0) {
       return {
@@ -104,8 +118,8 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         {/* Venta Neta */}
         <KPICard
           title="Ingresos"
-          value={`$${kpis.totalVentas.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext={`~ Bs ${(kpis.totalVentas * tasa).toLocaleString('es-VE', { minimumFractionDigits: 0 })}`}
+          value={`$${kpis.totalVentas.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          subtext={`~ Bs ${(kpis.totalVentas * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={TrendingUp}
           color={{ bg: 'bg-blue-500', text: 'text-blue-500', badge: 'bg-blue-50 text-blue-700 border border-blue-100' }}
         />
@@ -113,8 +127,8 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         {/* Gastos y Consumos */}
         <KPICard
           title="Egresos / Gastos"
-          value={`$${totalGastos.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext={`${gastosHoy.length} movimientos`}
+          value={`$${totalGastos.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          subtext={`~ Bs ${(totalGastos * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Activity}
           color={{ bg: 'bg-rose-500', text: 'text-rose-500', badge: 'bg-rose-50 text-rose-700 border border-rose-100' }}
         />
@@ -122,10 +136,10 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         {/* Utilidad Operativa */}
         <KPICard
           title="Utilidad Operativa"
-          value={`$${utilidadOperativa.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          subtext={utilidadOperativa >= 0 ? 'En Verde' : 'Déficit'}
+          value={`$${utilidadOperativa.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          subtext={`~ Bs ${(utilidadOperativa * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
-          color={{ bg: utilidadOperativa >= 0 ? 'bg-emerald-600' : 'bg-red-600', text: utilidadOperativa >= 0 ? 'text-emerald-600' : 'text-red-600', badge: 'bg-slate-100 text-slate-600' }}
+          color={{ bg: utilidadOperativa >= 0 ? 'bg-emerald-600' : 'bg-red-600', text: utilidadOperativa >= 0 ? 'text-emerald-600' : 'text-red-600', badge: utilidadOperativa >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100' }}
         />
 
         {/* Tesorería (Fondos) */}

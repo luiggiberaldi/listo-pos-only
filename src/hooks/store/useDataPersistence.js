@@ -1,5 +1,6 @@
 import Swal from 'sweetalert2';
 import { generarCapsulaDeTiempo, restaurarCapsulaDeTiempo } from '../../utils/backupUtils';
+import { timeProvider } from '../../utils/TimeProvider';
 
 export const useDataPersistence = () => {
 
@@ -13,7 +14,7 @@ export const useDataPersistence = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `RESPALDO_LISTO_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `RESPALDO_LISTO_${timeProvider.toISOString().split('T')[0]}.json`;
             a.click();
 
             Swal.close();
@@ -34,6 +35,16 @@ export const useDataPersistence = () => {
                     // Es un backup viejo (V1)
                     throw new Error("Formato antiguo detectado. Use el migrador (No implementado en V2).");
                 }
+            }
+
+            // 🛡️ VALIDACIÓN DE ESTRUCTURA (Para evitar "Restaurando..." infinito en archivos corruptos)
+            if (!data.dexie || !data.localStorage) {
+                throw new Error("El archivo de respaldo está incompleto o corrupto (Falta Dexie/LocalStorage). Si intenta importar productos, use el módulo de Inventario.");
+            }
+
+            // 🛡️ VALIDACIÓN DE ESTRUCTURA (Para evitar "Restaurando..." infinito en archivos corruptos)
+            if (!data.dexie || !data.localStorage) {
+                throw new Error("El archivo de respaldo está incompleto o corrupto (Falta Dexie/LocalStorage). Si intenta importar productos, use el módulo de Inventario.");
             }
 
             Swal.fire({ title: 'Restaurando...', text: 'Peligro: Se borrarán los datos actuales.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });

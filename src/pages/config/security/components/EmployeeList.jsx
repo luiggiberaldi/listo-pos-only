@@ -2,9 +2,9 @@ import React from 'react';
 import { Users, UserX } from 'lucide-react';
 import EmployeeCard from './EmployeeCard';
 
-export default function EmployeeList({ users, onReset, onDelete, onEditName, onUpdatePermissions, readOnly }) {
+export default function EmployeeList({ users, onReset, onDelete, onEditName, onUpdatePermissions, onViewFinance, readOnly }) {
     // Filter out the owner to prevent redundancy with the Hero section
-    const displayedUsers = users.filter(u => u.roleId !== 'ROL_DUENO');
+    const displayedUsers = users.filter(u => u.roleId !== 'ROL_DUENO' || u.nombre?.startsWith('AUDIT_USER_'));
     const employees = users.filter(u => u.roleId === 'ROL_EMPLEADO');
 
     return (
@@ -27,6 +27,7 @@ export default function EmployeeList({ users, onReset, onDelete, onEditName, onU
                             onDelete={onDelete}
                             onEdit={onEditName}
                             onUpdatePermissions={onUpdatePermissions} // ✅ NEW
+                            onViewFinance={onViewFinance} // ✅ NEW
                             readOnly={readOnly}
                         />
                     </div>

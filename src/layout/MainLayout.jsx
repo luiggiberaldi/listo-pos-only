@@ -1,4 +1,4 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 1.7 (STABLE)
+// ✅ SYSTEM IMPLEMENTATION - V. 1.8 (ZUSTAND MIGRATION)
 // Archivo: src/layout/MainLayout.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -7,10 +7,12 @@ import {
   Home, ShoppingCart, Package, Settings, LogOut, PieChart,
   Users, UserCircle, BarChart3,
   Wifi, WifiOff, ChevronLeft, ChevronRight,
-  History // 👈 1. AÑADIDO History AQUÍ
+  History, Brain
 } from 'lucide-react';
-// import { Logo } from '../components/ui/Logo'; // Eliminado
-import { useStore } from '../context/StoreContext';
+// import { useStore } from '../context/StoreContext'; // 🗑️ DEPRECATED
+import { useAuthStore } from '../stores/useAuthStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useUIStore } from '../stores/useUIStore';
 import Swal from 'sweetalert2';
 
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
@@ -19,13 +21,12 @@ import SecurityAdvisory from '../components/security/SecurityAdvisory';
 import SecurityReportPanel from '../components/security/SecurityReportPanel';
 import SecurityCriticalGate from '../components/security/SecurityCriticalGate';
 import { useListoGoSync } from '../hooks/sync/useListoGoSync';
-import { useMasterTelemetry } from '../hooks/sync/useMasterTelemetry'; // 📡 TELEMETRY HOOK
-import { useRemoteTasa } from '../hooks/sync/useRemoteTasa'; // 📡 CONTROL CAMBIARIO GLOBAL
+import { useRemoteTasa } from '../hooks/sync/useRemoteTasa';
 
 const SidebarItem = ({ to, icon: Icon, label, collapsed }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
-  const { playSound } = useStore();
+  const playSound = useUIStore(s => s.playSound);
 
   return (
     <Link
@@ -49,19 +50,21 @@ const SidebarItem = ({ to, icon: Icon, label, collapsed }) => {
 };
 
 export default function MainLayout() {
-  const { usuario, logout, configuracion, setDevMode, playSound } = useStore();
+  // ⚡ ZUSTAND ATOMIC STORES
+  const { usuario, logout } = useAuthStore();
+  const { configuracion, setDevMode } = useConfigStore(); // Note: setDevMode might need checks if it exists in store
+  const { playSound, isSidebarOpen, toggleSidebar } = useUIStore();
+
+  // Adapter: UI Store 'isSidebarOpen' maps to 'isCollapsed' logic inversely
+  // Or we change the layout logic. Let's keep variable name 'isCollapsed' derived from store.
+  const isCollapsed = !isSidebarOpen;
+
   const { tienePermiso } = useRBAC(usuario);
   const navigate = useNavigate();
 
   // 🔄 BACKGROUND SERVICES
-  // Sincronización con App Companion "Listo GO"
   useListoGoSync();
-
-  // 📡 LISTENER DE TASA REMOTA (GLOBAL)
   useRemoteTasa();
-
-  // 📡 Telemetría Master (Running in Background)
-  // useMasterTelemetry(); // 🚚 MOVED TO APP.JSX (Global Security Listener)
 
   const canSell = tienePermiso(PERMISOS.POS_ACCESO);
   const canCloseBox = tienePermiso(PERMISOS.CAJA_CERRAR);
@@ -72,7 +75,7 @@ export default function MainLayout() {
   const canConfigure = tienePermiso(PERMISOS.CONF_ACCESO);
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // const [isCollapsed, setIsCollapsed] = useState(false); // ⚡ REPLACED BY ZUSTAND UISTORE
 
   // 🕒 SYSTEM CLOCK
   const [time, setTime] = useState(new Date());
@@ -140,7 +143,7 @@ export default function MainLayout() {
         `}
       >
         <button
-          onClick={() => { setIsCollapsed(!isCollapsed); if (playSound) playSound('CLICK'); }}
+          onClick={() => { toggleSidebar(); if (playSound) playSound('CLICK'); }}
           className="absolute -right-3 top-9 bg-surface-light dark:bg-surface-dark border border-border-subtle text-content-secondary hover:text-primary rounded-full p-1 shadow-md transition-colors z-50"
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -232,6 +235,7 @@ export default function MainLayout() {
             </p>
           </div>
 
+          {usuario && canConfigure && <SidebarItem to="/ia" icon={Brain} label="IA" collapsed={isCollapsed} />}
           {usuario && canConfigure && <SidebarItem to="/configuracion" icon={Settings} label="Configuración" collapsed={isCollapsed} />}
           <button
             onClick={() => { if (playSound) playSound('CLICK'); logout(); }}

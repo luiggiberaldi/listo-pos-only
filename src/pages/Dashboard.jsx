@@ -19,6 +19,7 @@ import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 import DashboardStats from '../components/dashboard/DashboardStats';
 import ModalGasto from '../components/finanzas/ModalGasto'; // [NEW]
 import { agruparPorMetodo, calcularTesoreia } from '../utils/reportUtils';
+import { timeProvider } from '../utils/TimeProvider';
 
 const formatVencimiento = (fechaIso) => {
   if (!fechaIso) return 'N/A';
@@ -73,8 +74,8 @@ export default function Dashboard() {
   };
 
   const ventasFiltradas = useMemo(() => {
-    let inicio = new Date();
-    let fin = new Date();
+    let inicio = timeProvider.now();
+    let fin = timeProvider.now();
     inicio.setHours(0, 0, 0, 0);
     fin.setHours(23, 59, 59, 999);
 
@@ -102,7 +103,7 @@ export default function Dashboard() {
 
   const balancesHoy = useMemo(() => {
     if (rango !== 'hoy') return {};
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = timeProvider.toISOString().split('T')[0];
     let totalOpen = { usdCash: 0, vesCash: 0, usdDigital: 0, vesDigital: 0 };
 
     // Sumar cierres de hoy
@@ -142,8 +143,8 @@ export default function Dashboard() {
   }, [productos]);
 
   const alertas = useMemo(() => {
-    const hoy = new Date();
-    const prox = new Date(); prox.setDate(hoy.getDate() + 30);
+    const hoy = timeProvider.now();
+    const prox = timeProvider.now(); prox.setDate(hoy.getDate() + 30);
     return {
       criticos: productos.filter(p => p.stock <= (parseFloat(p.stockMinimo) || 5) && p.stock > 0),
       agotados: productos.filter(p => p.stock <= 0),
@@ -237,7 +238,7 @@ export default function Dashboard() {
             </button>
 
             <span className="ml-2 px-3 py-1 bg-surface-light dark:bg-surface-dark border border-border-subtle rounded-lg text-sm font-black text-content-main shadow-sm">
-              Bs {configuracion.tasa}
+              Bs {parseFloat(configuracion.tasa || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
 
             {/* BOTÓN GASTOS [NEW] */}

@@ -1,11 +1,12 @@
 import Decimal from 'decimal.js';
 import { calcularKPIs } from './fiscalEngine';
 import { agruparPorMetodo, analizarFlujoVueltos } from './treasuryEngine';
+import { timeProvider } from '../TimeProvider';
 
 const d = (val) => new Decimal(val || 0);
 
 export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, config = {}, egresos = {}) => {
-    const fechaCierre = new Date();
+    const fechaCierre = timeProvider.now();
     const taxRate = config.porcentajeIva !== undefined ? parseFloat(config.porcentajeIva) : 16;
 
     // Egresos (Default if not provided)
@@ -145,8 +146,8 @@ export const generarReporteZ = (ventas = [], cajaState = {}, usuario = {}, confi
     };
 
     return {
-        id: Date.now(),
-        corteRef: `Z-${Date.now().toString().slice(-6)}`,
+        id: timeProvider.timestamp(),
+        corteRef: `Z-${timeProvider.timestamp().toString().slice(-6)}`,
         fecha: fechaCierre.toISOString(),
         usuarioCierre: { id: usuario?.id || 'sys', nombre: usuario?.nombre || 'Sistema' },
         sesionCaja: {

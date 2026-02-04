@@ -1,30 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Wallet, Package, DollarSign, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Wallet, Package, DollarSign, AlertCircle, FileText, CheckCircle2, User, Store, Banknote, Search } from 'lucide-react';
 import { useFinance } from '../../hooks/store/useFinance';
 import { useInventory } from '../../hooks/store/useInventory';
+import { useFinanceIntegrator } from '../../hooks/store/useFinanceIntegrator';
 import { useStore } from '../../context/StoreContext';
 import { ActionGuard } from '../security/ActionGuard';
 import ProductGrid from '../pos/ProductGrid';
 import Swal from 'sweetalert2';
 
 export default function ModalGasto({ isOpen, onClose }) {
-    const { usuario, productos, configuracion } = useStore();
+    const { usuario, productos, configuracion, usuarios } = useStore();
     const { registrarGasto } = useFinance();
     const { registrarConsumoInterno } = useInventory(usuario);
+    const { registrarAdelantoSueldo, registrarConsumoEmpleado } = useFinanceIntegrator();
 
-    const [mode, setMode] = useState('MONEY'); // 'MONEY' | 'GOODS'
+    const [mode, setMode] = useState('MONEY');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Estado Dinero
     const [moneyData, setMoneyData] = useState({
         monto: '',
         moneda: 'USD',
         medio: 'CASH',
-        motivo: ''
+        motivo: '',
+        esAdelanto: false
     });
 
-    // Estado Mercancía
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [goodsData, setGoodsData] = useState({
@@ -32,20 +33,23 @@ export default function ModalGasto({ isOpen, onClose }) {
         motivo: ''
     });
 
+    const [consumidorType, setConsumidorType] = useState('SYSTEM');
+    const [targetEmployeeId, setTargetEmployeeId] = useState('');
+
     const activeColor = mode === 'MONEY' ? 'indigo' : 'emerald';
-    const activeColorHex = mode === 'MONEY' ? '#4F46E5' : '#10B981';
 
     useEffect(() => {
         if (!isOpen) {
-            setMoneyData({ monto: '', moneda: 'USD', medio: 'CASH', motivo: '' });
+            setMoneyData({ monto: '', moneda: 'USD', medio: 'CASH', motivo: '', esAdelanto: false });
             setGoodsData({ cantidad: 1, motivo: '' });
             setSelectedProduct(null);
             setSearchTerm('');
             setMode('MONEY');
+            setConsumidorType('SYSTEM');
+            setTargetEmployeeId('');
         }
     }, [isOpen]);
 
-    // Filtrado de productos para el grid
     const filteredProducts = useMemo(() => {
         if (!productos) return [];
         if (!searchTerm) {
@@ -63,26 +67,38 @@ export default function ModalGasto({ isOpen, onClose }) {
             Swal.fire('Error', 'Debes ingresar un monto válido', 'warning');
             return;
         }
-        if (moneyData.motivo.length < 5) {
-            Swal.fire('Error', 'El motivo debe ser más detallado (mín. 5 letras)', 'warning');
-            return;
+
+        let result;
+        if (moneyData.esAdelanto) {
+            if (!targetEmployeeId) {
+                Swal.fire('Error', 'Selecciona al empleado', 'warning');
+                return;
+            }
+            if (moneyData.motivo.length < 5) moneyData.motivo = "Adelanto de Nómina";
+            setIsSubmitting(true);
+            result = await registrarAdelantoSueldo(targetEmployeeId, parseFloat(moneyData.monto), moneyData.motivo, moneyData.moneda);
+        } else {
+            if (moneyData.motivo.length < 5) {
+                Swal.fire('Error', 'El motivo debe ser más detallado', 'warning');
+                return;
+            }
+            setIsSubmitting(true);
+            result = await registrarGasto({
+                monto: parseFloat(moneyData.monto),
+                moneda: moneyData.moneda,
+                medio: moneyData.medio,
+                motivo: moneyData.motivo,
+                usuario
+            });
         }
 
-        setIsSubmitting(true);
-        const result = await registrarGasto({
-            monto: parseFloat(moneyData.monto),
-            moneda: moneyData.moneda,
-            medio: moneyData.medio,
-            motivo: moneyData.motivo,
-            usuario
-        });
         setIsSubmitting(false);
-
         if (result.success) {
-            Swal.fire({ icon: 'success', title: 'Gasto Registrado', text: 'Se ha descontado de la caja correctamente.', timer: 2000, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Operación Exitosa', text: result.message || 'Registro completado', timer: 2000, showConfirmButton: false });
             onClose();
         } else {
-            Swal.fire('Error', result.message, 'error');
+            console.error("❌ Error en ModalGasto:", result);
+            Swal.fire('Error', result.message || "Error desconocido", 'error');
         }
     };
 
@@ -91,28 +107,44 @@ export default function ModalGasto({ isOpen, onClose }) {
             Swal.fire('Error', 'Selecciona un producto', 'warning');
             return;
         }
+        if (consumidorType === 'EMPLOYEE' && !targetEmployeeId) {
+            Swal.fire('Error', 'Debes seleccionar qué empleado consume.', 'warning');
+            return;
+        }
         if (goodsData.motivo.length < 5) {
             Swal.fire('Error', 'El motivo del consumo es obligatorio', 'warning');
             return;
         }
 
         setIsSubmitting(true);
-        const result = await registrarConsumoInterno({
-            id: selectedProduct.id,
-            unidadVenta: 'unidad',
-            cantidad: parseFloat(goodsData.cantidad)
-        }, goodsData.motivo, usuario);
-        setIsSubmitting(false);
+        let result = { success: false, message: '' };
+        try {
+            if (consumidorType === 'EMPLOYEE') {
+                result = await registrarConsumoEmpleado(targetEmployeeId, selectedProduct, goodsData.cantidad, goodsData.motivo);
+            } else {
+                const resInv = await registrarConsumoInterno({
+                    id: selectedProduct.id,
+                    unidadVenta: 'unidad',
+                    cantidad: parseFloat(goodsData.cantidad)
+                }, goodsData.motivo, usuario);
+                result = { success: resInv.success, message: resInv.success ? 'Inventario ajustado.' : 'Error en inventario' };
+            }
+        } catch (error) {
+            result = { success: false, message: error.message };
+        }
 
+        setIsSubmitting(false);
         if (result.success) {
-            Swal.fire({ icon: 'success', title: 'Consumo Registrado', text: 'El inventario ha sido ajustado.', timer: 2000, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Registro Exitoso', text: result.message, timer: 2000, showConfirmButton: false });
             onClose();
         } else {
-            Swal.fire('Error', 'Hubo un problema registrando el consumo', 'error');
+            Swal.fire('Error', result.message || 'Hubo un problema registrando el consumo', 'error');
         }
     };
 
     if (!isOpen) return null;
+
+    const CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento'];
 
     return (
         <AnimatePresence>
@@ -187,6 +219,15 @@ export default function ModalGasto({ isOpen, onClose }) {
                                                 autoFocus
                                             />
                                         </div>
+                                        {/* Conversion Feedback */}
+                                        {moneyData.moneda === 'VES' && moneyData.monto && (
+                                            <div className="pt-1 animate-in fade-in slide-in-from-left-2">
+                                                <span className="text-[10px] font-black text-blue-500 flex items-center gap-1">
+                                                    <DollarSign size={10} strokeWidth={3} />
+                                                    Aprox. ${(parseFloat(moneyData.monto) / (configuracion.tasa || 1)).toFixed(2)} USD
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">Moneda</label>
@@ -207,8 +248,63 @@ export default function ModalGasto({ isOpen, onClose }) {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
+                                {/* ADELANTO TOGGLE */}
+                                <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-3">
+                                    <div className="flex items-center justify-between cursor-pointer" onClick={() => setMoneyData({ ...moneyData, esAdelanto: !moneyData.esAdelanto })}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${moneyData.esAdelanto ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-300 border border-slate-200'}`}>
+                                                <Banknote size={20} strokeWidth={2.5} />
+                                            </div>
+                                            <div>
+                                                <h4 className={`text-sm font-black ${moneyData.esAdelanto ? 'text-indigo-900' : 'text-slate-500'}`}>¿Es Adelanto de Nómina?</h4>
+                                                <p className="text-[10px] text-slate-400 font-medium">Se descontará de la caja y sumará a la deuda del empleado</p>
+                                            </div>
+                                        </div>
+                                        <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 ${moneyData.esAdelanto ? 'bg-indigo-600' : 'bg-slate-200'}`}>
+                                            <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${moneyData.esAdelanto ? 'translate-x-5' : 'translate-x-0'}`} />
+                                        </div>
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {moneyData.esAdelanto && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="pt-2">
+                                                    <select
+                                                        value={targetEmployeeId}
+                                                        onChange={e => setTargetEmployeeId(e.target.value)}
+                                                        className="w-full p-3 bg-white border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm"
+                                                    >
+                                                        <option value="">-- Seleccionar Empleado --</option>
+                                                        {usuarios
+                                                            .filter(u => u.activo && u.rol !== 'admin')
+                                                            .map(u => (
+                                                                <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
+                                                            ))}
+                                                    </select>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className="space-y-3">
                                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">Motivo del Gasto</label>
+                                    <div className="flex flex-wrap gap-2 mb-1">
+                                        {CHIPS.map(chip => (
+                                            <button
+                                                key={chip}
+                                                onClick={() => setMoneyData({ ...moneyData, motivo: chip + ': ' })}
+                                                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 transition-all active:scale-95"
+                                            >
+                                                {chip}
+                                            </button>
+                                        ))}
+                                    </div>
                                     <textarea
                                         value={moneyData.motivo}
                                         onChange={e => setMoneyData({ ...moneyData, motivo: e.target.value })}
@@ -244,7 +340,7 @@ export default function ModalGasto({ isOpen, onClose }) {
                                                 autoFocus
                                             />
                                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors">
-                                                <SearchIcon />
+                                                <Search size={20} />
                                             </div>
                                         </div>
 
@@ -259,10 +355,10 @@ export default function ModalGasto({ isOpen, onClose }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="max-w-md mx-auto space-y-8 py-4 animate-in fade-in slide-in-from-right-8 duration-300">
+                                    <div className="max-w-md mx-auto space-y-6 py-4 animate-in fade-in slide-in-from-right-8 duration-300">
+                                        {/* PRODUCT CARD */}
                                         <div className="bg-white p-1 rounded-[2rem] border border-slate-200 shadow-lg relative overflow-hidden group hover:shadow-xl transition-all">
                                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-10 -mt-10 opacity-50 pointer-events-none transition-transform group-hover:scale-110" />
-
                                             <div className="flex items-center gap-5 p-5 relative z-10">
                                                 <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center text-4xl shadow-inner border border-slate-100">📦</div>
                                                 <div className="flex-1">
@@ -275,6 +371,42 @@ export default function ModalGasto({ isOpen, onClose }) {
                                                     <X size={16} strokeWidth={3} />
                                                 </button>
                                             </div>
+                                        </div>
+
+                                        {/* QUIÉN CONSUME */}
+                                        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">¿Quién consume?</label>
+                                            <div className="flex bg-slate-50 rounded-xl p-1 gap-1">
+                                                <button
+                                                    onClick={() => setConsumidorType('SYSTEM')}
+                                                    className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${consumidorType === 'SYSTEM' ? 'bg-white shadow text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    <Store size={14} /> Local / Dueño
+                                                </button>
+                                                <button
+                                                    onClick={() => setConsumidorType('EMPLOYEE')}
+                                                    className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${consumidorType === 'EMPLOYEE' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    <User size={14} /> Empleado
+                                                </button>
+                                            </div>
+
+                                            {consumidorType === 'EMPLOYEE' && (
+                                                <div className="animate-in fade-in slide-in-from-top-2">
+                                                    <select
+                                                        value={targetEmployeeId}
+                                                        onChange={e => setTargetEmployeeId(e.target.value)}
+                                                        className="w-full p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl text-sm font-bold text-indigo-800 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                                    >
+                                                        <option value="">-- Seleccionar Empleado --</option>
+                                                        {usuarios
+                                                            ?.filter(u => u.activo && u.rol !== 'admin')
+                                                            ?.map(u => (
+                                                                <option key={u.id} value={u.id}>{u.nombre} ({u.rol})</option>
+                                                            ))}
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="space-y-3">
@@ -301,13 +433,40 @@ export default function ModalGasto({ isOpen, onClose }) {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
+                                        {/* INFO IMPACTO */}
+                                        <div className={`p-4 rounded-2xl flex gap-3 text-xs shadow-sm items-center ${consumidorType === 'EMPLOYEE' ? 'bg-indigo-50 border border-indigo-100 text-indigo-700' : 'bg-amber-50 border border-amber-100 text-amber-700'}`}>
+                                            <div className="p-2 bg-white rounded-full shrink-0 shadow-sm">
+                                                <DollarSign size={18} className={consumidorType === 'EMPLOYEE' ? 'text-indigo-500' : 'text-amber-500'} />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold opacity-90">{consumidorType === 'EMPLOYEE' ? 'CARGO A NÓMINA:' : 'GASTO COSTO:'}</p>
+                                                <p className="font-medium opacity-80 mt-0.5">
+                                                    {consumidorType === 'EMPLOYEE'
+                                                        ? `Se cobrará $${((selectedProduct.precio || 0) * goodsData.cantidad).toFixed(2)} al empleado.`
+                                                        : `Se registrará pérdida por valor de inventario (costo).`
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
                                             <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">Motivo del Consumo</label>
+                                            <div className="flex flex-wrap gap-2 mb-1">
+                                                {CHIPS.map(chip => (
+                                                    <button
+                                                        key={chip}
+                                                        onClick={() => setGoodsData({ ...goodsData, motivo: chip + ': ' })}
+                                                        className="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-emerald-300 hover:text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 transition-all active:scale-95"
+                                                    >
+                                                        {chip}
+                                                    </button>
+                                                ))}
+                                            </div>
                                             <textarea
                                                 value={goodsData.motivo}
                                                 onChange={e => setGoodsData({ ...goodsData, motivo: e.target.value })}
                                                 className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none resize-none h-28 text-sm font-medium transition-all shadow-sm placeholder:text-slate-300"
-                                                placeholder="Ej: Merma, uso interno, caducidad..."
+                                                placeholder={consumidorType === 'EMPLOYEE' ? "Ej: Almuerzo, Merienda..." : "Ej: Caducidad, Merma..."}
                                                 maxLength={200}
                                             />
                                         </div>
@@ -323,7 +482,7 @@ export default function ModalGasto({ isOpen, onClose }) {
 
                         {(mode === 'MONEY' || (mode === 'GOODS' && selectedProduct)) && (
                             <ActionGuard
-                                permission="SUPERVISOR_ACCESS"
+                                permission={mode === 'GOODS' && consumidorType === 'EMPLOYEE' ? 'sales.create' : 'SUPERVISOR_ACCESS'}
                                 onClick={mode === 'MONEY' ? handleMoneySubmit : handleGoodsSubmit}
                             >
                                 <button
@@ -336,7 +495,7 @@ export default function ModalGasto({ isOpen, onClose }) {
                                     {isSubmitting ? '...' : (
                                         <>
                                             <CheckCircle2 size={16} strokeWidth={3} />
-                                            {mode === 'MONEY' ? 'Confirmar Salida' : 'Confirmar Baja'}
+                                            {mode === 'MONEY' ? 'Confirmar Salida' : (consumidorType === 'EMPLOYEE' ? 'Cargar a Cuenta' : 'Confirmar Baja')}
                                         </>
                                     )}
                                 </button>
@@ -349,7 +508,6 @@ export default function ModalGasto({ isOpen, onClose }) {
     );
 }
 
-// Icono auxiliar
 const SearchIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
 );

@@ -214,7 +214,7 @@ export const CajaEstadoProvider = ({ children }) => {
     abrirCaja,
     cerrarCaja,
     cerrarSesionCaja,
-    cerrarSesionCaja,
+
     actualizarBalances,
     registrarSalidaCaja
   }), [estado, cortes, isCajaAbierta, getEstadoCaja, abrirCaja, cerrarCaja, cerrarSesionCaja, actualizarBalances, registrarSalidaCaja]);

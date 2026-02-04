@@ -9,7 +9,7 @@ import { doc, setDoc, getDoc, serverTimestamp, collection, getDocs, writeBatch }
 import LZString from 'lz-string';
 
 const BACKUP_VERSION = 'v2-unified';
-const CHUNK_SIZE_LIMIT = 900 * 1024; // 900KB Safe Limit (Firestore is 1MB)
+const CHUNK_SIZE_LIMIT = 800 * 1024; // 800KB Safe Limit (Firestore is 1MB - Overhead)
 
 import { generarCapsulaDeTiempo, restaurarCapsulaDeTiempo } from '../../utils/backupUtils';
 
@@ -40,7 +40,7 @@ export const useCloudBackup = () => {
 
             if (sizeBytes > CHUNK_SIZE_LIMIT) {
                 // --- MODO CHUNKED ---
-                console.log(`📦 [CLOUD] Backup Grande detectado (${(sizeBytes / 1024).toFixed(2)} KB). Iniciando fragmentación...`);
+                console.log(`📦 [CLOUD] Backup Grande detectado (${(sizeBytes / 1024).toFixed(2)} KB). Iniciando fragmentación segura...`);
 
                 // A. Limpiar chunks previos
                 const oldChunks = await getDocs(chunksRef);
@@ -49,11 +49,13 @@ export const useCloudBackup = () => {
                 await batch.commit();
 
                 // B. Dividir y Subir
-                const totalChunks = Math.ceil(compressed.length / 450000); // 450k chars * 2 bytes = 900KB
+                // Reduced chunk size to 400,000 chars * 2 bytes = 800KB to be safe
+                const CHUNK_CHAR_SIZE = 400000;
+                const totalChunks = Math.ceil(compressed.length / CHUNK_CHAR_SIZE);
 
                 for (let i = 0; i < totalChunks; i++) {
-                    const start = i * 450000;
-                    const end = start + 450000;
+                    const start = i * CHUNK_CHAR_SIZE;
+                    const end = start + CHUNK_CHAR_SIZE;
                     const chunkData = compressed.substring(start, end);
 
                     const chunkDoc = doc(chunksRef, i.toString()); // ID simple: "0", "1", "2"...

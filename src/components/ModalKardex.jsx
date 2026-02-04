@@ -2,14 +2,13 @@ import React, { useState, useMemo } from 'react';
 import {
     X, Search, Filter, Trash2,
     CheckSquare, Square, Box, ArrowRight,
-    TrendingUp, TrendingDown, AlertCircle, FileText,
+    TrendingUp, TrendingDown, AlertCircle,
     ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useStore } from '../context/StoreContext';
 
 // --- UTILS UI ---
-import { downloadCSV } from '../utils/csvExport'; // Import helper
 const getSafeType = (val) => {
     try {
         if (!val) return 'DESCONOCIDO';
@@ -163,28 +162,6 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
     }, [movimientosFiltrados, paginaActual]);
 
     // Acciones
-    const handleExportar = () => {
-        if (movimientosFiltrados.length === 0) return;
-
-        const headers = ["Fecha", "Tipo", "Producto", "Cantidad", "Factor", "Unidad", "Stock Final", "Detalle", "Referencia", "Usuario"];
-        const rows = movimientosFiltrados.map(m => [
-            new Date(m.fecha).toLocaleString(),
-            getSafeType(m.tipo),
-            m.producto,
-            m.meta ? m.meta.cantidadOriginal : m.cantidad,
-            m.meta ? m.meta.factor : 1,
-            m.meta ? m.meta.unidad : 'UNIDAD',
-            m.stockFinal,
-            m.detalle,
-            m.referencia || '',
-            m.usuarioNombre || m.usuario || 'Sistema'
-        ]);
-
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const fileName = `Kardex_ListoPOS_${new Date().toISOString().split('T')[0]}.csv`;
-
-        downloadCSV(csvContent, fileName);
-    };
 
     const toggleSeleccion = (id) => {
         setSeleccionados(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -208,58 +185,129 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
         });
     };
 
-    // State for Reference Popover
-    const [popover, setPopover] = useState(null); // { x, y, content, type }
+    // 211: Popover LOGIC REMOVED -> Replaced by SweetAlert Details
+    // 211: Improved Detailed View (Smart Parsing)
+    const handleShowDetails = (mov) => {
+        const cant = parseFloat(mov.cantidad);
+        const stockF = parseFloat(mov.stockFinal);
+        const tipoRaw = getSafeType(mov.tipo);
 
-    // Close popover on outside interaction (simple overlay click) or close button
-    const closePopover = () => setPopover(null);
+        // 🧠 Logic: Direction & Friendly Names
+        const esSalida = tipoRaw.includes('SALIDA') || tipoRaw.includes('VENTA') || tipoRaw.includes('CONSUMO') || tipoRaw.includes('MERMA');
+        const esNomina = tipoRaw.includes('CONSUMO') && (mov.detalle || '').toLowerCase().includes('nomina');
 
-    const handleRefClick = (e, mov) => {
-        e.stopPropagation();
-        const rect = e.currentTarget.getBoundingClientRect();
-        setPopover({
-            x: rect.left + window.scrollX,
-            y: rect.top + window.scrollY - 10, // Slightly above
-            content: {
-                nota: mov.detalle, // Or specific 'nota' field if it exists separate from detalle
-                ref: mov.referencia,
-                usuario: mov.usuarioNombre || mov.usuario || 'Sistema',
-                fecha: new Date(mov.fecha).toLocaleString()
+        // Smart Title Map
+        let friendlyTitle = tipoRaw;
+        if (esNomina) friendlyTitle = 'CONSUMO DE NÓMINA';
+        else if (tipoRaw === 'CONSUMO_INTERNO') friendlyTitle = 'CONSUMO INTERNO / MERMA';
+        else if (tipoRaw === 'VENTA_POS') friendlyTitle = 'VENTA POS';
+
+        // 🕵️‍♂️ Payroll Extraction: "Consumo Nomina (Juan): Motivo"
+        let empleadoAfectado = null;
+        let motivoLimpio = mov.detalle;
+
+        if (esNomina) {
+            const match = mov.detalle?.match(/Consumo Nomina \((.*?)\):/i) || mov.detalle?.match(/Consumo Nomina: (.*)/i);
+            // Si tiene parentesis, es el nuevo formato. Si no, es legacy (asumimos el motivo es todo)
+            if (mov.detalle?.includes('(') && mov.detalle?.includes(')')) {
+                const nameMatch = mov.detalle.match(/\((.*?)\)/);
+                if (nameMatch) empleadoAfectado = nameMatch[1];
+            } else {
+                // Legacy support (older logs don't have name in parens)
+                // We might infer it's generic
+            }
+        }
+
+        Swal.fire({
+            title: `<div class="flex flex-col items-center gap-1">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ficha de Movimiento</span>
+                        <div class="flex items-center gap-2 text-xl font-black text-slate-800 tracking-tight">
+                             ${friendlyTitle.replace(/_/g, ' ')}
+                        </div>
+                    </div>`,
+            html: `
+                <div class="flex flex-col gap-3 text-left p-1 select-text">
+                    
+                    <!-- 1. HEADER: PRODUCTO & CANTIDAD -->
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full ${esSalida ? 'bg-rose-500' : 'bg-emerald-500'}"></div>
+                        <div class="pl-2">
+                             <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Producto</div>
+                             <div class="font-black text-slate-800 text-base leading-tight">${mov.producto}</div>
+                        </div>
+                         <div class="text-right">
+                             <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Cantidad</div>
+                             <div class="font-black text-3xl ${esSalida ? 'text-rose-600' : 'text-emerald-600'}">
+                                ${esSalida ? '-' : '+'}${cant.toFixed(2)}
+                             </div>
+                             <div class="text-[9px] font-bold text-slate-400 mt-1 bg-white px-2 py-0.5 rounded border border-slate-100 inline-block">
+                                Stock Post: ${stockF.toFixed(2)}
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. EMPLEADO AFECTADO (Si aplica) -->
+                    ${empleadoAfectado ? `
+                    <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center gap-3 animate-in zoom-in duration-300">
+                        <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <div>
+                            <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Se descontó a:</div>
+                            <div class="font-black text-indigo-900 text-sm">${empleadoAfectado}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- 3. METADATA GRID -->
+                    <div class="grid grid-cols-2 gap-3">
+                         <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                            <span class="text-[9px] font-black text-slate-400 uppercase">📅 Fecha</span>
+                            <div class="font-bold text-slate-700 text-xs mt-0.5">${new Date(mov.fecha).toLocaleDateString()}</div>
+                            <div class="font-mono text-[9px] text-slate-400 font-bold">${new Date(mov.fecha).toLocaleTimeString()}</div>
+                         </div>
+                         <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                            <span class="text-[9px] font-black text-slate-400 uppercase">👤 Registrado Por</span>
+                            <div class="font-bold text-slate-700 text-xs mt-0.5 flex items-center gap-1">
+                                 ${mov.usuarioNombre || mov.usuario || 'Sistema'}
+                            </div>
+                         </div>
+                    </div>
+
+                    <!-- 4. DETALLE / MOTIVO -->
+                     <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm relative">
+                        <div class="text-[9px] font-black text-slate-400 uppercase mb-2 border-b border-slate-50 pb-1">📝 Motivo / Detalle</div>
+                        <div class="font-medium text-slate-600 text-sm leading-relaxed whitespace-pre-line italic">
+                            "${mov.detalle || 'Sin detalle registrado'}"
+                        </div>
+                     </div>
+                     
+                     <!-- 5. FOOTER -->
+                     <div class="text-[9px] text-slate-300 font-mono text-center pt-2 flex justify-between px-2">
+                        <span>LID: ${mov.id || '#'}</span>
+                        <span>${mov.referencia || 'SIN REF'}</span>
+                     </div>
+                </div>
+            `,
+            confirmButtonText: 'Cerrar Ficha',
+            confirmButtonColor: '#1e293b',
+            width: '400px',
+            padding: '0 0 1.5rem 0',
+            customClass: {
+                title: 'pt-6 px-6 pb-2',
+                htmlContainer: 'px-5'
             }
         });
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200" onClick={closePopover}>
-            {/* Popover Bubble Layer */}
-            {popover && (
-                <div
-                    className="fixed z-[60] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 w-72 animate-in zoom-in-95 duration-200"
-                    style={{ top: popover.y, left: popover.x, transform: 'translate(-50%, -100%)' }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black uppercase text-brand-primary bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                            {popover.content.ref}
-                        </span>
-                        <button onClick={closePopover} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
-                    </div>
-                    <p className="text-sm text-slate-700 dark:text-slate-200 font-medium mb-3 leading-relaxed">
-                        {popover.content.nota}
-                    </p>
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center text-[10px] text-slate-400">
-                        <span>👤 {popover.content.usuario}</span>
-                        <span>📅 {popover.content.fecha}</span>
-                    </div>
-                    {/* Little Triangle */}
-                    <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-slate-800 border-b border-r border-slate-200 dark:border-slate-700 rotate-45"></div>
-                </div>
-            )}
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200" onClick={onClose}>
+            {/* Popover Bubble Layer REMOVED - Using SweetAlert for details now */}
 
             <div className="bg-surface-card dark:bg-slate-900 w-full max-w-7xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
 
                 {/* HEADER */}
-                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900">
+                < div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900" >
                     <div>
                         <h2 className="text-xl font-black text-brand-secondary dark:text-white flex items-center gap-2">
                             <Box className="text-brand-primary" /> KARDEX INTELIGENTE 3.0
@@ -267,12 +315,6 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                         <p className="text-slate-400 text-xs font-bold tracking-wide">Auditoría & Trazabilidad Estructural</p>
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleExportar}
-                            className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-100 transition-colors"
-                        >
-                            <FileText size={16} /> EXPORTAR CSV
-                        </button>
                         {seleccionados.length > 0 && (
                             <button onClick={() => handleEliminar(seleccionados)} className="bg-red-50 text-status-error px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-red-100 transition-colors">
                                 <Trash2 size={16} /> BORRAR ({seleccionados.length})
@@ -280,13 +322,13 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                         )}
                         <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-600"><X size={24} /></button>
                     </div>
-                </div>
+                </div >
 
                 {/* BARRA DE HERRAMIENTAS */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 items-center">
+                < div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 items-center" >
 
                     {/* Buscador */}
-                    <div className="relative flex-1 min-w-[180px]">
+                    < div className="relative flex-1 min-w-[180px]" >
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                         <input
                             className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:border-brand-primary transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
@@ -294,32 +336,34 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                             value={busqueda}
                             onChange={e => setBusqueda(e.target.value)}
                         />
-                    </div>
+                    </div >
 
                     {/* Selector Producto */}
-                    <select
+                    < select
                         className="py-2.5 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-black outline-none cursor-pointer text-slate-800 dark:text-slate-200 focus:border-brand-primary max-w-[180px]"
                         value={productoSeleccionado}
                         onChange={e => setProductoSeleccionado(e.target.value)}
                     >
                         <option value="todos">📦 Todos los Productos</option>
-                        {opcionesFiltro.productos.map((p) => (
-                            <option key={p.id} value={p.id}>{p.nombre}</option>
-                        ))}
-                    </select>
+                        {
+                            opcionesFiltro.productos.map((p) => (
+                                <option key={p.id} value={p.id}>{p.nombre}</option>
+                            ))
+                        }
+                    </select >
 
                     {/* Selector Usuario */}
-                    <select
+                    < select
                         className="py-2.5 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-black outline-none cursor-pointer text-slate-800 dark:text-slate-200 focus:border-brand-primary"
                         value={usuarioFiltro}
                         onChange={e => setUsuarioFiltro(e.target.value)}
                     >
                         <option value="todos">👤 Todos los Usuarios</option>
                         {opcionesFiltro.usuarios.map((n, i) => <option key={i} value={n}>{n}</option>)}
-                    </select>
+                    </select >
 
                     {/* Selector Fecha */}
-                    <input
+                    < input
                         type="date"
                         className="py-2.5 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-black outline-none text-slate-800 dark:text-slate-200 focus:border-brand-primary"
                         value={fechaFiltro}
@@ -327,21 +371,23 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                     />
 
                     {/* Toggle Tipo */}
-                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700">
-                        {['todos', 'entrada', 'salida'].map(t => (
-                            <button
-                                key={t}
-                                onClick={() => setFiltroTipo(t)}
-                                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${filtroTipo === t ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-700 hover:bg-white dark:hover:bg-slate-700'}`}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                    < div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl border border-slate-300 dark:border-slate-700" >
+                        {
+                            ['todos', 'entrada', 'salida'].map(t => (
+                                <button
+                                    key={t}
+                                    onClick={() => setFiltroTipo(t)}
+                                    className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${filtroTipo === t ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-700 hover:bg-white dark:hover:bg-slate-700'}`}
+                                >
+                                    {t}
+                                </button>
+                            ))
+                        }
+                    </div >
+                </div >
 
                 {/* TABLA DE DATOS */}
-                <div className="flex-1 overflow-auto bg-white dark:bg-slate-900">
+                < div className="flex-1 overflow-auto bg-white dark:bg-slate-900" >
                     <table className="w-full text-left text-sm border-collapse">
                         <thead className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black border-b border-slate-300 dark:border-slate-700 sticky top-0 z-10 text-[11px] uppercase tracking-widest">
                             <tr>
@@ -374,71 +420,73 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                                         isSelected={seleccionados.includes(mov.id)}
                                         onToggle={() => toggleSeleccion(mov.id)}
                                         onDelete={() => handleEliminar(mov.id)}
-                                        onRefClick={(e) => handleRefClick(e, mov)}
+                                        onShowDetails={() => handleShowDetails(mov)}
                                     />
                                 ))
                             )}
                         </tbody>
                     </table>
-                </div>
+                </div >
 
                 {/* PAGINATION FOOTER */}
-                {totalRegistros > 0 && (
-                    <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
-                        <span className="text-xs font-bold text-slate-500">
-                            Mostrando {((paginaActual - 1) * ITEMS_POR_PAGINA) + 1} - {Math.min(paginaActual * ITEMS_POR_PAGINA, totalRegistros)} de {totalRegistros} registros
-                        </span>
+                {
+                    totalRegistros > 0 && (
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/30">
+                            <span className="text-xs font-bold text-slate-500">
+                                Mostrando {((paginaActual - 1) * ITEMS_POR_PAGINA) + 1} - {Math.min(paginaActual * ITEMS_POR_PAGINA, totalRegistros)} de {totalRegistros} registros
+                            </span>
 
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPaginaActual(1)}
-                                disabled={paginaActual === 1}
-                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                                title="Primera Página"
-                            >
-                                <ChevronsLeft size={16} />
-                            </button>
-                            <button
-                                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-                                disabled={paginaActual === 1}
-                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                                title="Anterior"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPaginaActual(1)}
+                                    disabled={paginaActual === 1}
+                                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                    title="Primera Página"
+                                >
+                                    <ChevronsLeft size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                    disabled={paginaActual === 1}
+                                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                    title="Anterior"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
 
-                            <div className="px-4 py-1 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 mx-2">
-                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">
-                                    Página {paginaActual} / {totalPaginas}
-                                </span>
+                                <div className="px-4 py-1 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 mx-2">
+                                    <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                                        Página {paginaActual} / {totalPaginas}
+                                    </span>
+                                </div>
+
+                                <button
+                                    onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                                    disabled={paginaActual === totalPaginas}
+                                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                    title="Siguiente"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setPaginaActual(totalPaginas)}
+                                    disabled={paginaActual === totalPaginas}
+                                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                    title="Última Página"
+                                >
+                                    <ChevronsRight size={16} />
+                                </button>
                             </div>
-
-                            <button
-                                onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
-                                disabled={paginaActual === totalPaginas}
-                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                                title="Siguiente"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                            <button
-                                onClick={() => setPaginaActual(totalPaginas)}
-                                disabled={paginaActual === totalPaginas}
-                                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                                title="Última Página"
-                            >
-                                <ChevronsRight size={16} />
-                            </button>
                         </div>
-                    </div>
-                )}
-            </div>
-        </div>
+                    )
+                }
+            </div >
+        </div >
     );
 }
 
 // --- SUBCOMPONENTE: FILA DE KARDEX ---
-const KardexRow = ({ mov, isSelected, onToggle, onDelete, onRefClick }) => {
+const KardexRow = ({ mov, isSelected, onToggle, onDelete, onShowDetails }) => {
     try {
         const tipo = getSafeType(mov.tipo);
 
@@ -530,22 +578,26 @@ const KardexRow = ({ mov, isSelected, onToggle, onDelete, onRefClick }) => {
                     </div>
                 </td>
 
-                {/* DETALLE Y REF */}
-                <td className="p-4">
-                    <div className="flex flex-col gap-0.5">
+                {/* DETALLE Y REF (CLICK HERE FOR DETAILS) */}
+                <td className="p-4" onClick={(e) => { e.stopPropagation(); onShowDetails(); }}>
+                    <div className="flex flex-col gap-0.5 cursor-pointer hover:bg-slate-50 p-1 -m-1 rounded-lg transition-colors group/detail">
                         <span className="text-[11px] text-slate-800 dark:text-slate-300 font-bold truncate max-w-[200px]" title={mov.detalle}>
                             {mov.detalle}
                         </span>
-                        {/* Mostrar Referencia si existe (ID Venta, etc) */}
-                        {mov.referencia && (
-                            <div
-                                onClick={onRefClick}
-                                className="flex items-center gap-1 text-[10px] text-slate-900 dark:text-slate-200 uppercase font-black cursor-help hover:text-brand-primary transition-colors"
-                            >
-                                <FileText size={10} /> Ref: {mov.referencia.toString().length > 20 ? '...' + mov.referencia.toString().slice(-8) : mov.referencia}
-                            </div>
-                        )}
-                        <span className="text-[9px] text-slate-600 dark:text-slate-400 font-black">
+
+                        {/* More visual cue for clickability */}
+                        <div className="flex items-center gap-1">
+                            {mov.referencia && (
+                                <span className="bg-blue-50 text-blue-600 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                                    {mov.referencia.toString().slice(-12)}
+                                </span>
+                            )}
+                            <span className="text-[9px] text-slate-400 font-medium opacity-0 group-hover/detail:opacity-100 transition-opacity flex items-center gap-0.5">
+                                <Search size={10} /> Ver Todo
+                            </span>
+                        </div>
+
+                        <span className="text-[9px] text-slate-600 dark:text-slate-400 font-black mt-0.5">
                             Por: {mov.usuarioNombre || mov.usuario || 'Sistema'}
                         </span>
                     </div>

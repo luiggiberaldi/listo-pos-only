@@ -12,19 +12,22 @@ const RouteGuard = ({ children, requiredPermiso }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (!usuario) return <Navigate to="/login" state={{ from: location }} replace />;
-
   // 🚨 TELEMETRIA DE INTRUSIÓN (EL CHISMOSO)
+  // MOVED UP: Hooks must be called before any early return!
   const { reportarIncidente } = useMasterTelemetry();
   const hasReportedRef = React.useRef(false);
 
   // Efecto lateral para reportar (evita render loops)
   React.useEffect(() => {
-    if (requiredPermiso && !tienePermiso(requiredPermiso) && !hasReportedRef.current) {
+    // Only report specific permission failures for LOGGED IN users.
+    // Unauthenticated users are handled by the redirect below.
+    if (usuario && requiredPermiso && !tienePermiso(requiredPermiso) && !hasReportedRef.current) {
       reportarIncidente('ACCESO_NO_AUTORIZADO', `Intento de acceso a ruta: ${location.pathname} (Rol: ${usuario.role || 'Desconocido'})`, 'ALERTA');
       hasReportedRef.current = true;
     }
   }, [requiredPermiso, tienePermiso, location.pathname, usuario, reportarIncidente]);
+
+  if (!usuario) return <Navigate to="/login" state={{ from: location }} replace />;
 
   if (requiredPermiso && !tienePermiso(requiredPermiso)) {
     // Obtenemos el nombre real del rol para el mensaje

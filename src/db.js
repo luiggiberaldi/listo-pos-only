@@ -4,89 +4,225 @@
 
 import Dexie from 'dexie';
 
-export const db = new Dexie('ListoPosDB');
+// 👻 GHOST MODE CONFIGURATION
+const GHOST_MODE_KEY = 'LISTO_GHOST_MODE';
+export const isGhostMode = localStorage.getItem(GHOST_MODE_KEY) === 'true';
 
-// DEFINICIÓN DEL ESQUEMA (VERSIÓN 6 - INTEGRIDAD COMPLETA)
-// Incluye tablas de sistema (Config y Caja) para atomicidad
-db.version(6).stores({
-  // 📦 INVENTARIO
-  productos: '++id, nombre, codigo, categoria, stock',
+export const toggleGhostMode = (enable) => {
+  localStorage.setItem(GHOST_MODE_KEY, enable);
+  window.location.reload();
+};
 
-  // 🛒 VENTAS
-  ventas: '++id, fecha, corteId, clienteId, status',
+// 🏭 SCHEMA FACTORY (DRY PRINCIPLE)
+const applySchema = (dbInstance) => {
+  // DEFINICIÓN DEL ESQUEMA (VERSIÓN 6 - INTEGRIDAD COMPLETA)
+  // Incluye tablas de sistema (Config y Caja) para atomicidad
+  dbInstance.version(6).stores({
+    // 📦 INVENTARIO
+    productos: '++id, nombre, codigo, categoria, stock',
 
-  // 👥 CLIENTES
-  clientes: '++id, nombre, documento',
+    // 🛒 VENTAS
+    ventas: '++id, fecha, corteId, clienteId, status',
 
-  // ⚙️ CONFIGURACIÓN (Key-Value Atomic)
-  config: 'key',
+    // 👥 CLIENTES
+    clientes: '++id, nombre, documento, deuda, favor', // ✅ Updated Schema implicit
 
-  // 🔐 AUDITORÍA
-  logs: '++id, tipo, fecha, usuarioId',
+    // ⚙️ CONFIGURACIÓN (Key-Value Atomic)
+    config: 'key',
 
-  // ⏳ TICKETS EN ESPERA
-  tickets_espera: '++id, fecha, usuarioNombre',
+    // 🔐 AUDITORÍA
+    logs: '++id, tipo, fecha, usuarioId',
 
-  // ☁️ COLA DE SINCRONIZACIÓN
-  outbox: '++id, collection, status, timestamp',
+    // ⏳ TICKETS EN ESPERA
+    tickets_espera: '++id, fecha, usuarioNombre',
 
-  // 📜 HISTORIAL DE CORTES Z (V. 5)
-  cortes: 'id, fecha, idApertura',
+    // ☁️ COLA DE SINCRONIZACIÓN
+    outbox: '++id, collection, status, timestamp',
 
-  // 🏦 ESTADO DE CAJA (V. 6)
-  // Reemplaza localStorage para permitir transactions seguras en cierres
-  caja_sesion: 'key'
-});
+    // 📜 HISTORIAL DE CORTES Z (V. 5)
+    cortes: 'id, fecha, idApertura',
 
-// 🚀 V. 7: QUADRANTS MIGRATION (Deuda vs Favor)
-db.version(7).stores({
-  clientes: '++id, nombre, documento, deuda, favor'
-}).upgrade(tx => {
-  return tx.table('clientes').toCollection().modify(cliente => {
-    // 1. Inicializar nuevos campos
-    cliente.deuda = 0;
-    cliente.favor = 0;
-
-    // 2. Migrar saldo existente
-    const saldoViejo = cliente.saldo || 0;
-
-    if (saldoViejo > 0.001) {
-      // Saldo positivo = DEUDA (El cliente debe)
-      cliente.deuda = saldoViejo;
-    } else if (saldoViejo < -0.001) {
-      // Saldo negativo = FAVOR (El negocio debe)
-      cliente.favor = Math.abs(saldoViejo);
-    }
-
-    // 3. Normalizar
-    cliente.deuda = Math.round((cliente.deuda + Number.EPSILON) * 100) / 100;
-    cliente.favor = Math.round((cliente.favor + Number.EPSILON) * 100) / 100;
+    // 🏦 ESTADO DE CAJA (V. 6)
+    // Reemplaza localStorage para permitir transactions seguras en cierres
+    caja_sesion: 'key'
   });
-});
 
-// 🛡️ V. 8: KARDEX TRACEABILITY (ID Linking)
-db.version(8).stores({
-  logs: '++id, tipo, fecha, usuarioId, productId'
-});
+  // 🚀 V. 7: QUADRANTS MIGRATION (Deuda vs Favor)
+  dbInstance.version(7).stores({
+    clientes: '++id, nombre, documento, deuda, favor'
+  }).upgrade(tx => {
+    return tx.table('clientes').toCollection().modify(cliente => {
+      // 1. Inicializar nuevos campos
+      cliente.deuda = 0;
+      cliente.favor = 0;
 
-// 🔄 V. 9: CASCADE UPDATE SUPPORT (Name Indexing)
-db.version(9).stores({
-  logs: '++id, tipo, fecha, usuarioId, productId, producto'
-});
+      // 2. Migrar saldo existente
+      const saldoViejo = cliente.saldo || 0;
 
-// 🖼️ V. 10: POS 2.0 (Image Support)
-// Habilitamos soporte para imágenes en tabla 'productos'.
-// NOTA: El campo 'imagen' NO se indiza para evitar overhead en el arranque.
-// 🛡️ V. 11: RBAC GRANULAR PERSISTENCE
-// Agregamos tabla de usuarios si no existe, o actualizamos esquema.
-// PERO PRIMERO DEBO CONFIRMAR DÓNDE VIVEN LOS USUARIOS.
-// EL PROMPT ANTERIOR INDICABA QUE ESTABAN EN LOCALSTORAGE ('listo_users_v1')
-// SI ES ASÍ, DEBEMOS MIGRARLOS O SEGUIR USANDO LOCALSTORAGE.
-// VOY A INVESTIGAR PRIMERO.
+      if (saldoViejo > 0.001) {
+        // Saldo positivo = DEUDA (El cliente debe)
+        cliente.deuda = saldoViejo;
+      } else if (saldoViejo < -0.001) {
+        // Saldo negativo = FAVOR (El negocio debe)
+        cliente.favor = Math.abs(saldoViejo);
+      }
+
+      // 3. Normalizar
+      cliente.deuda = Math.round((cliente.deuda + Number.EPSILON) * 100) / 100;
+      cliente.favor = Math.round((cliente.favor + Number.EPSILON) * 100) / 100;
+    });
+  });
+
+  // 🛡️ V. 8: KARDEX TRACEABILITY (ID Linking)
+  dbInstance.version(8).stores({
+    logs: '++id, tipo, fecha, usuarioId, productId'
+  });
+
+  // 🔄 V. 9: CASCADE UPDATE SUPPORT (Name Indexing)
+  dbInstance.version(9).stores({
+    logs: '++id, tipo, fecha, usuarioId, productId, producto'
+  });
+
+  // 🖼️ V. 10: POS 2.0 (Image Support)
+  // Habilitamos soporte para imágenes en tabla 'productos'.
+  // NOTA: El campo 'imagen' NO se indiza para evitar overhead en el arranque.
+  // 🛡️ V. 11: RBAC GRANULAR PERSISTENCE
+  // Agregamos tabla de usuarios si no existe, o actualizamos esquema.
+
+  // 💼 V. 12: PAYROLL & FINANCE MODULE
+  dbInstance.version(12).stores({
+    empleados_finanzas: 'userId, sueldoBase, frecuenciaPago, deudaAcumulada, favor, ultimoPago',
+    historial_nomina: '++id, userId, fecha, tipo, monto, referenceId'
+  });
+
+  // 📈 V. 13: FINANCE 2.0 LEDGER (Immutable Transactions)
+  dbInstance.version(13).stores({
+    nomina_ledger: '++id, empleadoId, tipo, monto, fecha, periodoId, status' // status: 'PENDIENTE', 'PAGADO', 'ANULADO'
+  });
+
+  // 🗓️ V. 14: PERIOD MANAGEMENT (Cierres)
+  dbInstance.version(14).stores({
+    periodos_nomina: '++id, fechaInicio, fechaFin, totalPagado, totalDeuda, status' // status: 'ABIERTO', 'CERRADO'
+  });
+
+  // 🧠 V. 16: GHOST BEHAVIOR PERSISTENCE
+  dbInstance.version(16).stores({
+    ghost_config: 'key'
+  });
+
+  // 📝 V. 17: GHOST EPISODIC MEMORY
+  dbInstance.version(17).stores({
+    ghost_history: '++id, sessionId, role, content, timestamp'
+  });
+};
+
+// 🏭 DATABASE INSTANCE CREATION
+const createDB = () => {
+  const dbName = isGhostMode ? 'ListoGhostDB' : 'ListoPosDB';
+  console.log(`[DB Factory] Initializing database: ${dbName} (Ghost Mode: ${isGhostMode})`);
+  const db = new Dexie(dbName);
+  applySchema(db);
+  return db;
+};
+
+export const db = createDB();
 
 // CLASE UTILITARIA PARA MIGRACIÓN
+// ✅ HELPER: Migración de Productos (Legacy -> IDB)
+const migrarProductos = async () => {
+  const prodRaw = localStorage.getItem('listo-productos');
+  if (!prodRaw) return;
+
+  const productos = JSON.parse(prodRaw);
+  const cleanProds = productos.map(p => {
+    const { id, ...resto } = p;
+    // Evita conflictos de IDs numéricos antiguos vs auto-increment
+    return typeof id === 'number' ? p : resto;
+  });
+
+  // Bulk add para mejor rendimiento
+  await db.productos.bulkPut(cleanProds);
+  console.log(`📦 Productos migrados: ${cleanProds.length}`);
+};
+
+// ✅ HELPER: Migración de Clientes
+const migrarClientes = async () => {
+  const cliRaw = localStorage.getItem('listo-clientes');
+  if (!cliRaw) return;
+
+  const clientes = JSON.parse(cliRaw);
+  await db.clientes.bulkPut(clientes);
+  console.log(`👥 Clientes migrados: ${clientes.length}`);
+};
+
+// ✅ HELPER: Migración de Configuración
+const migrarConfiguracion = async () => {
+  const configRaw = localStorage.getItem('listo-config');
+  if (!configRaw) return;
+
+  const config = JSON.parse(configRaw);
+  await db.config.put({ key: 'general', ...config });
+  console.log("⚙️ Configuración migrada.");
+};
+
+// ✅ HELPER: Migración de Caja (Sesión Activa)
+const migrarCaja = async () => {
+  const cajaRaw = localStorage.getItem('caja-sesion-activa');
+  if (!cajaRaw) return;
+
+  const caja = JSON.parse(cajaRaw);
+  await db.caja_sesion.put({ key: 'actual', ...caja });
+  console.log("🏦 Estado de Caja migrado.");
+};
+
+// 🧹 V. 15: SANITIZACIÓN DE DEUDAS (Dust Sweeper)
+// Elimina saldos infinitesimales (< 0.01) que causan inconsistencias
+const migrarSaneamientoDeudas = async () => {
+  const LIMITE_DUST = 0.01;
+  let saneados = 0;
+
+  await db.clientes.toCollection().modify(cliente => {
+    let dirty = false;
+
+    // 1. Sanear Deuda Fantasma
+    if (cliente.deuda > 0 && cliente.deuda < LIMITE_DUST) {
+      cliente.deuda = 0;
+      dirty = true;
+    }
+
+    // 2. Sanear Favor Fantasma
+    if (cliente.favor > 0 && cliente.favor < LIMITE_DUST) {
+      cliente.favor = 0;
+      dirty = true;
+    }
+
+    // 3. Normalizar Precisión (Math Core Emulation)
+    // Aunque no importemos mathCore aquí para no romper deps circulares, usamos rounding seguro.
+    if (cliente.deuda) {
+      const d = Math.round((cliente.deuda + Number.EPSILON) * 100) / 100;
+      if (d !== cliente.deuda) { cliente.deuda = d; dirty = true; }
+    }
+    if (cliente.favor) {
+      const f = Math.round((cliente.favor + Number.EPSILON) * 100) / 100;
+      if (f !== cliente.favor) { cliente.favor = f; dirty = true; }
+    }
+
+    // 4. Sync Saldo Legacy
+    const s = parseFloat((cliente.deuda - cliente.favor).toFixed(2));
+    if (cliente.saldo !== s) {
+      cliente.saldo = s;
+      dirty = true;
+    }
+
+    if (dirty) saneados++;
+  });
+
+  if (saneados > 0) console.log(`🧹 Saneamiento completado: ${saneados} clientes corregidos.`);
+};
+
+// CLASE UTILITARIA PARA MIGRACIÓN (Main Orchestrator)
 export const migrarDatosLocales = async () => {
-  const MIG_ID = 'fenix_db_migrated_v3_full_integrity';
+  const MIG_ID = 'fenix_db_migrated_v4_math_sanitized'; // 🚀 Bumped Version
   const yaMigrado = localStorage.getItem(MIG_ID);
 
   if (yaMigrado) return;
@@ -94,45 +230,29 @@ export const migrarDatosLocales = async () => {
   console.log("🔄 FÉNIX V6: Iniciando migración crítica a IndexedDB...");
 
   try {
-    // 1. Productos (Legacy)
-    const prodRaw = localStorage.getItem('listo-productos');
-    if (prodRaw) {
-      const productos = JSON.parse(prodRaw);
-      const cleanProds = productos.map(p => {
-        const { id, ...resto } = p;
-        return typeof id === 'number' ? p : resto;
-      });
-      await db.productos.bulkPut(cleanProds);
-    }
-
-    // 2. Clientes (Legacy)
-    const cliRaw = localStorage.getItem('listo-clientes');
-    if (cliRaw) {
-      const clientes = JSON.parse(cliRaw);
-      await db.clientes.bulkPut(clientes);
-    }
-
-    // 3. CONFIGURACIÓN (NUEVO)
-    const configRaw = localStorage.getItem('listo-config');
-    if (configRaw) {
-      const config = JSON.parse(configRaw);
-      await db.config.put({ key: 'general', ...config });
-      console.log("✅ Configuración migrada.");
-    }
-
-    // 4. ESTADO DE CAJA (NUEVO)
-    const cajaRaw = localStorage.getItem('caja-sesion-activa');
-    if (cajaRaw) {
-      const caja = JSON.parse(cajaRaw);
-      await db.caja_sesion.put({ key: 'actual', ...caja });
-      console.log("✅ Estado de Caja migrado.");
-    }
+    // Ejecutar migraciones en paralelo para mejorar velocidad de arranque
+    await Promise.all([
+      migrarProductos(),
+      migrarClientes(),
+      migrarConfiguracion(),
+      migrarConfiguracion(),
+      migrarCaja(),
+      migrarSaneamientoDeudas() // 🆕 Include Sanitization
+    ]);
 
     localStorage.setItem(MIG_ID, 'true');
     console.log("✅ FÉNIX V6: Migración Completada. Integridad Asegurada.");
 
   } catch (error) {
-    console.error("❌ FATAL: Error en migración DB:", error);
-    // No marcamos como migrado para reintentar luego
+    // No marcamos como migrado para reintentar luego en caso de fallo real
   }
+};
+
+/**
+ * 📊 DEMO SHIELD AUDITOR
+ * Cuenta absoluta de ventas para control de licencias demo.
+ * Rendimiento optimizado para IndexedDB.
+ */
+export const getLifetimeSales = async () => {
+  return await db.ventas.count();
 };

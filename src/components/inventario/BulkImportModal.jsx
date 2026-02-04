@@ -16,8 +16,9 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
     const downloadTemplate = () => {
         const rows = [
             ["codigo", "nombre", "categoria", "costo", "precio", "stock", "minimo"],
-            ["P001", "REFRESCO COLA 2L", "BEBIDAS", 1.5, 2.0, 50, 5],
-            ["P002", "HARINA MAIZ 1KG", "ALIMENTOS", 0.9, 1.2, 100, 10]
+            ["750123456789", "ARROZ PREMIUM 1KG", "VIVERES", 0.85, 1.25, 100, 10],
+            ["P002", "DETERGENTE MULTIUSO", "LIMPIEZA", 2.10, 3.50, 48, 6],
+            ["", "PRODUCTO SIN CODIGO", "GENERAL", 5.00, 7.50, 10, 2]
         ];
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
@@ -36,16 +37,19 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
         reader.onload = async (evt) => {
             try {
                 const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
+                const data = XLSX.utils.sheet_to_json(ws, { defval: null });
 
-                // Pre-análisis
+                if (data.length === 0) {
+                    throw new Error("El archivo está vacío.");
+                }
+
                 await analyzeData(data);
             } catch (error) {
                 console.error(error);
-                Swal.fire("Error", "No se pudo leer el archivo Excel.", "error");
+                Swal.fire("Error", error.message || "No se pudo procesar el archivo.", "error");
                 setIsProcessing(false);
             }
         };
@@ -54,7 +58,27 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
 
     // 3. ANÁLISIS Y SANITIZACIÓN
     const analyzeData = async (rawData) => {
-        // Obtener mapa { codigo: id } para validación real
+        // Mapeo Inteligente: Diccionario de sinónimos
+        const columnMap = {
+            nombre: ['nombre', 'producto', 'articulo', 'descripcion', 'name', 'item'],
+            codigo: ['codigo', 'cod', 'sku', 'id_externo', 'barcode', 'ean'],
+            precio: ['precio', 'p.venta', 'venta', 'p.publico', 'price', 'precioventa'],
+            costo: ['costo', 'p.compra', 'compra', 'p.costo', 'cost', 'preciocosto'],
+            stock: ['stock', 'cantidad', 'cant', 'existencia', 'qty', 'amount'],
+            categoria: ['categoria', 'cat', 'rubro', 'category', 'departamento'],
+            minimo: ['minimo', 'stockminimo', 'min', 'alerta']
+        };
+
+        const getColumnValue = (row, target) => {
+            const keys = Object.keys(row);
+            const synonyms = columnMap[target] || [];
+            const key = keys.find(k => {
+                const normalizedKey = k.toLowerCase().replace(/[\s_/]/g, '');
+                return synonyms.includes(normalizedKey) || normalizedKey === target;
+            });
+            return key ? row[key] : null;
+        };
+
         const allProducts = await db.productos.toArray();
         const codeMap = new Map();
         allProducts.forEach(p => {
@@ -64,42 +88,49 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
         let nuevos = 0;
         let existentes = 0;
         let validRows = [];
+        const timestamp = Date.now();
 
-        rawData.forEach(row => {
-            // Sanitización básica
-            const codigo = String(row.codigo || row.CODIGO || '').trim();
-            const nombre = String(row.nombre || row.NOMBRE || '').trim().toUpperCase();
-
-            // Si no tiene código ni nombre, saltar
-            if (!codigo || !nombre) return;
-
-            // Precios: Convertir comas a puntos si vienen como string
-            const cleanPrice = (val) => {
-                if (typeof val === 'string') return parseFloat(val.replace(',', '.'));
-                return parseFloat(val || 0);
+        rawData.forEach((row, i) => {
+            // Sanitización: Quitar símbolos de moneda y manejar comas
+            const cleanNumber = (val) => {
+                if (val === null || val === undefined) return 0;
+                if (typeof val === 'number') return val;
+                const cleanStr = String(val).replace(/[$\sBs]/g, '').replace(',', '.');
+                return parseFloat(cleanStr) || 0;
             };
+
+            let codigo = String(getColumnValue(row, 'codigo') || '').trim();
+            const nombre = String(getColumnValue(row, 'nombre') || '').trim().toUpperCase();
+
+            // Si no tiene nombre, saltar (REQUISITO: Nombre es vital)
+            if (!nombre) return;
+
+            // REQUISITO: Código automático si está vacío
+            if (!codigo) {
+                codigo = `IMP-${timestamp}-${i}`;
+            }
 
             const item = {
                 codigo,
                 nombre,
-                categoria: (row.categoria || row.CATEGORIA || 'GENERAL').toUpperCase(),
-                costo: cleanPrice(row.costo || row.COSTO),
-                precio: cleanPrice(row.precio || row.PRECIO),
-                stock: parseInt(row.stock || row.STOCK || 0),
-                stockMinimo: parseInt(row.minimo || row.MINIMO || 5),
+                categoria: String(getColumnValue(row, 'categoria') || 'General').trim().toUpperCase(),
+                costo: cleanNumber(getColumnValue(row, 'costo')),
+                precio: cleanNumber(getColumnValue(row, 'precio')),
+                stock: cleanNumber(getColumnValue(row, 'stock')),
+                stockMinimo: cleanNumber(getColumnValue(row, 'minimo')) || 5,
                 jerarquia: {
-                    unidad: { activo: true, precio: cleanPrice(row.precio || row.PRECIO), contenido: 1 },
+                    unidad: { activo: true, precio: cleanNumber(getColumnValue(row, 'precio')), contenido: 1 },
                     paquete: { activo: false, precio: 0, contenido: 0 },
                     bulto: { activo: false, precio: 0, contenido: 0 }
                 },
-                tipoUnidad: 'unidad', // Default to unidad for imports
+                tipoUnidad: 'unidad',
                 fecha_creacion: new Date().toISOString()
             };
 
             if (codeMap.has(codigo)) {
                 existentes++;
                 item._exists = true;
-                item.id = codeMap.get(codigo); // IMPORTANTE: Asignar ID para que bulkPut actualice
+                item.id = codeMap.get(codigo);
             } else {
                 nuevos++;
             }
@@ -115,7 +146,6 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
     const handleImport = async () => {
         if (!previewData) return;
 
-        // Preguntar estrategia si hay duplicados
         let updateExisting = false;
         if (stats.existentes > 0) {
             const { isConfirmed } = await Swal.fire({
@@ -132,25 +162,50 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
 
         setIsProcessing(true);
         try {
-            // Filtrar lista final
             const toSave = previewData
                 .filter(p => !p._exists || updateExisting)
-                .map(({ _exists, ...p }) => p); // Quitar flag temporal
+                .map(({ _exists, ...p }) => p);
 
-            // Bulk Put (Upsert si updateExisting es true)
-            await db.productos.bulkPut(toSave);
+            if (toSave.length === 0) {
+                Swal.fire("Sin cambios", "No hay productos nuevos para importar.", "info");
+                return;
+            }
+
+            // --- TRANSACCIÓN ATÓMICA CON KARDEX ---
+            await db.transaction('rw', db.productos, db.logs, async () => {
+                // REQUISITO: bulkAdd para nuevos, bulkPut si actualizamos
+                if (updateExisting) {
+                    await db.productos.bulkPut(toSave);
+                } else {
+                    await db.productos.bulkAdd(toSave);
+                }
+
+                // Registro Maestro en Kardex
+                await db.logs.add({
+                    fecha: new Date().toISOString(),
+                    tipo: 'ENTRADA_INICIAL',
+                    producto: 'IMPORTACIÓN MASIVA',
+                    cantidad: toSave.length,
+                    stockFinal: 0,
+                    referencia: 'EXCEL/CSV',
+                    detalle: `Importación masiva de ${toSave.length} productos${updateExisting ? ' (incluye actualizaciones)' : ''}.`,
+                    usuarioId: 'admin',
+                    usuarioNombre: 'Administrador'
+                });
+            });
 
             Swal.fire({
-                title: '¡Importación Exitosa!',
-                text: `Se procesaron ${toSave.length} productos.`,
+                title: '¡Importación Completada!',
+                text: `Se procesaron ${toSave.length} registros exitosamente.`,
                 icon: 'success',
-                timer: 2000
+                timer: 3000
             });
 
             if (onImportCompleted) onImportCompleted();
             onClose();
         } catch (error) {
-            Swal.fire("Error Guardando", error.message, "error");
+            console.error(error);
+            Swal.fire("Fallo Crítico", "Error en la transacción: " + error.message, "error");
         } finally {
             setIsProcessing(false);
             setPreviewData(null);
@@ -227,7 +282,30 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
                                 </div>
                             )}
 
-                            <p className="text-center text-xs text-content-tertiary mb-2">Vista previa de las primeras 5 filas...</p>
+                            <div className="border border-border-subtle dark:border-white/10 rounded-xl overflow-hidden mb-4">
+                                <table className="w-full text-[10px] text-left">
+                                    <thead className="bg-app-light dark:bg-slate-800 text-content-secondary uppercase font-bold">
+                                        <tr>
+                                            <th className="p-2">Código</th>
+                                            <th className="p-2">Nombre</th>
+                                            <th className="p-2">Precio</th>
+                                            <th className="p-2">Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-subtle dark:divide-white/5">
+                                        {previewData.slice(0, 5).map((p, i) => (
+                                            <tr key={i} className="dark:text-slate-300">
+                                                <td className="p-2 font-mono">{p.codigo}</td>
+                                                <td className="p-2 font-bold truncate max-w-[150px]">{p.nombre}</td>
+                                                <td className="p-2">${p.precio.toFixed(2)}</td>
+                                                <td className="p-2">{p.stock}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <p className="text-center text-[10px] text-content-tertiary mb-2">Mostrando primeros 5 de {stats.total} productos detectados.</p>
                         </div>
                     )}
                 </div>

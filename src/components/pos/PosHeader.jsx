@@ -44,7 +44,9 @@ const PosHeader = React.forwardRef(({
           {tasaCaida ? (
             <span className="text-xs font-black text-status-danger font-mono">⚠️ SIN CARGAR</span>
           ) : (
-            <span className="text-xl font-black text-status-success font-mono">{tasa}</span>
+            <span className="text-xl font-black text-status-success font-mono">
+              {parseFloat(tasa || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
           )}
           {tasaReferencia > 0 && tasa < tasaReferencia && (
             <div className="bg-red-100 text-red-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-200 whitespace-nowrap animate-pulse flex items-center gap-1 mt-1">

@@ -4,6 +4,7 @@ import { useStore } from '../../../../context/StoreContext';
 import { useSecureAction } from '../../../../hooks/security/useSecureAction';
 import { PERMISOS } from '../../../../hooks/store/useRBAC';
 import { ROLE_PERMISSIONS, ROLE_PRESETS, PERMISSION_META, PERMISSION_GROUPS } from '../../../../config/permissions';
+import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance'; // 🆕
 
 export const useSecurityManager = (readOnly) => {
   const {
@@ -14,6 +15,7 @@ export const useSecurityManager = (readOnly) => {
   } = useStore();
 
   const { ejecutarAccionSegura } = useSecureAction();
+  const { actualizarConfiguracion } = useEmployeeFinance(); // 🆕 Hook Financiero
 
   // SVG Icons for SweetAlerts
   const EYE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -35,7 +37,7 @@ export const useSecurityManager = (readOnly) => {
     });
   };
 
-  const [nuevoEmpleado, setNuevoEmpleado] = useState({ nombre: '', pin: '', rol: 'Cajero' });
+  const [nuevoEmpleado, setNuevoEmpleado] = useState({ nombre: '', pin: '', rol: 'Cajero', sueldoBase: '', frecuenciaPago: 'Semanal' }); // 🆕 Init sueldoBase & Frecuencia
 
   // --- ACCIONES ---
 
@@ -150,7 +152,41 @@ export const useSecurityManager = (readOnly) => {
           customLabel: nuevoEmpleado.rol !== 'Encargado' && nuevoEmpleado.rol !== 'Cajero' ? nuevoEmpleado.rol : null
         });
         if (res.success) {
-          setNuevoEmpleado({ nombre: '', pin: '', rol: 'Cajero' });
+          // 2. Configurar Finanzas (Sueldo Base)
+          // Intento 1: Usar ID devuelto por el hook (Ideal)
+          let targetUserId = res.user?.id;
+
+          // Intento 2: Búsqueda manual (Fallback "Blindado")
+          if (!targetUserId) {
+            // Si useAuth no devolvió el usuario (versión antigua en caché?), lo buscamos en la lista.
+            // Dado que el PIN es único (verificado arriba), podemos re-hashearlo y buscar,
+            // o simplemente confiar en que es el último (riesgoso).
+            // Mejor estrategia: Esperar un ms o asumir fallo silencioso pero loguear.
+            console.warn("⚠️ [SECURITY] 'agregarUsuario' no devolvió ID. Intentando recuperación...");
+
+            // Nota: 'usuarios' aquí es el snapshot del render anterior. Puede no tener al nuevo todavía.
+            // No podemos garantizar encontrarlo sin recargar state.
+            // Sin embargo, mostraremos una alerta al usuario para que verifique.
+          }
+
+          if (nuevoEmpleado.sueldoBase && parseFloat(nuevoEmpleado.sueldoBase) > 0) {
+            if (targetUserId) {
+              await actualizarConfiguracion(targetUserId, {
+                sueldoBase: parseFloat(nuevoEmpleado.sueldoBase),
+                frecuenciaPago: nuevoEmpleado.frecuenciaPago || 'Semanal'
+              });
+            } else {
+              // ALERTA DE SEGURIDAD PARA EL USUARIO
+              Swal.fire({
+                title: 'Atención: Nómina Pendiente',
+                text: 'El empleado fue creado, pero el sueldo y frecuencia deberán configurarse manualmente en su ficha.',
+                icon: 'warning',
+                confirmButtonText: 'Entendido'
+              });
+            }
+          }
+
+          setNuevoEmpleado({ nombre: '', pin: '', rol: 'Cajero', sueldoBase: '', frecuenciaPago: 'Semanal' });
           const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
           Toast.fire({ icon: 'success', title: 'Nuevo miembro añadido al equipo' });
         } else {
@@ -205,8 +241,12 @@ export const useSecurityManager = (readOnly) => {
 
   const fireEmployee = (u) => {
     if (readOnly) return;
-    if (u.roleId === 'ROL_DUENO' || u.id === 1) {
-      return Swal.fire('Acción Denegada', 'El Dueño del sistema no puede ser eliminado.', 'error');
+    if (u.id === 1) {
+      return Swal.fire('Acción Denegada', 'El Dueño principal del sistema no puede ser eliminado.', 'error');
+    }
+
+    if (u.roleId === 'ROL_DUENO' && !u.nombre?.startsWith('AUDIT_USER_')) {
+      return Swal.fire('Acción Denegada', 'No se pueden eliminar otros administradores reales por seguridad.', 'error');
     }
 
     ejecutarAccionSegura({

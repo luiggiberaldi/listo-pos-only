@@ -8,14 +8,15 @@ import Swal from 'sweetalert2'; // 🔔 IMPORTANTE: Alertas
 import { dbMaster } from '../../services/firebase'; // 📡 Antena B
 import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '../../context/AuthContext';
-import { useStore } from '../../context/StoreContext';
+// import { useStore } from '../../context/StoreContext'; // 🗑️ DEPRECATED: Avoid circular dependency
+import { useConfigContext } from '../../context/ConfigContext'; // 🟢 DIRECT ACCESS
 import { useUnifiedAnalytics } from '../analytics/useUnifiedAnalytics';
 
 export const useMasterTelemetry = () => {
 
     // 1. FUENTES DE DATOS
     const { getSystemID, adminResetUserPin, usuarios } = useAuthContext();
-    const { configuracion } = useStore();
+    const { configuracion } = useConfigContext(); // 🟢 DIRECT
     const { kpis } = useUnifiedAnalytics(); // Fuente de Verdad Financiera
 
     const [status, setStatus] = useState('active'); // 'active' | 'syncing' | 'error'
@@ -50,6 +51,15 @@ export const useMasterTelemetry = () => {
         const finalId = hwId || getSystemID();
         const totalVentas = kpis?.hoy?.total || 0;
 
+        // 🛡️ AUDIT COUNT (Anti-Reset)
+        let lifetimeSales = 0;
+        try {
+            const { getLifetimeSales } = await import('../../db');
+            lifetimeSales = await getLifetimeSales();
+        } catch (e) {
+            console.warn("Telemetry: Failed to count lifetime sales", e);
+        }
+
         // 🛡️ INFERRED STATUS LOGIC
         const isLocalLocked = localStorage.getItem('listo_lock_down') === 'true';
         const safeStatus = isLocalLocked ? 'SUSPENDED' : 'ACTIVE';
@@ -67,9 +77,10 @@ export const useMasterTelemetry = () => {
         return {
             id: finalId, // ID unificado con Security Guard
             nombreNegocio: configuracion?.nombre || 'Comercio Sin Nombre',
-            version: 'v4.1-stable', // Versión del POS
+            version: 'v4.2-demo-shield', // Versión del POS
             ventasHoyUSD: totalVentas,
             conteoVentasHoy: kpis?.hoy?.count || 0, // 🟢 NUEVO: Contador de tickets
+            usage_count: lifetimeSales, // 🛡️ DEMO SHIELD TRACKING
             status: safeStatus,
             storage: storageData // 🟢 NUEVO: Salud de Disco
             // lastSeen y _syncedAt se ponen en el envío

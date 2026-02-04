@@ -4,7 +4,8 @@ import Swal from 'sweetalert2';
 
 export const useSaleFinalizer = ({
     carrito, calculos, registrarVenta, limpiarCarrito, prefereciasTicket, playSound, generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera, searchInputRef,
-    ticketRef, ticketSaldoRef // 🆕 Recibidos de PosPage
+    ticketRef, ticketSaldoRef, // 🆕 Recibidos de PosPage
+    setCarrito // 🆕 Needed to restore items
 }) => {
     const [ticketData, setTicketData] = useState(null);
     const [ventaExitosa, setVentaExitosa] = useState(false);
@@ -107,6 +108,9 @@ export const useSaleFinalizer = ({
         if (carrito.length > 0) {
             const r = await Swal.fire({ title: 'Cesta Ocupada', text: 'Se borrará la compra actual.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sobrescribir', confirmButtonColor: '#d33' });
             if (!r.isConfirmed) return;
+        }
+        if (ticket && ticket.items) {
+            setCarrito(ticket.items);
         }
         await recuperarDeEspera(ticket);
         cerrarEspera();

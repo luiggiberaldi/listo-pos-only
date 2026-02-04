@@ -26,6 +26,8 @@ const AVATAR_COLORS = [
 ];
 
 import ModalRecoveryCode from '../components/auth/ModalRecoveryCode'; // 🟢 NEW IMPORT
+import LegalModal from '../components/auth/LegalModal'; // 🟢 PROFESSIONAL LEGAL MODAL
+
 import { CardBody, CardContainer, CardItem } from '../components/ui/3d-card';
 
 export default function LoginScreen() {
@@ -38,6 +40,9 @@ export default function LoginScreen() {
     const [pin, setPin] = useState('');
     const [error, setError] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // 🟢 Legal Modal State
+    const [legalModalState, setLegalModalState] = useState({ isOpen: false, docType: null });
 
     // 🟢 Feedback State
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -180,7 +185,8 @@ export default function LoginScreen() {
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16 relative">
                     <div onClick={handleLogoClick} className="cursor-pointer select-none active:scale-95 transition-transform inline-block relative">
                         {/* 🟢 LOGO: SIZE ADJUSTED (h-36) */}
-                        <img src="logologin.png" alt="LISTO POS" className="h-36 mx-auto mb-6 object-contain" />
+                        {/* 🟢 LOGO: Listo POS Power Icon */}
+                        <img src="listo-pos-logo.png" alt="LISTO POS" className="h-36 mx-auto mb-6 object-contain" />
                         {secretClicks > 2 && (
                             <div className="absolute -right-6 top-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold animate-bounce">{7 - secretClicks}</div>
                         )}
@@ -211,7 +217,30 @@ export default function LoginScreen() {
                         <span className="text-xs font-bold text-content-secondary uppercase tracking-widest group-hover:text-primary">RECARGAR</span>
                     </motion.button>
                 </motion.div>
+
+                {/* --- LEGAL FOOTER --- */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1 }}
+                    className="absolute bottom-6 left-0 w-full flex justify-center gap-6"
+                >
+                    <button onClick={() => setLegalModalState({ isOpen: true, docType: 'EULA' })} className="text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-[0.2em] transition-colors outline-none">
+                        Documento Legal
+                    </button>
+                    <span className="w-px h-3 bg-slate-800" />
+                    <button onClick={() => setLegalModalState({ isOpen: true, docType: 'PRIVACY' })} className="text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-[0.2em] transition-colors outline-none">
+                        Términos y Condiciones
+                    </button>
+                </motion.div>
             </div>
+
+            {/* 🟢 LEGAL MODAL */}
+            <LegalModal
+                isOpen={legalModalState.isOpen}
+                docType={legalModalState.docType}
+                onClose={() => setLegalModalState(prev => ({ ...prev, isOpen: false }))}
+            />
 
             {/* 🟢 FEEDBACK FAB */}
             <motion.button
@@ -546,7 +575,7 @@ const UserCard = ({ user, index, onClick }) => {
 
                                 {['admin', 'dueño', 'dueno', 'superadmin'].includes(user.rol?.toLowerCase()) ? (
                                     <div className="relative z-10 p-[4px] rounded-2xl overflow-hidden flex justify-center items-center shadow-[0_0_20px_rgba(0,183,255,0.4)]">
-                                        {/* RGB ANIMATED BACKGROUND */}
+                                        {/* RGB ANIMATED BACKGROUND (Original) */}
                                         <div style={{
                                             position: 'absolute',
                                             width: '200%',
@@ -561,8 +590,10 @@ const UserCard = ({ user, index, onClick }) => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="relative z-10 p-1 rounded-2xl transition-all duration-300">
-                                        <Avatar user={user} className="relative z-10 transition-all duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover/card:shadow-[0_30px_60px_rgba(16,185,129,0.4)] ring-1 ring-white/10" />
+                                    <div className="relative z-10 p-[4px] rounded-2xl overflow-hidden flex justify-center items-center bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-300">
+                                        <div className="relative z-20 bg-slate-900 rounded-2xl">
+                                            <Avatar user={user} className="relative z-10 transition-all duration-300 shadow-none ring-0" />
+                                        </div>
                                     </div>
                                 )}
                             </div>

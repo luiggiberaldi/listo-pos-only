@@ -12,6 +12,7 @@ import FiscalDailySummary from '../components/dashboard/FiscalDailySummary';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 // ✅ IMPORTAR ESTADO DE CAJA
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
+import { timeProvider } from '../utils/TimeProvider';
 
 export default function TotalDiarioPage() {
   const { ventas, configuracion, usuario } = useStore();
@@ -29,7 +30,7 @@ export default function TotalDiarioPage() {
 
   const balancesHoy = useMemo(() => {
     if (rango !== 'hoy') return {};
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = timeProvider.toISOString().split('T')[0];
     let totalOpen = { usdCash: 0, vesCash: 0, usdDigital: 0, vesDigital: 0 };
 
     // Sumar cierres de hoy
@@ -68,8 +69,8 @@ export default function TotalDiarioPage() {
   }
 
   const ventasFiltradas = useMemo(() => {
-    let inicio = new Date();
-    let fin = new Date();
+    let inicio = timeProvider.now();
+    let fin = timeProvider.now();
 
     inicio.setHours(0, 0, 0, 0);
     fin.setHours(23, 59, 59, 999);

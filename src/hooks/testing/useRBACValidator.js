@@ -140,9 +140,20 @@ export const useRBACValidator = () => {
         } catch (error) {
             log(`CRITICAL TEST FAILURE: ${error.message}`, 'ERROR');
         } finally {
+            await cleanup();
             setIsRunning(false);
         }
     };
 
-    return { logs, runFullAudit, isRunning, stats };
+    const cleanup = useCallback(async () => {
+        log('🧹 Limpiando rastros de auditoría...', 'INFO');
+        const subjects = usuarios.filter(u => u.nombre && u.nombre.startsWith('AUDIT_USER_'));
+
+        for (const subject of subjects) {
+            log(`Eliminando actor: ${subject.nombre}`, 'INFO');
+            await eliminarUsuario(subject.id);
+        }
+    }, [usuarios, eliminarUsuario]);
+
+    return { logs, runFullAudit, isRunning, stats, cleanup };
 };

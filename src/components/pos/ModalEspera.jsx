@@ -29,22 +29,23 @@ export default function ModalEspera({ tickets, onRecuperar, onEliminar, onClose 
               <p className="font-bold">No hay compras estacionadas</p>
             </div>
           ) : (
-            tickets.map(t => {
+            tickets.map((t, idx) => {
               const isExpanded = expandedId === t.id;
-              const totalBs = t.totalSnapshot * (t.tasaSnapshot || 0);
+              const totalBs = (t.totalSnapshot || 0) * (t.tasaSnapshot || 0);
+              const fechaValida = !isNaN(new Date(t.fecha).getTime());
 
               return (
-                <div key={t.id} className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-subtle shadow-sm overflow-hidden transition-all">
+                <div key={t.id || idx} className="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-subtle shadow-sm overflow-hidden transition-all">
 
                   {/* CABECERA DEL TICKET */}
                   <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-bold bg-status-warningBg text-status-warning px-2 py-0.5 rounded border border-status-warning/20 flex items-center gap-1">
-                          <Clock size={10} /> {new Date(t.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <Clock size={10} /> {fechaValida ? new Date(t.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                         </span>
                         <span className="text-xs text-content-secondary font-medium flex items-center gap-1">
-                          <User size={12} /> {t.usuarioNombre}
+                          <User size={12} /> {t.usuarioNombre || 'Desconocido'}
                         </span>
                       </div>
 
@@ -59,10 +60,10 @@ export default function ModalEspera({ tickets, onRecuperar, onEliminar, onClose 
                       )}
 
                       <div className="flex items-baseline gap-2 mt-1">
-                        <span className="font-black text-lg text-content-main">${t.totalSnapshot.toFixed(2)}</span>
+                        <span className="font-black text-lg text-content-main">${(t.totalSnapshot || 0).toFixed(2)}</span>
                         <span className="text-xs font-bold text-content-secondary">/</span>
                         <span className="font-bold text-sm text-content-secondary">Bs {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                        <span className="text-[9px] text-content-secondary ml-1">(Tasa: {t.tasaSnapshot})</span>
+                        <span className="text-[9px] text-content-secondary ml-1">(Tasa: {t.tasaSnapshot || '0.00'})</span>
                       </div>
                     </div>
 
@@ -105,7 +106,7 @@ export default function ModalEspera({ tickets, onRecuperar, onEliminar, onClose 
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border-subtle">
-                          {t.items.map((item, idx) => (
+                          {(t.items || []).map((item, idx) => (
                             <tr key={idx} className="text-content-main">
                               <td className="py-2 font-mono font-bold">{item.cantidad}</td>
                               <td className="py-2">{item.nombre}</td>

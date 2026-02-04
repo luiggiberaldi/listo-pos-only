@@ -3,22 +3,21 @@
 // Corrección: El usuario por defecto ahora nace con el rol correcto (ROL_EMPLEADO).
 
 import { useState, useEffect, useCallback } from 'react';
-import { safeLoad } from '../../utils/storageUtils';
+import { useAuthStore } from '../../stores/useAuthStore'; // ⚡ ZUSTAND INTEGRATION
 import { ROLE_PRESETS } from '../../config/permissions';
-import { hashPin } from '../../utils/securityUtils'; // 🟢 PBKDF2 IMPORT
+import { hashPin } from '../../utils/securityUtils';
 
 const PIN_LENGTH = 6;
-const SUPER_ADMIN_ID = 1; // 👑 ID Intocable
-
-// 🔒 LAYER 2: VENDOR BACKDOOR (Daily Support Token)
+const SUPER_ADMIN_ID = 1;
 const INTERNAL_SYNC_SALT = "L1STO_SUPP0RT_S3CR3T_K3Y_X9#77_V2";
 
+// ... (generarTokenDiario function remains same) ...
 const generarTokenDiario = async (systemID) => {
   if (!systemID) return null;
   const today = new Date();
   const dateStr = today.getUTCFullYear().toString() +
     (today.getUTCMonth() + 1).toString().padStart(2, '0') +
-    today.getUTCDate().toString().padStart(2, '0'); // YYYYMMDD (UTC)
+    today.getUTCDate().toString().padStart(2, '0');
 
   const rawString = `${systemID}|${dateStr}|${INTERNAL_SYNC_SALT}`;
   const msgBuffer = new TextEncoder().encode(rawString);
@@ -26,27 +25,47 @@ const generarTokenDiario = async (systemID) => {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const fullHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   const numericPart = fullHash.replace(/\D/g, '');
-  const token = numericPart.slice(-6).padStart(6, '0');
-  return token;
+  return numericPart.slice(-6).padStart(6, '0');
 };
 
 export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
-  const [usuarios, setUsuarios] = useState(() => safeLoad('listo_users_v1', []));
-  const [usuarioActivo, setUsuarioActivo] = useState(null);
 
-  // 🛡️ PROTOCOLO DE AUTO-REPARACIÓN (SELF-HEALING) ASYNC
+  // ⚡ ZUSTAND STATE BINDING
+  // Selectors for reactivity
+  const usuarios = useAuthStore(state => state.usuarios);
+  const usuarioActivo = useAuthStore(state => state.usuario);
+
+  // Actions
+  const { login: setSession, logout: clearSession, setUsuarios, agregarUsuario: storeAddUser, actualizarUsuario: storeUpdateUser, eliminarUsuario: storeDeleteUser } = useAuthStore();
+
+  // 🛡️ PROTOCOLO DE AUTO-REPARACIÓN (SELF-HEALING)
   useEffect(() => {
     const runSelfHealing = async () => {
       let currentUsers = [...usuarios];
       let huboCambios = false;
 
-      // 🛑 MIGRACIÓN FORZADA A PBKDF2 (FACTORY RESET SI NO MIGRADO)
+      // 🛑 MIGRACIÓN MENTAL: Ya no leemos localStorage 'listo_users_v1' manualmente aquí
+      // porque useAuthStore ya lo cargó (o cargó su propia persistencia).
+      // PERO: Si useAuthStore está vacío (primera vez o migración), debemos importar 'listo_users_v1'.
+
+      if (currentUsers.length === 0) {
+        try {
+          const legacyUsers = localStorage.getItem('listo_users_v1');
+          if (legacyUsers) {
+            console.log("⚡ [AUTH-MIGRATION] Importando usuarios legacy a Zustand...");
+            currentUsers = JSON.parse(legacyUsers);
+            huboCambios = true;
+          }
+        } catch (e) { console.error("Migration User Error", e); }
+      }
+
+      // 🛑 MIGRACIÓN FORZADA A PBKDF2
       const MIGRATION_KEY = 'sys_auth_migrated_pbkdf2_v2.1';
       const isMigrated = localStorage.getItem(MIGRATION_KEY);
 
       if (!isMigrated) {
         console.warn("⚠️ [AUTH] Detectado sistema legacy. Ejecutando Factory Reset para seguridad PBKDF2.");
-        currentUsers = []; // Borramos todo para regenerar Admin limpio
+        currentUsers = [];
         localStorage.setItem(MIGRATION_KEY, 'true');
         huboCambios = true;
       }
@@ -55,7 +74,8 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
       currentUsers = currentUsers.map(u => {
         const permisosAlDia = ROLE_PRESETS[u.rol];
         if (permisosAlDia) {
-          if (JSON.stringify(u.permisos) !== JSON.stringify(permisosAlDia)) {
+          // Simple check to avoid cycle
+          if (!u.permisos || JSON.stringify(u.permisos) !== JSON.stringify(permisosAlDia)) {
             huboCambios = true;
             return { ...u, permisos: permisosAlDia };
           }
@@ -63,23 +83,19 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
         return u;
       });
 
-      // PASO 2: Garantizar Super Admin (Dueño)
+      // PASO 2: Garantizar Super Admin
       const existeDueno = currentUsers.some(u => u.id === SUPER_ADMIN_ID);
       if (!existeDueno) {
         console.log("👑 [AUTH] Restaurando Super Admin (Dueño) con PBKDF2...");
-
-        // 🔐 GENERACIÓN DINÁMICA DE HASH
-        // No usamos constantes hardcodeadas. Calculamos el hash real de '123456'.
         const defaultPin = '123456';
         const dynamicHash = await hashPin(defaultPin);
-
         currentUsers.push({
           id: SUPER_ADMIN_ID,
           nombre: 'Dueño',
           rol: 'admin',
           roleId: 'ROL_DUENO',
           tipo: 'ADMIN',
-          pinHash: dynamicHash, // ✅ Hash PBKDF2 real
+          pinHash: dynamicHash,
           activo: true,
           isFactoryAuth: true,
           permisos: ROLE_PRESETS.admin
@@ -88,15 +104,14 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
       }
 
       if (huboCambios) {
-        setUsuarios(currentUsers);
+        setUsuarios(currentUsers); // ⚡ Update Store
       }
     };
 
     runSelfHealing();
-  }, []); // ✅ Dependencia vacía: Solo al inicio.
+  }, []);
 
-
-  useEffect(() => { localStorage.setItem('listo_users_v1', JSON.stringify(usuarios)); }, [usuarios]);
+  // localStorage persistence handled by Zustand middleware now.
 
   // --- FUNCIONES DE SESIÓN ---
 
@@ -106,20 +121,16 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
     let usuarioEncontrado;
 
     if (requiredUserId) {
-      // 🔒 MODO STRICT: Validamos solo contra el usuario seleccionado
       usuarioEncontrado = usuarios.find(u => u.id === requiredUserId && u.activo && u.pinHash === inputHash);
     } else {
-      // 🔓 MODO LEGACY/BROAD: Validamos contra cualquiera (útil para quick-actions si existieran)
       usuarioEncontrado = usuarios.find(u => u.activo && u.pinHash === inputHash);
     }
 
     if (usuarioEncontrado) {
-      // 🔄 SECURITY PATCH: Sincronizar permisos "Fresh" desde el código al hacer login
-      // Esto asegura que si editamos permissions.js, el usuario obtenga los cambios al entrar.
       const freshPermissions = ROLE_PRESETS[usuarioEncontrado.rol] || usuarioEncontrado.permisos;
       const usuarioLogueado = { ...usuarioEncontrado, permisos: freshPermissions };
 
-      setUsuarioActivo(usuarioLogueado);
+      setSession(usuarioLogueado); // ⚡ Store Action
       if (typeof registrarEventoSeguridad === 'function') {
         registrarEventoSeguridad('LOGIN', `Acceso de ${usuarioLogueado.nombre}`, 'INFO');
       }
@@ -129,8 +140,7 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
   };
 
   const logout = () => {
-    setUsuarioActivo(null);
-    sessionStorage.clear();
+    clearSession(); // ⚡ Store Action
   };
 
   // --- FUNCIONES DE VALIDACIÓN ---
@@ -156,7 +166,6 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
 
   const validarPinDueno = async (pinInput) => {
     const inputHash = await hashPin(pinInput);
-    // Validamos contra el ID 1 o el rol explicito
     return usuarios.some(u => (u.id === SUPER_ADMIN_ID || u.roleId === 'ROL_DUENO') && u.pinHash === inputHash);
   };
 
@@ -165,14 +174,12 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
   const agregarUsuario = async (datos) => {
     try {
       const nuevoHash = await hashPin(datos.pin);
-
-      // Asignar permisos según el rol seleccionado usando los PRESETS
       const permisosAsignados = ROLE_PRESETS[datos.rol] || [];
 
       const nuevoUsuario = {
-        id: crypto.randomUUID(), // ✅ ID ÚNICO REAL
+        id: crypto.randomUUID(),
         nombre: datos.nombre,
-        roleId: datos.roleId, // ✅ Usamos el ID que viene del formulario (ROL_EMPLEADO)
+        roleId: datos.roleId,
         rol: datos.rol,
         tipo: 'EMPLEADO',
         pinHash: nuevoHash,
@@ -180,13 +187,14 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
         fechaCreacion: new Date().toISOString(),
         permisos: permisosAsignados
       };
-      setUsuarios(prev => [...prev, nuevoUsuario]);
+
+      storeAddUser(nuevoUsuario); // ⚡ Store Action
 
       if (typeof registrarEventoSeguridad === 'function') {
         registrarEventoSeguridad('CREACION_USUARIO', `Nuevo usuario: ${datos.nombre} (${datos.rol})`, 'INFO');
       }
 
-      return { success: true };
+      return { success: true, user: nuevoUsuario };
     } catch (e) {
       return { success: false, msg: e.message };
     }
@@ -196,7 +204,8 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
     if (id === SUPER_ADMIN_ID) {
       return { success: false, msg: "⛔ ACCESO DENEGADO: El usuario Dueño es parte del núcleo del sistema." };
     }
-    setUsuarios(prev => prev.filter(u => u.id !== id));
+
+    storeDeleteUser(id); // ⚡ Store Action
 
     if (typeof registrarEventoSeguridad === 'function') {
       registrarEventoSeguridad('ELIMINACION_USUARIO', `Usuario eliminado ID: ${id}`, 'WARNING');
@@ -210,20 +219,10 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
       return { success: false, msg: "⛔ El Dueño siempre debe ser Administrador." };
     }
 
-    setUsuarios(prev => prev.map(u => {
-      if (u.id === id) {
-        const nuevosPermisos = datos.rol ? ROLE_PRESETS[datos.rol] : u.permisos;
-        const usuarioActualizado = { ...u, ...datos, permisos: nuevosPermisos };
-
-        // 🔄 SYNC: Si estamos editando al usuario logueado, actualizamos la sesión en vivo
-        if (usuarioActivo && usuarioActivo.id === id) {
-          setUsuarioActivo(usuarioActualizado);
-        }
-
-        return usuarioActualizado;
-      }
-      return u;
-    }));
+    storeUpdateUser(id, {
+      ...datos,
+      permisos: datos.rol ? ROLE_PRESETS[datos.rol] : undefined // Simple update, store handles merge
+    });
 
     if (typeof registrarEventoSeguridad === 'function') {
       registrarEventoSeguridad('MODIFICACION_USUARIO', `Usuario actualizado ID: ${id}`, 'INFO');
@@ -236,29 +235,17 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
     const nuevoHash = await hashPin(nuevoPin);
     const factoryHash = await hashPin('123456');
 
-    setUsuarios(prev => prev.map(u => {
-      if (u.id === userId) {
-        const updatedUser = {
-          ...u,
-          pinHash: nuevoHash,
-          isFactoryAuth: nuevoHash === factoryHash // 🟢 FIX: Si cambia a algo distinto, se quita la alerta
-        };
+    storeUpdateUser(userId, {
+      pinHash: nuevoHash,
+      isFactoryAuth: nuevoHash === factoryHash
+    });
 
-        // 🔄 SYNC: Si estamos editando al usuario logueado, actualizamos la sesión en vivo
-        if (usuarioActivo && usuarioActivo.id === userId) {
-          setUsuarioActivo(updatedUser);
-        }
-
-        return updatedUser;
-      }
-      return u;
-    }));
     return { success: true };
-  }, [usuarioActivo]);
+  }, [storeUpdateUser]);
 
   // Función expuesta para la Simulación o Live Updates
   const actualizarSesionLocal = (nuevoUsuario) => {
-    setUsuarioActivo(nuevoUsuario);
+    setSession(nuevoUsuario); // ⚡ Redirect to Store
   };
 
   // --- 🔒 SISTEMA DE RECUPERACIÓN SOBERANA (PUK) ---

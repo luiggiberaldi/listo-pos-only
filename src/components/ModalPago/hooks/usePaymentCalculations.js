@@ -1,89 +1,71 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
+import { FinancialController } from '../../../controllers/FinancialController';
+import math from '../../../utils/mathCore';
 
 export const usePaymentCalculations = ({
     totalUSD,
+    totalBS,
     pagos,
     tasa,
     configuracion,
     metodosActivos,
-    val, // Helper function passed from parent state or defined here? Better defined here if possible, but depends on 'pagos' structure.
+    val,
     pagoSaldoFavor
 }) => {
-    const [montoIGTF, setMontoIGTF] = useState(0);
-
-    // 🛡️ FIX SEGURIDAD: Evitar división por cero
+    // 🛡️ Tasa Segura
     const tasaSegura = tasa > 0 ? tasa : 1;
 
-    // 🔢 CÁLCULO DINÁMICO IGTF
-    useEffect(() => {
-        if (!configuracion?.igtfActivo) {
-            setMontoIGTF(0);
-            return;
-        }
-
-        let montoPagadoNoIGTF = 0;
-        let montoPagadoConIGTF = 0;
-
-        metodosActivos.forEach(m => {
-            const aplica = m.aplicaIGTF !== undefined ? m.aplicaIGTF : (m.tipo === 'DIVISA');
-            const monto = val(m.id);
-
-            if (monto > 0) {
-                if (aplica) {
-                    montoPagadoConIGTF += monto;
-                } else {
-                    if (m.tipo === 'BS') {
-                        montoPagadoNoIGTF += (monto / tasaSegura);
-                    } else {
-                        montoPagadoNoIGTF += monto;
-                    }
-                }
-            }
+    // 1. Prepare Payments for Controller
+    const allPayments = useMemo(() => {
+        const list = metodosActivos.map(m => {
+            const rawVal = val(m.id);
+            return {
+                amount: rawVal,
+                currency: m.tipo === 'BS' ? 'VES' : 'USD',
+                type: m.tipo,
+                aplicaIGTF: m.aplicaIGTF,
+                // Heuristic: If method name implies digital/transfer, it might not trigger IGTF by default logic
+                // But the controller handles the "undefined" logic based on currency/type.
+                medium: m.nombre.toUpperCase().includes('DIGITAL') ? 'DIGITAL' : 'CASH',
+                id: m.id
+            };
         });
 
-        const deudaSusceptible = Math.max(0, totalUSD - montoPagadoNoIGTF);
-        const baseImponible = Math.min(deudaSusceptible, montoPagadoConIGTF);
-
-        if (baseImponible > 0) {
-            const tasaIGTF = (configuracion.igtfTasa || 3) / 100;
-            const impuestoCalculado = baseImponible * tasaIGTF;
-            setMontoIGTF(Math.round((impuestoCalculado + Number.EPSILON) * 100) / 100);
-        } else {
-            setMontoIGTF(0);
+        // Add Wallet Payment (Saldo a Favor)
+        if (parseFloat(pagoSaldoFavor) > 0) {
+            list.push({
+                amount: parseFloat(pagoSaldoFavor),
+                currency: 'USD',
+                type: 'DIVISA',
+                medium: 'DIGITAL', // Wallet is Digital
+                aplicaIGTF: false // Wallet never tax
+            });
         }
+        return list;
+    }, [pagos, metodosActivos, val, pagoSaldoFavor]);
 
-    }, [pagos, configuracion, metodosActivos, totalUSD, tasaSegura, val]);
+    // 2. Call Controller
+    const result = useMemo(() => {
+        return FinancialController.calculatePaymentStatus(totalUSD, allPayments, configuracion, tasaSegura);
+    }, [totalUSD, allPayments, configuracion, tasaSegura]);
 
-    const metodosDivisa = metodosActivos.filter(m => m.tipo === 'DIVISA');
-    const metodosBs = metodosActivos.filter(m => m.tipo === 'BS');
+    // 3. UI-Specific BS Calculations (Visual Consistency)
+    // Controller gives us pure math. UI needs explicit BS values based on the "Visual Total BS".
+    const factorIGTF = result.montoIGTF > 0 ? (1 + (configuracion.igtfTasa || 3) / 100) : 1;
 
-    const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+    // If we have IGTF, the Visual Total BS increases
+    const totalConIGTFBS = math.round(totalBS * factorIGTF);
 
-    const totalPagadoUSD = round2(metodosDivisa.reduce((acc, m) => acc + val(m.id), 0));
-    const totalPagadoBS = round2(metodosBs.reduce((acc, m) => acc + val(m.id), 0));
-    const valSaldoFavor = parseFloat(pagoSaldoFavor) || 0;
-
-    const round4 = (num) => Math.round((num + Number.EPSILON) * 10000) / 10000;
-
-    const totalPagadoGlobalUSD = totalPagadoUSD + (totalPagadoBS / tasaSegura) + valSaldoFavor;
-    const totalConIGTF = round2(totalUSD + montoIGTF);
-
-    // 🛡️ FÉNIX PRECISION: We use 4 decimals for guard logic to catch 1 BS (0.0025 USD)
-    const restanteCalculo = round4(totalConIGTF - totalPagadoGlobalUSD);
-
-    const faltaPorPagar = restanteCalculo > 0.0001 ? round2(restanteCalculo) : 0;
-    const cambioUSD = restanteCalculo < -0.0001 ? Math.abs(restanteCalculo) : 0;
+    // Falta por Pagar BS: derived from USD remaining
+    const faltaPorPagarBS = math.round(result.faltaPorPagar * tasaSegura);
 
     return {
-        montoIGTF,
-        totalPagadoUSD,
-        totalPagadoBS,
-        totalPagadoGlobalUSD,
-        totalConIGTF,
-        faltaPorPagar,
-        cambioUSD,
+        ...result,
+        totalConIGTFBS,
+        faltaPorPagarBS,
         tasaSegura,
-        round2,
-        round4
+        // Wrappers for compatibility
+        round2: (n) => math.round(n),
+        round4: (n) => math.round(n, 4)
     };
 };

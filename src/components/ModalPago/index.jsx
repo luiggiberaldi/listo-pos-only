@@ -2,56 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import Swal from 'sweetalert2';
 
-// 🪝 HOOKS REFRACTORIZADOS
+// 🪝 HOOKS PROPIOS (Logic & Controller)
 import { usePaymentState } from './hooks/usePaymentState';
 import { usePaymentCalculations } from './hooks/usePaymentCalculations';
 import { useClientWallet } from './hooks/useClientWallet';
 
-// 🧱 COMPONENTES DE UI MODULARIZADOS
+// 🧱 COMPONENTES MODULARES
 import PaymentHeader from './components/PaymentHeader';
 import PaymentLeftColumn from './components/PaymentLeftColumn';
 import WalletSection from './components/WalletSection';
 import PaymentFooter from './components/PaymentFooter';
-import PaymentForm from './PaymentForm';
+import PaymentInputs from './components/PaymentInputs'; // 🚀 Renamed from PaymentForm
 import NumericPad from './NumericPad';
+
+// 🧮 MATH CORE
+import math from '../../utils/mathCore';
 
 export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPagar, onClose, initialClient = null, isTouch = false }) {
     const { clientes, agregarCliente, metodosPago, configuracion } = useStore();
     const metodosActivos = metodosPago.filter(m => m.activo);
 
-    // 1️⃣ STATE MANAGEMENT
+    // 1️⃣ STATE MANAGEMENT (View Logic)
     const {
         modo, setModo,
         clienteSeleccionado, setClienteSeleccionado,
         pagos, setPagos,
         referencias, setReferencias,
-        pagoSaldoFavor, setPagoSaldoFavor, // 🆕 From PaymentState
+        pagoSaldoFavor, setPagoSaldoFavor,
         activeInputId, setActiveInputId,
         activeInputType, setActiveInputType,
         inputRefs,
         val
     } = usePaymentState(initialClient, metodosActivos, isTouch);
 
-    // 🆕 STATE PARA VUELTO (Aún local por ser UI-specific)
-    const [distVueltoUSD, setDistVueltoUSD] = useState(0);
-    const [distVueltoBS, setDistVueltoBS] = useState(0);
-    const [isChangeCredited, setIsChangeCredited] = useState(false);
-    const [clientSearchTrigger, setClientSearchTrigger] = useState(0); // 🚀 Trigger for Shortcut
-
-    // 2️⃣ CALCULATIONS CORE (Moved UP to feed Wallet Projection)
+    // 2️⃣ CALCULATIONS CORE (Financial Controller)
     const {
         montoIGTF,
         totalPagadoUSD,
         totalPagadoBS,
         totalPagadoGlobalUSD,
         totalConIGTF,
+        totalConIGTFBS,
         faltaPorPagar,
+        faltaPorPagarBS,
         cambioUSD,
-        tasaSegura,
-        round2,
-        round4
+        tasaSegura
     } = usePaymentCalculations({
         totalUSD,
+        totalBS,
         pagos,
         tasa,
         configuracion,
@@ -60,17 +58,31 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         pagoSaldoFavor
     });
 
-    // 3️⃣ WALLET LOGIC (Now Pure Projection, receiving calculated Change)
+    // 3️⃣ LOCAL UI STATE
+    const [distVueltoUSD, setDistVueltoUSD] = useState(0);
+    const [distVueltoBS, setDistVueltoBS] = useState(0);
+    const [isChangeCredited, setIsChangeCredited] = useState(false);
+    const [clientSearchTrigger, setClientSearchTrigger] = useState(0);
+
+    // 4️⃣ WALLET PROJECTION
     const { proyeccion } = useClientWallet(
         clienteSeleccionado, clientes, modo, cambioUSD, isChangeCredited, distVueltoUSD, distVueltoBS, tasa
     );
 
-    // 🛡️ FINANCIAL GUARD (FÉNIX VUELTO) - 4 Decimals Precision
-    const sumaDistribucionVueltoUSD = round2((parseFloat(distVueltoUSD) || 0) + ((parseFloat(distVueltoBS) || 0) / tasaSegura));
-    const remanenteVueltoUSD = round4(cambioUSD - sumaDistribucionVueltoUSD);
-    // Solo permitimos continuar si el cuadre es exacto (margen de 0.001)
-    // O si el cajero ha activado explícitamente la distribución (Mix/Monedero).
-    const isVueltoValido = cambioUSD < 0.001 || (remanenteVueltoUSD >= -0.001 && (remanenteVueltoUSD <= 0.001 || isChangeCredited));
+    // 5️⃣ FINANCIAL VALDIATION (Hybrid Change)
+    // Usamos mathCore para evitar errores de punto flotante en la UI
+    const distUSD = parseFloat(distVueltoUSD) || 0;
+    const distBS_in_USD = (parseFloat(distVueltoBS) || 0) / tasaSegura;
+
+    // Remanente usando math core
+    // remanente = cambio - (distUSD + distBS_inUSD)
+    const remanenteVueltoUSD = math.round(cambioUSD - (distUSD + distBS_in_USD), 4);
+
+    // Valid: If change is 0, OR if mismatch is minimal (<0.001) OR if Credited
+    const isVueltoValido = cambioUSD < 0.001 || (
+        remanenteVueltoUSD >= -0.001 &&
+        (remanenteVueltoUSD <= 0.001 || isChangeCredited)
+    );
 
     const metodosDivisa = metodosActivos.filter(m => m.tipo === 'DIVISA');
     const metodosBs = metodosActivos.filter(m => m.tipo === 'BS').sort((a, b) => {
@@ -106,10 +118,8 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     // 🎹 GLOBAL SHORTCUTS: 'C' to open Client Search
     useEffect(() => {
         const handleKeyPress = (e) => {
-            // Only trigger if no input is focused, OR if we are in a payment input
             const activeElem = document.activeElement;
             const isInput = activeElem.tagName === 'INPUT';
-
             if (e.key.toLowerCase() === 'c' && !isInput) {
                 e.preventDefault();
                 onResolveErrorAction(); // Trigger shortcut
@@ -120,8 +130,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     }, [isTouch]);
 
     const onResolveErrorAction = () => {
-        // 🚀 FÉNIX SHORTCUT: Reactive Resolution
-        setClientSearchTrigger(prev => prev + 1); // ⚡ Force open
+        setClientSearchTrigger(prev => prev + 1);
         if (isTouch) {
             setActiveInputId('SELECT_CLIENT');
             setActiveInputType('client');
@@ -132,7 +141,6 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     };
 
     const handleFinishSelection = () => {
-        // 🚀 JUMP AFTER SELECTION: To Change or To Payments
         if (cambioUSD > 0.01) {
             setActiveInputId('CHANGE_USD');
             setActiveInputType('change');
@@ -150,7 +158,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         }
     };
 
-    // 📌 HANDLERS
+    // 📌 HANDLERS DE INTERACCIÓN
     const handleVueltoDistChange = (moneda, valor) => {
         if (moneda === 'usd') setDistVueltoUSD(valor === '' ? '' : valor);
         if (moneda === 'bs') setDistVueltoBS(valor === '' ? '' : valor);
@@ -161,19 +169,17 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         setIsChangeCredited(true);
     };
 
-    const handleCancelarCreditChange = () => {
-        setIsChangeCredited(false);
-    };
-
     const llenarSaldo = (id, monto) => {
         const metodo = metodosActivos.find(m => m.id === id);
+        // FIXME: This logic should ideally also be in controller, 
+        // but for auto-fill UI convenience we replicate basic math here.
         const aplicaIGTF = configuracion?.igtfActivo && (metodo.aplicaIGTF !== undefined ? metodo.aplicaIGTF : metodo.tipo === 'DIVISA');
         const factor = aplicaIGTF ? (1 + (configuracion.igtfTasa || 3) / 100) : 1;
         const actual = parseFloat(pagos[id] || 0);
 
         let valorFinal = 0;
-        if (monto === 'USD') valorFinal = round2(actual + (faltaPorPagar * factor));
-        if (monto === 'BS') valorFinal = round2(actual + (faltaPorPagar * tasaSegura));
+        if (monto === 'USD') valorFinal = math.round(actual + (faltaPorPagar * factor));
+        if (monto === 'BS') valorFinal = math.round(actual + (faltaPorPagarBS * factor));
 
         setPagos(prev => ({ ...prev, [id]: valorFinal }));
         setTimeout(() => {
@@ -184,19 +190,16 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
 
     const sumarBillete = (id, monto) => {
         const actual = parseFloat(pagos[id] || 0);
-        const nuevo = round2(actual + monto);
+        const nuevo = math.round(actual + monto);
         setPagos(prev => ({ ...prev, [id]: nuevo }));
     };
 
     const procesarPago = (imprimir = false) => {
         try {
+            // Validations
             if (modo === 'contado' && faltaPorPagar > 0.01) return Swal.fire({ icon: 'error', title: 'Falta dinero', text: `Restan $${faltaPorPagar.toFixed(2)} por cobrar.`, timer: 1500, showConfirmButton: false });
             if (modo === 'credito' && !clienteSeleccionado) return Swal.fire('Atención', 'Para vender a crédito, debe seleccionar un cliente.', 'warning');
-
-            // 🛡️ GUARD: Block Mixed Payment without Client (Final Defense)
-            if (parseFloat(pagoSaldoFavor || 0) > 0 && !clienteSeleccionado) {
-                return Swal.fire('Error', "PAGO MIXTO INVÁLIDO: Para usar saldo a favor debe tener un cliente activo.", 'error');
-            }
+            if (parseFloat(pagoSaldoFavor || 0) > 0 && !clienteSeleccionado) return Swal.fire('Error', "PAGO MIXTO INVÁLIDO: Para usar saldo a favor debe tener un cliente activo.", 'error');
 
             for (const m of metodosActivos) {
                 if (val(m.id) > 0 && m.requiereRef && (!referencias[m.id] || referencias[m.id].length < 4)) {
@@ -206,11 +209,9 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
 
             let distribucionFinal = { usd: parseFloat(distVueltoUSD) || 0, bs: parseFloat(distVueltoBS) || 0 };
             let montoVueltoDigital = 0;
-            const sumaDistribucion = (parseFloat(distVueltoUSD) || 0) + ((parseFloat(distVueltoBS) || 0) / tasaSegura);
 
             if (modo === 'contado' && cambioUSD > 0.01) {
                 if (isChangeCredited) {
-                    // 🛡️ GUARD: Excess Protection (FÉNIX G2)
                     if (remanenteVueltoUSD < -0.01) {
                         return Swal.fire('Exceso de Vuelto', `Estás entregando $${Math.abs(remanenteVueltoUSD).toFixed(2)} de más. Ajusta la distribución.`, 'error');
                     }
@@ -222,7 +223,14 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                 }
             }
 
-            const pagosFinales = metodosActivos.filter(m => val(m.id) > 0).map(m => ({ metodo: m.nombre, metodoId: m.id, monto: val(m.id), tipo: m.tipo, referencia: referencias[m.id] || '' }));
+            const pagosFinales = metodosActivos.filter(m => val(m.id) > 0).map(m => ({
+                metodo: m.nombre,
+                metodoId: m.id,
+                monto: val(m.id),
+                tipo: m.tipo,
+                referencia: referencias[m.id] || ''
+            }));
+
             const clienteObj = clientes.find(c => c.id === clienteSeleccionado);
             const nombreClienteFinal = clienteObj ? clienteObj.nombre : (clienteSeleccionado ? 'Cliente' : null);
 
@@ -258,7 +266,6 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
             const prevInput = inputRefs.current[index - 1];
             if (prevInput) prevInput.focus({ preventScroll: true });
         }
-        // 🚀 CROSS-COLUMN JUMP: Left Arrow to Change Calculator
         if (e.key === 'ArrowLeft' && cambioUSD > 0.01) {
             e.preventDefault();
             setActiveInputId('CHANGE_USD');
@@ -279,6 +286,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                 <div className="flex flex-1 overflow-hidden relative">
                     <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
+                        {/* 🟢 COLUMN IZQUIERDA: RESUMEN Y ESTADO */}
                         <PaymentLeftColumn
                             isTouch={isTouch}
                             totalUSD={totalUSD} totalImpuesto={totalImpuesto} totalBS={totalBS} montoIGTF={montoIGTF} tasaSegura={tasaSegura} configuracion={configuracion}
@@ -288,13 +296,13 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                             distVueltoUSD={distVueltoUSD} distVueltoBS={distVueltoBS} handleVueltoDistChange={handleVueltoDistChange}
                             isChangeCredited={isChangeCredited} handleCreditChange={handleCreditChange} setIsChangeCredited={setIsChangeCredited}
                             deudaCliente={deudaCliente}
-                            onFocusInput={(id) => { setActiveInputId(id); setActiveInputType('change'); }} // 🟢 HANDLE CHANGE INPUTS
-                            isVueltoValido={isVueltoValido} // 🛡️ Reactive Prop
-                            clientSearchTrigger={clientSearchTrigger} // 🚀
-                            onFinishSelection={handleFinishSelection} // 🚀
+                            onFocusInput={(id) => { setActiveInputId(id); setActiveInputType('change'); }}
+                            isVueltoValido={isVueltoValido}
+                            clientSearchTrigger={clientSearchTrigger}
+                            onFinishSelection={handleFinishSelection}
                         />
 
-                        {/* COLUMNA DERECHA (FORMULARIO) */}
+                        {/* 🟢 COLUMNA DERECHA: INPUTS DE PAGO */}
                         <div className="flex-1 flex flex-col bg-white overflow-hidden">
                             <div className={`flex-1 overflow-y-auto ${isTouch ? 'p-8' : 'p-6'}`}>
                                 <WalletSection
@@ -303,7 +311,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                                     pagoSaldoFavor={pagoSaldoFavor} setPagoSaldoFavor={setPagoSaldoFavor}
                                 />
 
-                                <PaymentForm
+                                <PaymentInputs
                                     metodosDivisa={metodosDivisa} metodosBs={metodosBs}
                                     pagos={pagos} handleInputChange={(id, val) => { if (val === '' || /^\d*\.?\d*$/.test(val)) setPagos(p => ({ ...p, [id]: val })); }}
                                     llenarSaldo={llenarSaldo} referencias={referencias} handleRefChange={(id, val) => setReferencias(p => ({ ...p, [id]: val }))}
@@ -318,9 +326,9 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                             <PaymentFooter
                                 isTouch={isTouch} modo={modo} faltaPorPagar={faltaPorPagar} clienteSeleccionado={clienteSeleccionado}
                                 totalPagadoGlobalUSD={totalPagadoGlobalUSD} onProcesar={procesarPago} setActiveInputId={setActiveInputId}
-                                isVueltoValido={isVueltoValido} // 🛡️
+                                isVueltoValido={isVueltoValido}
                                 remanenteVueltoUSD={remanenteVueltoUSD}
-                                onResolveError={onResolveErrorAction} // 🚀 Keyboard/Click shortcut
+                                onResolveError={onResolveErrorAction}
                             />
                         </div>
                     </div>
@@ -339,7 +347,6 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                                         if (activeInputType === 'amount') setPagos(p => ({ ...p, [activeInputId]: val }));
                                         else if (activeInputType === 'ref') setReferencias(p => ({ ...p, [activeInputId]: val }));
                                         else if (activeInputType === 'change') {
-                                            // 🟢 LOGIC FOR CHANGE INPUTS
                                             if (activeInputId === 'CHANGE_USD') handleVueltoDistChange('usd', val);
                                             if (activeInputId === 'CHANGE_BS') handleVueltoDistChange('bs', val);
                                         }

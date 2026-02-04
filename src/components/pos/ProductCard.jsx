@@ -1,24 +1,15 @@
 import React, { memo } from 'react';
 import { Lock } from 'lucide-react';
 
-const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, permitirSinStock }) => {
-    // ... lines 5-41
-    const p = data[index];
-    if (!p) return null;
-
-    const obtenerPrecioVisual = (prod) => {
-        let precio = parseFloat(prod?.jerarquia?.unidad?.precio);
-        if (!precio || precio === 0) precio = parseFloat(prod.precio);
-        return (!isNaN(precio) && precio > 0) ? precio : (parseFloat(prod.precio) || 0);
-    };
-
-    const precioVisual = obtenerPrecioVisual(p);
-    const stock = parseFloat(p.stock) || 0;
-    const isAgotado = stock <= 0.001;
-    const isPoco = stock > 0 && stock <= 5;
+const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, permitirSinStock, isProcessing }) => { // 🆕
+    const p = data[index]; // Extract product from virtual array
+    const stock = p.stock || 0;
+    const isAgotado = stock <= 0;
+    const isPoco = stock <= 5; // Low stock threshold
+    const precioVisual = p.precio || 0;
 
     // 🔓 DESBLOQUEO DE VENTA SIN STOCK
-    const isBlocked = isAgotado && !permitirSinStock;
+    const isBlocked = (isAgotado && !permitirSinStock) || isProcessing; // 🛑 DISABLED IF PROCESSING
 
     let stockLabel = 'DISPONIBLE';
     let stockColor = 'bg-status-successBg text-status-success';
@@ -83,7 +74,7 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
                             {p.tipoUnidad === 'peso' && <span className="text-[10px] text-content-secondary">/Kg</span>}
                         </div>
                         <div className="text-sm font-black text-primary mt-0.5">
-                            Bs {(precioVisual * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                            Bs {Math.round(precioVisual * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </div>
                     </div>
                 </div>
@@ -94,7 +85,8 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
     // Custom comparator for max performance (optional, default shall diff props)
     // Re-render only if index product changes or tasa changes.
     return prevProps.data[prevProps.index] === nextProps.data[nextProps.index] &&
-        prevProps.tasa === nextProps.tasa;
+        prevProps.tasa === nextProps.tasa &&
+        prevProps.isProcessing === nextProps.isProcessing;
 });
 
 export default ProductCard;

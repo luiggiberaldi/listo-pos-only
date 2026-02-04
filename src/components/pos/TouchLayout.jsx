@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import {
     Trash2, Plus, Minus, Search, ShoppingCart,
-    Package, LayoutGrid, CheckCircle2, ChevronRight, Clock
+    Package, LayoutGrid, CheckCircle2, ChevronRight, Clock, HelpCircle
 } from 'lucide-react';
 
 import Swal from 'sweetalert2';
@@ -69,7 +69,7 @@ const TouchProductCard = ({ producto, onSelect, tasa }) => {
                     ${precioUSD.toFixed(2)}
                 </div>
                 <div className="text-xs font-bold text-slate-500 font-numbers">
-                    Bs {precioBS.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Bs {Math.round(precioBS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
             </div>
 
@@ -162,8 +162,14 @@ export default function TouchLayout({
     tasaReferencia, // 🆕
     multiplicadorPendiente, // 🆕
     handlePrintSaldo, // 🆕
-    onCloseSuccess // 🆕
+    onCloseSuccess, // 🆕
+    handlers, // ✅ NEW: Atomic Handlers
+    children
 }) {
+    const {
+        cerrarPago, cerrarEspera, cerrarPesaje, cerrarJerarquia, toggleAyuda,
+        abrirEspera, abrirPago // ✅ Added openers
+    } = handlers || {};
 
     const scrollRef = useRef(null);
 
@@ -233,12 +239,13 @@ export default function TouchLayout({
             )}
 
             {/* --- MODALES --- */}
+            {/* --- MODALES --- */}
             {cajaAbierta && (
                 <>
-                    {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); setModales(m => ({ ...m, pesaje: null })); }} onClose={() => setModales(m => ({ ...m, pesaje: null }))} />}
-                    {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); setModales(m => ({ ...m, jerarquia: null })); }} onClose={() => setModales(m => ({ ...m, jerarquia: null }))} />}
-                    {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} isTouch={true} onClose={() => setModales(m => ({ ...m, pago: false }))} />}
-                    {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={() => setModales(m => ({ ...m, espera: false }))} />}
+                    {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); cerrarPesaje(); }} onClose={cerrarPesaje} />}
+                    {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); cerrarJerarquia(); }} onClose={cerrarJerarquia} />}
+                    {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} isTouch={true} onClose={cerrarPago} />}
+                    {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={cerrarEspera} />}
                 </>
             )}
 
@@ -290,7 +297,7 @@ export default function TouchLayout({
                                 ${calculos.totalUSD.toFixed(2)}
                             </div>
                             <p className="text-sm font-bold text-slate-500 font-numbers">
-                                Bs {calculos.totalBS.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                Bs {Math.round(calculos.totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                             </p>
                         </div>
                     </div>
@@ -341,7 +348,14 @@ export default function TouchLayout({
                             </div>
                         </div>
                         <button
-                            onClick={() => setModales(m => ({ ...m, espera: true }))}
+                            onClick={toggleAyuda}
+                            className="p-4 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center active:scale-95 transition-all"
+                            title="Ver Atajos de Teclado"
+                        >
+                            <HelpCircle size={24} />
+                        </button>
+                        <button
+                            onClick={abrirEspera}
                             className={`p-4 rounded-2xl font-bold flex items-center gap-2 active:scale-95 transition-all
                                 ${ticketsEspera.length > 0 ? 'bg-orange-100 text-orange-600 ring-2 ring-orange-200 animate-pulse' : 'bg-white text-slate-400 border border-slate-200'}
                             `}
@@ -371,6 +385,7 @@ export default function TouchLayout({
                     </div>
                 </div>
             </div>
+            {children}
         </div>
     );
 }

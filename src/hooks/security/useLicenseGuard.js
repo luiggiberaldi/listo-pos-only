@@ -15,6 +15,14 @@ export const useLicenseGuard = () => {
 
     // 1. VERIFICACIÓN DE INTEGRIDAD LOCAL (HARDWARE BINDING)
     useEffect(() => {
+        // 👻 GHOST BYPASS: Permitir acceso total si estamos en simulación
+        if (localStorage.getItem('ghost_bypass') === 'true') {
+            setStatus('authorized');
+            setMachineId('GHOST_AGENT');
+            setIsSuspended(false);
+            return;
+        }
+
         const verifyLicense = async () => {
             try {
                 // Fail-Safe: Revisar bloqueo persistente (System Lock Only)
@@ -74,6 +82,9 @@ export const useLicenseGuard = () => {
 
     // 2. FÉNIX CLOUD LOCK (REAL-TIME LISTENER)
     useEffect(() => {
+        // 👻 GHOST BYPASS
+        if (localStorage.getItem('ghost_bypass') === 'true') return;
+
         // Necesitamos el Machine ID y la conexión a Master
         if (!machineId || !dbMaster) return;
 

@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
+import { timeProvider } from '../../utils/TimeProvider';
 import Swal from 'sweetalert2';
 
 export const useTicketManager = (usuario, configuracion, carrito, setCarrito, playSound) => {
@@ -10,7 +11,7 @@ export const useTicketManager = (usuario, configuracion, carrito, setCarrito, pl
         if (carrito.length === 0) return;
         try {
             await db.tickets_espera.add({
-                fecha: new Date().toISOString(),
+                fecha: timeProvider.toISOString(),
                 usuarioId: usuario?.id || 'sys',
                 usuarioNombre: usuario?.nombre || 'Sistema',
                 items: carrito,

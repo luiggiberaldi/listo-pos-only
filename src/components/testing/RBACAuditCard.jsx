@@ -1,8 +1,8 @@
 import React from 'react';
-import { ShieldCheck, PlayCircle, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { ShieldCheck, PlayCircle, Loader2, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 
 export default function RBACAuditCard({ validator }) {
-    const { logs, runFullAudit, isRunning, stats } = validator;
+    const { logs, runFullAudit, isRunning, stats, cleanup } = validator;
 
     return (
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-h-[400px] animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -34,8 +34,17 @@ export default function RBACAuditCard({ validator }) {
                             </div>
                         </div>
 
-                        <div className="mt-4 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-300 text-xs text-left">
-                            <strong>🕵️‍♂️ DEEP SCAN:</strong> Valida automáticamente Cajeros, Encargados y Dueños, detectando posibles escalamientos de privilegios o brechas de seguridad.
+                        <div className="mt-4 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-300 text-xs text-left flex justify-between items-center gap-4">
+                            <p>
+                                <strong>🕵️‍♂️ DEEP SCAN:</strong> Valida automáticamente Cajeros, Encargados y Dueños, detectando posibles escalamientos de privilegios o brechas de seguridad.
+                            </p>
+                            <button
+                                onClick={cleanup}
+                                title="Limpiar huellas de auditoría"
+                                className="shrink-0 p-2 hover:bg-violet-100 dark:hover:bg-violet-800 rounded-lg text-violet-400 hover:text-rose-500 transition-colors"
+                            >
+                                <Trash2 size={16} />
+                            </button>
                         </div>
                     </div>
                 ) : (

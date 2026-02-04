@@ -69,6 +69,32 @@ export default function EmployeeRegistrationForm({ formState, setFormState, onSu
                     </div>
                 )}
 
+                {/* 🆕 CONFIGURACIÓN DE NÓMINA: SUELDO Y FRECUENCIA */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-content-secondary uppercase tracking-widest ml-1">Sueldo Base ($)</label>
+                        <input
+                            type="number"
+                            placeholder="0.00"
+                            className="w-full p-4 bg-app-light dark:bg-slate-900/50 rounded-xl font-bold text-content-main dark:text-white outline-none focus:ring-2 focus:ring-primary-focus/50 focus:border-primary transition-all border border-border-subtle/50 hover:border-border-subtle placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                            value={formState.sueldoBase || ''}
+                            onChange={e => setFormState({ ...formState, sueldoBase: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-content-secondary uppercase tracking-widest ml-1">Frecuencia</label>
+                        <select
+                            className="w-full p-4 bg-app-light dark:bg-slate-900/50 rounded-xl font-bold text-content-main dark:text-white outline-none focus:ring-2 focus:ring-primary-focus/50 focus:border-primary transition-all border border-border-subtle/50 hover:border-border-subtle cursor-pointer appearance-none"
+                            value={formState.frecuenciaPago || 'Semanal'}
+                            onChange={e => setFormState({ ...formState, frecuenciaPago: e.target.value })}
+                        >
+                            <option value="Semanal">Semanal</option>
+                            <option value="Quincenal">Quincenal</option>
+                            <option value="Mensual">Mensual</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-end">
                         <label className="text-[11px] font-bold text-content-secondary uppercase tracking-widest ml-1">Asignar PIN</label>

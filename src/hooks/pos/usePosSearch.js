@@ -1,30 +1,33 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { useDebounce } from '../ui/useDebounce';
+import { useInventoryStore } from '../../stores/useInventoryStore';
 
-export const usePosSearch = (productos) => {
+export const usePosSearch = () => { // Removed 'productos' prop
     const [busqueda, setBusqueda] = useState('');
     const debouncedBusqueda = useDebounce(busqueda, 300);
     const [categoriaActiva, setCategoriaActiva] = useState('Todo');
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    // 🚀 OPTIMIZATION: Memoized Filtering
-    const filtrados = useMemo(() => productos.filter(p => {
-        if (!debouncedBusqueda && categoriaActiva === 'Todo') return false;
+    // 🚀 ATOMIC SUBSCRIPTION: We only get what we need
+    const categorias = useInventoryStore(state => state.categorias);
+    const productos = useInventoryStore(state => state.productos);
+    const searchIndex = useInventoryStore(state => state.searchIndex);
 
-        // 🛡️ [REPAIR] Null check for Name/Code to avoid toLowerCase() crashes
+    // 🚀 MEMOIZED SEARCH (Fixes "getSnapshot" infinite loop)
+    const filtrados = useMemo(() => {
         const term = debouncedBusqueda.toLowerCase();
-        const nombre = (p.nombre || '').toLowerCase();
-        const codigo = (p.codigo || '').toLowerCase();
+        if (!term && categoriaActiva === 'Todo') return productos;
 
-        const textoMatch = !debouncedBusqueda ||
-            nombre.includes(term) ||
-            codigo.includes(term);
+        if (!searchIndex) return productos; // Safety check
 
-        const catMatch = categoriaActiva === 'Todo' || (p.categoria || 'General') === categoriaActiva;
-        return textoMatch && catMatch;
-    }), [productos, debouncedBusqueda, categoriaActiva]);
-
-    const categorias = useMemo(() => ['Todo', ...new Set(productos.map(p => p.categoria || 'General'))], [productos]);
+        return searchIndex
+            .filter(item => {
+                const matchesTerm = !term || item.str.includes(term);
+                const matchesCat = categoriaActiva === 'Todo' || (item.original.categoria || 'General') === categoriaActiva;
+                return matchesTerm && matchesCat;
+            })
+            .map(item => item.original);
+    }, [productos, searchIndex, debouncedBusqueda, categoriaActiva]);
 
     useEffect(() => {
         setSelectedIndex(0);

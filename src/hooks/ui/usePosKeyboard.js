@@ -9,7 +9,7 @@ export const usePosKeyboard = ({
   cajaAbierta,
   tieneAccesoPos,
   isProcessing,
-  modalesAbiertos, // { pago, espera, pesar, jerarquia, exito }
+  modalesAbiertos, // { pago, espera, pesar, jerarquia, exito, ayuda }
   carrito,
   busqueda,
   filtrados,
@@ -113,8 +113,18 @@ export const usePosKeyboard = ({
         }
       }
 
+      // --- AYUDA (?) ---
+      if (e.key === '?' || e.key === 'Help') {
+        e.preventDefault();
+        actions.toggleAyuda();
+      }
+
       // --- ESCAPE (Limpiar búsqueda) ---
       if (e.key === 'Escape') {
+        if (modalesAbiertos.ayuda) {
+          actions.toggleAyuda();
+          return;
+        }
         if (isTyping) {
           if (busqueda) setBusqueda('');
           else searchInputRef.current.blur();
@@ -232,7 +242,8 @@ export const usePosKeyboard = ({
 
     if (nextIndex !== selectedIndex) {
       setSelectedIndex(nextIndex);
-      productRefs.current[nextIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // 🚀 PERFORMANCE: Scrolling is now handled efficiently by the Virtualized Grid in the View (ProductGrid)
+      // productRefs.current[nextIndex]?.scrollIntoView(...) -> REMOVED
     }
 
     // D. SELECCIÓN (Enter)

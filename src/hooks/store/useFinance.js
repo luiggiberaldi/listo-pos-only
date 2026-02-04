@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { safeLoad } from '../../utils/storageUtils';
-import { useCajaEstado } from '../caja/useCajaEstado';
-import { db } from '../../db';
+import { FinanceService } from '../../services/pos/FinanceService';
 
 export const useFinance = () => {
-    const { registrarSalidaCaja } = useCajaEstado();
     const metodosDefault = [
         { id: 'pago_movil', nombre: 'Pago Móvil', tipo: 'BS', icono: 'Smartphone', activo: true, requiereRef: true, aplicaIGTF: false },
         { id: 'punto_venta', nombre: 'Punto de Venta', tipo: 'BS', icono: 'CreditCard', activo: true, requiereRef: false, aplicaIGTF: false },
@@ -21,8 +19,7 @@ export const useFinance = () => {
 
     useEffect(() => { localStorage.setItem('listo-metodos', JSON.stringify(metodosPago)); }, [metodosPago]);
 
-    // ✅ CORRECCIÓN: Ahora todas las funciones retornan un objeto { success: true }
-    // Esto permite que la interfaz sepa que la operación fue exitosa y cierre el modal.
+    // --- MÉTODOS DE CONFIGURACIÓN DE PAGOS ---
 
     const agregarMetodoPago = (nuevo) => {
         setMetodosPago(prev => [...prev, { ...nuevo, id: Date.now().toString(), activo: true }]);
@@ -44,39 +41,26 @@ export const useFinance = () => {
         return { success: true };
     };
 
-    // --- 💸 MÓDULO DE GASTOS ---
+    // --- 💸 MÓDULO DE GASTOS (THIN CONTROLLER) ---
     const registrarGasto = async (datos) => {
         // datos: { monto, moneda, medio, motivo, usuario }
         try {
-            const { monto, moneda, medio, motivo, usuario } = datos;
-
-            // 1. Validar Caja (Solo si es dinero)
-            const exitoCaja = await registrarSalidaCaja(monto, moneda, medio, motivo);
-
-            if (!exitoCaja) {
-                return { success: false, message: 'No se pudo registrar gasto: Fallo en Caja (¿Caja cerrada o saldo insuficiente?)' };
-            }
-
-            // 2. Registrar en Logs de Auditoría
-            await db.logs.add({
-                fecha: new Date().toISOString(),
-                tipo: 'GASTO_CAJA',
-                producto: 'GASTO OPERATIVO',
-                cantidad: monto,
-                stockFinal: 0,
-                referencia: moneda,
-                detalle: motivo,
-                usuarioId: usuario?.id || 'sys',
-                usuarioNombre: usuario?.nombre || 'Sistema',
-                meta: { moneda, medio }
-            });
-
-            return { success: true, message: 'Gasto registrado correctamente' };
+            // Delegamos toda la lógica transaccional al Servicio Puro
+            const result = await FinanceService.registrarGasto(datos);
+            return { success: true, message: 'Gasto registrado correctamente', logId: result.logId };
         } catch (error) {
-            console.error(error);
+            console.error("Error en registrarGasto (Controller):", error);
+            // Mensaje amigable para UI
             return { success: false, message: error.message };
         }
     };
 
-    return { metodosPago, agregarMetodoPago, editarMetodoPago, toggleMetodoPago, eliminarMetodoPago, registrarGasto };
+    return {
+        metodosPago,
+        agregarMetodoPago,
+        editarMetodoPago,
+        toggleMetodoPago,
+        eliminarMetodoPago,
+        registrarGasto
+    };
 };

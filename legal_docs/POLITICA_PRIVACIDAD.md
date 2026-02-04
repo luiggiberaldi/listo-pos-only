@@ -12,7 +12,7 @@
 | **Cédula de Identidad** | V-24.457.713 |
 | **Dirección** | El Socorro, Calle Sucre, Casa #144, Valencia |
 | **Ciudad/Estado** | Valencia, Estado Carabobo, Venezuela |
-| **Correo de Privacidad** | listopos2026@gmail.com |
+| **Correo de Privacidad** | TechSupport@kiplystart.com |
 | **Sitio Web** | www.kiplystart.com |
 
 ---
@@ -126,7 +126,7 @@ Exportar sus datos en formato estándar para migrar a otro sistema.
 ### 6.5 Oposición
 Oponerse al procesamiento de sus datos para ciertos fines.
 
-Para ejercer estos derechos, contacte a: **listopos2026@gmail.com**
+Para ejercer estos derechos, contacte a: **TechSupport@kiplystart.com**
 
 ---
 
@@ -172,7 +172,7 @@ Para consultas sobre privacidad y protección de datos:
 
 | Canal | Información |
 |-------|-------------|
-| **Correo Electrónico** | listopos2026@gmail.com |
+| **Correo Electrónico** | TechSupport@kiplystart.com |
 | **Teléfono / WhatsApp** | +58 412-405-1793 |
 | **Sitio Web** | www.kiplystart.com |
 | **Dirección Física** | El Socorro, Calle Sucre, Casa #144, Valencia, Edo. Carabobo |

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { fixFloat, convertirABase } from '../../utils/mathUtils';
 import { useRBAC, PERMISSIONS } from './useRBAC';
+import { timeProvider } from '../../utils/TimeProvider';
 
 const DEFAULT_CATEGORIAS = ["General", "Víveres", "Bebidas", "Limpieza", "Otros"];
 
@@ -32,7 +33,15 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
     const movimientos = useLiveQuery(
         () => db.logs
             .where('tipo')
-            .anyOf('ENTRADA_INICIAL', 'ENTRADA_EDICION', 'ENTRADA_DEVOLUCION', 'SALIDA_VENTA', 'SALIDA_AJUSTE', 'PRODUCTO_ELIMINADO')
+            .anyOf(
+                'ENTRADA_INICIAL',
+                'ENTRADA_EDICION',
+                'ENTRADA_DEVOLUCION',
+                'SALIDA_VENTA',
+                'SALIDA_AJUSTE',
+                'PRODUCTO_ELIMINADO',
+                'CONSUMO_INTERNO' // 🆕 Added to fix missing visibility
+            )
             .reverse()
             .toArray()
         , []) || [];
@@ -49,8 +58,8 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
             page: window.location.hash || 'POS'
         };
 
-        await db.logs.add({
-            fecha: new Date().toISOString(),
+        return await db.logs.add({
+            fecha: timeProvider.toISOString(),
             tipo,
             productId: productId || null,
             producto: productoNombre,
@@ -69,7 +78,7 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         verify(PERMISSIONS.INVENTORY_MANAGE, 'Crear Producto');
         await db.transaction('rw', db.productos, db.logs, async () => {
             const stockBase = parseFloat(n.stock) || 0;
-            const prod = { ...n, stock: fixFloat(stockBase), id: Date.now() };
+            const prod = { ...n, stock: fixFloat(stockBase), id: timeProvider.timestamp() };
             await db.productos.put(prod);
             await logMovimientoInternal('ENTRADA_INICIAL', prod.id, prod.nombre, prod.stock, prod.stock, 'INICIO', 'Stock Inicial');
         });
@@ -290,35 +299,37 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
     };
 
     // --- 📦 CONSUMO INTERNO / MERMAS ---
-    const registrarConsumoInterno = async (item, motivo, usuarioActor) => {
+    const registrarConsumoInterno = async (payload, motivo, usuarioActor) => {
         verify(PERMISSIONS.INVENTORY_ADJUST, 'Registrar Consumo Interno');
+        const listaProds = Array.isArray(payload) ? payload : [payload];
 
-        await db.transaction('rw', db.productos, db.logs, async () => {
-            const idKey = Number(item.id) || item.id;
-            const prod = await db.productos.get(idKey);
+        const results = await db.transaction('rw', db.productos, db.logs, async () => {
+            let lastLogId = null;
+            for (const item of listaProds) {
+                const idKey = Number(item.id) || item.id;
+                const prod = await db.productos.get(idKey);
+                if (!prod) continue;
 
-            if (prod) {
-                // Cálculo de reducción de stock
-                const factor = convertirABase(1, item.unidadVenta || 'unidad', prod.jerarquia);
-                const cantidadTotal = fixFloat(item.cantidad * factor);
-                const nuevoStock = fixFloat(prod.stock - cantidadTotal);
+                const stockAnterior = prod.stock;
+                const cantidadReduccion = parseFloat(item.cantidad) || 0;
+                const nuevoStock = fixFloat(stockAnterior - cantidadReduccion);
 
-                await db.productos.update(idKey, { stock: nuevoStock });
+                await db.productos.update(idKey, {
+                    stock: nuevoStock,
+                    _motivo: motivo,
+                    _detalle: 'Consumo Interno'
+                });
 
-                // Metadata para rastreo de costo
                 const smartMetadata = {
-                    unidad: item.unidadVenta || 'unidad',
-                    factor: factor,
-                    cantidadOriginal: item.cantidad,
-                    costoSnapshot: prod.costo || 0, // Importante para reportes de pérdida
+                    tipo: 'CONSUMO_MODAL',
                     motivoExplicito: motivo
                 };
 
-                await logMovimientoInternal(
+                lastLogId = await logMovimientoInternal(
                     'CONSUMO_INTERNO',
                     prod.id,
                     prod.nombre,
-                    cantidadTotal,
+                    Math.abs(stockAnterior - nuevoStock),
                     nuevoStock,
                     'INTERNO',
                     motivo,
@@ -326,8 +337,10 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                     smartMetadata
                 );
             }
+            return lastLogId;
         });
-        return { success: true };
+
+        return { success: true, message: 'Consumo registrado', logId: results };
     };
 
     return {

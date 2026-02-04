@@ -10,6 +10,7 @@ import {
 import { db } from '../db'; // Acceso directo a Dexie
 import ModalDetalleVenta from '../components/ventas/ModalDetalleVenta';
 import { useStore } from '../context/StoreContext';
+import { timeProvider } from '../utils/TimeProvider';
 
 export default function SalesHistoryPage() {
   const { configuracion } = useStore();
@@ -26,7 +27,7 @@ export default function SalesHistoryPage() {
   // Filtros
   // Función auxiliar para obtener fecha local YYYY-MM-DD
   const getTodayLocal = () => {
-    const d = new Date();
+    const d = timeProvider.now();
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
