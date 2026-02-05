@@ -26,45 +26,69 @@ export default function KnowledgeBaseManager() {
         loadArticles();
     }, []);
 
+    const [retryCount, setRetryCount] = useState(0);
+
     const loadArticles = async () => {
         setLoading(true);
-        const sysId = ghostService.systemId;
-        if (!sysId || sysId === "ID_PENDING") {
-            setTimeout(loadArticles, 1000);
-            return;
-        }
-        setSystemId(sysId);
 
-        const { data, error } = await ghostKnowledge.getArticles(sysId);
+        try {
+            const sysId = ghostService.systemId;
 
-        // Initialize factory knowledge if KB is empty
-        if (!error && data && data.length === 0) {
-            console.log('📚 KB vacía, inicializando conocimiento de fábrica...');
-            const { success, articlesCreated } = await initializeFactoryKnowledge(sysId);
-            if (success && articlesCreated > 0) {
-                // Reload articles after initialization
-                const { data: newData } = await ghostKnowledge.getArticles(sysId);
-                if (newData) {
-                    setArticles(newData);
-                    const grouped = newData.reduce((acc, article) => {
-                        if (!acc[article.category]) acc[article.category] = [];
-                        acc[article.category].push(article);
-                        return acc;
-                    }, {});
-                    setGroupedArticles(grouped);
+            // Retry logic with max 5 attempts
+            if (!sysId || sysId === "ID_PENDING") {
+                if (retryCount < 5) {
+                    console.warn(`System ID pending. Retrying... (${retryCount + 1}/5)`);
+                    setRetryCount(prev => prev + 1);
+                    setTimeout(loadArticles, 1000);
+                    return;
+                } else {
+                    console.error("System ID fetch timeout. Using fallback.");
+                    setSystemId("OFFLINE_DEBUG");
+                    setArticles([]);
+                    setGroupedArticles({});
+                    setLoading(false);
+                    return;
                 }
             }
-        } else if (!error && data) {
-            setArticles(data);
-            // Group by category
-            const grouped = data.reduce((acc, article) => {
-                if (!acc[article.category]) acc[article.category] = [];
-                acc[article.category].push(article);
-                return acc;
-            }, {});
-            setGroupedArticles(grouped);
+
+            setSystemId(sysId);
+
+            const { data, error } = await ghostKnowledge.getArticles(sysId);
+
+            // Initialize factory knowledge if KB is empty
+            if (!error && data && data.length === 0) {
+                console.log('📚 KB vacía, inicializando conocimiento de fábrica...');
+                const { success, articlesCreated } = await initializeFactoryKnowledge(sysId);
+                if (success && articlesCreated > 0) {
+                    // Reload articles after initialization
+                    const { data: newData } = await ghostKnowledge.getArticles(sysId);
+                    if (newData) {
+                        setArticles(newData);
+                        const grouped = newData.reduce((acc, article) => {
+                            if (!acc[article.category]) acc[article.category] = [];
+                            acc[article.category].push(article);
+                            return acc;
+                        }, {});
+                        setGroupedArticles(grouped);
+                    }
+                }
+            } else if (!error && data) {
+                setArticles(data);
+                // Group by category
+                const grouped = data.reduce((acc, article) => {
+                    if (!acc[article.category]) acc[article.category] = [];
+                    acc[article.category].push(article);
+                    return acc;
+                }, {});
+                setGroupedArticles(grouped);
+            }
+        } catch (error) {
+            console.error("Error loading knowledge base:", error);
+            setArticles([]);
+            setGroupedArticles({});
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleInitializeFactory = async () => {

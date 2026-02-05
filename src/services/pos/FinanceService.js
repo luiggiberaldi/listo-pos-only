@@ -66,6 +66,68 @@ export const FinanceService = {
     },
 
     /**
+     * 🛡️ BLINDAJE: Revertir Gasto (Devolver dinero a Caja)
+     * Usado cuando se anula un adelanto o se corrige un error.
+     */
+    revertirGasto: async (logIdOriginal, motivoReversion) => {
+        return await db.transaction('rw', db.caja_sesion, db.logs, async () => {
+            // 1. Obtener Log Original
+            const log = await db.logs.get(logIdOriginal);
+            if (!log) throw new Error("Registro de gasto no encontrado.");
+
+            // 2. Validar Estado Caja
+            const currentSession = await db.caja_sesion.get('actual');
+            if (!currentSession || !currentSession.isAbierta) {
+                // TODO: Manejar reversion con caja cerrada (Quizás "Ingreso Diferido"?)
+                // Por ahora, asumimos que solo se puede revertir con caja abierta para cuadrar.
+                throw new Error("Caja cerrada. No se puede revertir el dinero a la gaveta.");
+            }
+
+            // 3. Restaurar Dinero (Inverse of registrarGasto)
+            const meta = log.meta || {};
+            const monto = parseFloat(log.cantidad || 0);
+            const moneda = meta.moneda || 'USD'; // Fallback
+            const medio = meta.medio || 'CASH';
+
+            const newBalances = { ...currentSession.balances };
+
+            if (moneda === 'USD') {
+                if (medio === 'CASH') newBalances.usdCash = math.round(newBalances.usdCash + monto);
+                else newBalances.usdDigital = math.round(newBalances.usdDigital + monto);
+            } else if (moneda === 'VES') {
+                if (medio === 'CASH') newBalances.vesCash = math.round(newBalances.vesCash + monto);
+                else newBalances.vesDigital = math.round(newBalances.vesDigital + monto);
+            }
+
+            await db.caja_sesion.update('actual', { balances: newBalances });
+
+            // 4. Update Log Original (Marcar como Revertido)
+            await db.logs.update(logIdOriginal, {
+                tipo: 'GASTO_REVERTIDO',
+                detalle: `(REVERTIDO) ${log.detalle}`
+            });
+
+            // 5. Nuevo Log de Auditoría (Entrada por Reversión)
+            await db.logs.add({
+                fecha: timeProvider.toISOString(),
+                tipo: 'INGRESO_REVERSION',
+                producto: 'REVERSION GASTO',
+                cantidad: monto,
+                referencia: `REF-${logIdOriginal}`,
+                detalle: `Dinero devuelto a caja: ${motivoReversion}`,
+                usuarioId: log.usuarioId,
+                usuarioNombre: log.usuarioNombre,
+                meta: {
+                    reversionDe: logIdOriginal,
+                    balanceSnapshot: newBalances
+                }
+            });
+
+            return { success: true, message: "Dinero devuelto a caja correctamente." };
+        });
+    },
+
+    /**
      * Actualiza los balances de caja de forma atómica (Para usos externos si es necesario).
      * Nota: registrarGasto ya hace esto internamente para atomicidad.
      */

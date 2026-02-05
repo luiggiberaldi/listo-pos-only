@@ -1,6 +1,6 @@
 
 // Native fetch for Node 18+
-const API_KEY = "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";
+const API_KEY = "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";
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 async function testOpenRouter() {

@@ -144,8 +144,8 @@ export default function ConfigApariencia({
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* TOUCH MODE */}
-              <button
+              {/* TOUCH MODE (HIDDEN FOR NOW) */}
+              {/* <button
                 onClick={() => setForm({ ...form, modoTouch: !form.modoTouch })}
                 className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col justify-between h-32 ${form.modoTouch ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 hover:border-slate-200 bg-slate-50/50'}`}
               >
@@ -159,11 +159,17 @@ export default function ConfigApariencia({
                   <span className={`block font-bold ${form.modoTouch ? 'text-blue-700' : 'text-slate-600'}`}>Modo Táctil</span>
                   <span className="text-xs text-slate-400">Botones grandes</span>
                 </div>
-              </button>
+              </button> */}
 
               {/* SOUND MODE */}
               <button
-                onClick={() => setForm({ ...form, sonidoBeep: !form.sonidoBeep })}
+                onClick={() => {
+                  const newValue = !form.sonidoBeep;
+                  console.log('🔊 TOGGLE SONIDO - Valor anterior:', form.sonidoBeep);
+                  console.log('🔊 TOGGLE SONIDO - Valor nuevo:', newValue);
+                  setForm({ ...form, sonidoBeep: newValue });
+                  console.log('🔊 TOGGLE SONIDO - Estado actualizado');
+                }}
                 className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col justify-between h-32 ${form.sonidoBeep ? 'border-emerald-500 bg-emerald-50/50' : 'border-slate-100 hover:border-slate-200 bg-slate-50/50'}`}
               >
                 <div className="flex justify-between items-start w-full">

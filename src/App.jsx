@@ -25,7 +25,7 @@ import TotalDiarioPage from './pages/TotalDiarioPage';
 import ReportesPage from './pages/ReportesPage';
 import SimulationPage from './pages/SimulationPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
-import IAPage from './pages/config/IAPage';
+import NotFound from './pages/NotFound';
 
 
 // Security Gate
@@ -195,20 +195,11 @@ function App() {
                   }
                 />
 
-                {/* 🧠 INTELIGENCIA ARTIFICIAL */}
-                <Route
-                  path="ia"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.CONF_ACCESO}>
-                      <IAPage />
-                    </RouteGuard>
-                  }
-                />
 
                 {/* 🧪 LABORATORIO */}
                 <Route path="simulation" element={<SimulationPage />} />
 
-                {/* 🔄 REDIRECCIÓN */}
+                {/* 🔄 Catch-all: Silent redirect to home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             )}

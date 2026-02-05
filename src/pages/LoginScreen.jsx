@@ -4,6 +4,7 @@
 // REQUIERE: npm install framer-motion
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowRight, X, Keyboard, AlertCircle, ShieldAlert, Crown, MessageSquare, Send, Loader2 } from 'lucide-react'; // 🟢 Added Icons
@@ -18,7 +19,7 @@ import Swal from 'sweetalert2';
 const PIN_LENGTH = 6;
 const AVATAR_COLORS = [
     'from-blue-500 to-cyan-500',
-    'from-emerald-500 to-teal-500',
+    'from-[#6366F1] to-[#A855F7]', // Replaced Emerald with Indigo->Purple
     'from-orange-500 to-amber-500',
     'from-purple-500 to-pink-500',
     'from-indigo-500 to-violet-500',
@@ -31,6 +32,7 @@ import LegalModal from '../components/auth/LegalModal'; // 🟢 PROFESSIONAL LEG
 import { CardBody, CardContainer, CardItem } from '../components/ui/3d-card';
 
 export default function LoginScreen() {
+    const navigate = useNavigate();
     const {
         usuarios, login, adminResetUserPin, SUPER_ADMIN_ID,
         tempPukCode, confirmarLecturaPuk, validarCodigoRescate, validarTokenSoporte, getSystemID, // 🟢 PUK EXPORTS
@@ -137,7 +139,8 @@ export default function LoginScreen() {
         try {
             const exito = await login(pin, selectedUser?.id);
             if (!exito) throw new Error('PIN Incorrecto');
-            // Login exitoso, el router redirigirá automáticamente
+            // ✅ Navegación explícita después de login exitoso
+            navigate('/', { replace: true });
         } catch (err) {
             setError(true);
             setPin('');
@@ -538,7 +541,54 @@ export default function LoginScreen() {
 
 // --- SUBCOMPONENTES ---
 
+// 📝 TITLE CASE UTILITY
+const toTitleCase = (str) => {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+// 🎨 ROLE-BASED GRADIENT MAPPER
+const getRoleGradient = (rol) => {
+    const normalizedRole = rol?.toLowerCase() || '';
+
+    // 👑 Admin/Owner: Indigo → Purple
+    if (['admin', 'dueño', 'dueno', 'superadmin'].includes(normalizedRole)) {
+        return {
+            gradient: 'from-[#6366F1] to-[#A855F7]',
+            shadow: 'shadow-indigo-500/30'
+        };
+    }
+
+    // 💼 Manager/Supervisor: Rose → Pink
+    if (['encargado', 'supervisor', 'gerente', 'manager'].includes(normalizedRole)) {
+        return {
+            gradient: 'from-[#F43F5E] to-[#EC4899]',
+            shadow: 'shadow-rose-500/30'
+        };
+    }
+
+    // 💵 Cashier/Operator: Emerald → Teal
+    if (['cajero', 'operador', 'vendedor', 'cashier'].includes(normalizedRole)) {
+        return {
+            gradient: 'from-[#10B981] to-[#14B8A6]',
+            shadow: 'shadow-emerald-500/30'
+        };
+    }
+
+    // ⚙️ Custom/Other: Slate → Blue
+    return {
+        gradient: 'from-[#475569] to-[#2563EB]',
+        shadow: 'shadow-slate-500/30'
+    };
+};
+
 const UserCard = ({ user, index, onClick }) => {
+    const roleColors = getRoleGradient(user.rol);
+
     return (
         <motion.div
             variants={{ hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1 } }}
@@ -590,7 +640,7 @@ const UserCard = ({ user, index, onClick }) => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="relative z-10 p-[4px] rounded-2xl overflow-hidden flex justify-center items-center bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-300">
+                                    <div className={`relative z-10 p-[4px] rounded-2xl overflow-hidden flex justify-center items-center bg-gradient-to-br ${roleColors.gradient} shadow-lg ${roleColors.shadow} transition-all duration-300`}>
                                         <div className="relative z-20 bg-slate-900 rounded-2xl">
                                             <Avatar user={user} className="relative z-10 transition-all duration-300 shadow-none ring-0" />
                                         </div>
@@ -601,7 +651,7 @@ const UserCard = ({ user, index, onClick }) => {
 
                         {/* 3. TEXT (Floating below) */}
                         <CardItem translateZ="60" className="text-center w-full mt-8 group-hover/card:text-primary transition-colors space-y-1">
-                            <h3 className="text-lg font-bold text-content-inverse drop-shadow-md">{user.nombre || 'Usuario'}</h3>
+                            <h3 className="text-lg font-bold text-content-inverse drop-shadow-md">{toTitleCase(user.nombre) || 'Usuario'}</h3>
                             {user.rol && <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-content-secondary group-hover/card:text-primary/70">{user.rol}</span>}
                         </CardItem>
 

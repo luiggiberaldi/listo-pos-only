@@ -36,6 +36,7 @@ export default function DesktopLayout({
     categorias,
     tasa,
     tasaCaida,
+    tasaInvalida, // 🚫 NEW: Sales block if rate = 0
     tasaReferencia, // 🆕
     handleSearchInputKeyDown,
     multiplicadorPendiente,
@@ -74,7 +75,7 @@ export default function DesktopLayout({
                     <div className="relative flex flex-col items-center">
                         {/* Logo Flotante */}
                         <img
-                            src="logodark.png"
+                            src="logo_success.png?v=2"
                             alt="LISTO POS"
                             className="h-48 w-auto relative z-10 drop-shadow-2xl object-contain"
                         />
@@ -170,6 +171,18 @@ export default function DesktopLayout({
                                 <Trash2 size={14} /> VACIAR CESTA (F4)
                             </button>
                         </div>
+
+                        {/* 🚫 EXCHANGE RATE WARNING BANNER */}
+                        {tasaInvalida && (
+                            <div className="mx-4 mb-3 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-pulse">
+                                <span className="text-2xl">⚠️</span>
+                                <div className="flex-1">
+                                    <p className="font-bold text-sm">VENTAS BLOQUEADAS</p>
+                                    <p className="text-xs opacity-90">La tasa de cambio no está configurada. Dirígete a Configuración para establecerla.</p>
+                                </div>
+                            </div>
+                        )}
+
                         <ProductGrid
                             filtrados={filtrados}
                             selectedIndex={selectedIndex}
@@ -192,6 +205,7 @@ export default function DesktopLayout({
                 onCheckout={actions.cobrar}
                 onHold={() => actions.espera(calculos?.totalUSD)} // ✅ Fix: Pass value, not Event!
                 isProcessing={isProcessing}
+                tasaInvalida={tasaInvalida} // 🚫 NEW: Sales block validation
                 className={`transition-all duration-500 ${!cajaAbierta ? 'opacity-30 grayscale pointer-events-none filter blur-[1px]' : ''}`}
             />
             {children}

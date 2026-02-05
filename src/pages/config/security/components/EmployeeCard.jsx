@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Crown, Lock, KeyRound, Trash2, Pencil, Shield, Wallet, Banknote } from 'lucide-react';
 import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance';
 
+// 📝 TITLE CASE UTILITY
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export default function EmployeeCard({ user, onReset, onDelete, onEdit, onUpdatePermissions, onViewFinance, readOnly }) {
   const isUserOwner = user.roleId === 'ROL_DUENO';
   const isManager = user.roleId === 'ROL_ENCARGADO';
@@ -55,7 +65,7 @@ export default function EmployeeCard({ user, onReset, onDelete, onEdit, onUpdate
           </div>
 
           <div>
-            <h4 className="font-bold text-content-main dark:text-white text-lg leading-tight mb-1">{user.nombre}</h4>
+            <h4 className="font-bold text-content-main dark:text-white text-lg leading-tight mb-1">{toTitleCase(user.nombre)}</h4>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isUserOwner
                 ? 'bg-amber-100 text-amber-700'

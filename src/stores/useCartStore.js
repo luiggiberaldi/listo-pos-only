@@ -119,16 +119,18 @@ export const useCartStore = create(
 
                 if (indiceDestino >= 0) {
                     const itemDest = nuevoCarrito[indiceDestino];
-                    // If transformed, 'cantidadDestino' is the full new amount. But wait.
-                    // If we merge into an existing separate line (e.g. existing Bulk line), we should ADD.
-                    // But 'cantidadDestino' was derived from 'cantidadNuevaTotal' which was (Old Unit Line + New Units).
-                    // It knows nothing about the 'Existing Bulk Line'.
-                    // So yes, we SUM 'cantidadDestino' to 'itemDest.cantidad'.
-                    const nuevaCantFinal = itemDest.cantidad + cantidadDestino;
+
+                    // 🐛 FIX: Exponential Quantity Bug (Double Counting)
+                    // If NO transformation happened, 'cantidadDestino' is ALREADY the Total (Old + New).
+                    // So we should just SET it.
+                    // If transformation happened, 'cantidadDestino' is the converted New Total for this line,
+                    // but since we might be merging into a DIFFERENT existing line (e.g. Unit -> Existing Box), we ADD.
+
+                    const nuevaCantFinal = seTransformo ? (itemDest.cantidad + cantidadDestino) : cantidadDestino;
                     nuevoCarrito[indiceDestino] = { ...itemDest, cantidad: nuevaCantFinal };
                 } else {
                     if (!seTransformo && indiceExistente >= 0) {
-                        // Update existing line logic
+                        // Update existing line logic (Should be covered by indiceDestino >= 0 ideally, but just in case)
                         nuevoCarrito[indiceExistente] = { ...nuevoCarrito[indiceExistente], cantidad: cantidadDestino };
                     } else {
                         // New Line

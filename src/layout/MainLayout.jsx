@@ -160,7 +160,7 @@ export default function MainLayout() {
             {isCollapsed ? (
               // 🟢 LOGO COLLAPSED: SOLO ICONO (ISOTIPO)
               <div className="relative w-12 h-12 flex items-center justify-center animate-in zoom-in duration-300">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#6366F1] to-[#A855F7] rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30">
                   <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7 text-white" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
                     <line x1="12" y1="2" x2="12" y2="12"></line>
@@ -235,7 +235,7 @@ export default function MainLayout() {
             </p>
           </div>
 
-          {usuario && canConfigure && <SidebarItem to="/ia" icon={Brain} label="IA" collapsed={isCollapsed} />}
+          {/* {usuario && canConfigure && <SidebarItem to="/ia" icon={Brain} label="IA" collapsed={isCollapsed} />} */}
           {usuario && canConfigure && <SidebarItem to="/configuracion" icon={Settings} label="Configuración" collapsed={isCollapsed} />}
           <button
             onClick={() => { if (playSound) playSound('CLICK'); logout(); }}

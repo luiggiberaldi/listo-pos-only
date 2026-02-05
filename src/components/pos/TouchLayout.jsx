@@ -163,6 +163,7 @@ export default function TouchLayout({
     multiplicadorPendiente, // 🆕
     handlePrintSaldo, // 🆕
     onCloseSuccess, // 🆕
+    tasaInvalida, // 🚫 NEW
     handlers, // ✅ NEW: Atomic Handlers
     children
 }) {
@@ -197,7 +198,7 @@ export default function TouchLayout({
                     <div className="relative flex flex-col items-center">
                         {/* Logo Flotante */}
                         <img
-                            src="logodark.png"
+                            src="logo_success.png?v=2"
                             alt="LISTO POS"
                             className="h-48 w-auto relative z-10 drop-shadow-2xl object-contain"
                         />
@@ -302,17 +303,27 @@ export default function TouchLayout({
                         </div>
                     </div>
 
+                    {/* 🚫 WARNING BANNER */}
+                    {tasaInvalida && (
+                        <div className="mb-4 bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-2xl flex items-center gap-3 animate-pulse">
+                            <span className="text-2xl">⚠️</span>
+                            <p className="text-xs font-bold leading-tight">Configura la Tasa de Cambio para vender.</p>
+                        </div>
+                    )}
+
                     <button
                         onClick={actions.cobrar}
-                        disabled={carrito.length === 0 || isProcessing}
+                        disabled={carrito.length === 0 || isProcessing || tasaInvalida}
                         className={`
                     w-full py-5 rounded-2xl text-xl font-black text-white shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3
-                    ${carrito.length > 0 && !isProcessing
-                                ? 'bg-blue-600 shadow-blue-600/30 hover:bg-blue-700'
-                                : 'bg-slate-300 cursor-not-allowed'}
+                    ${tasaInvalida
+                                ? 'bg-red-400 cursor-not-allowed opacity-60' // Red disabled state
+                                : carrito.length > 0 && !isProcessing
+                                    ? 'bg-blue-600 shadow-blue-600/30 hover:bg-blue-700'
+                                    : 'bg-slate-300 cursor-not-allowed'}
                 `}
                     >
-                        <CheckCircle2 size={28} /> COBRAR ORDEN
+                        {tasaInvalida ? <div className="flex flex-col items-center leading-none"><span className="text-sm">BLOQUEADO</span><span className="text-[10px] opacity-80 font-normal">Tasa = 0</span></div> : <><CheckCircle2 size={28} /> COBRAR ORDEN</>}
                     </button>
                 </div>
             </div>

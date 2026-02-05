@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useFinance } from './useFinance';
+import { FinanceService } from '../../services/pos/FinanceService'; // 🛡️ Direct Service Access
 import { useEmployeeFinance } from './useEmployeeFinance';
 import { useInventory } from './useInventory';
 import { useStore } from '../../context/StoreContext';
@@ -207,9 +208,17 @@ export const useFinanceIntegrator = () => {
 
                 // 2. Rollback dependiendo del tipo
                 if (subtipo === 'ADELANTO') {
-                    // A. Eliminar el Log de Gasto (Caja)
+                    // A. Eliminar el Log de Gasto (Caja) -> 🛡️ BLINDAJE: Revertir dinero a caja
                     if (metadata?.logId) {
-                        await db.logs.delete(metadata.logId);
+                        try {
+                            const resRev = await FinanceService.revertirGasto(metadata.logId, `Anulación Adelanto (Emp: ${empleadoId})`);
+                            if (!resRev.success) console.warn("No se pudo restaurar dinero a caja (¿Caja cerrada?)", resRev);
+                        } catch (e) {
+                            console.warn("Error intentando restaurar dinero a caja:", e);
+                            // No lanzamos error para permitir que al menos se anule la deuda, 
+                            // pero idealmente deberíamos bloquear si es crítico. 
+                            // En V1 permitimos continuar para no bloquear la corrección de errores de dedo.
+                        }
                     }
                 }
                 else if (subtipo === 'CONSUMO_PRODUCTO') {

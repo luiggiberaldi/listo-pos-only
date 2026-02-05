@@ -16,35 +16,57 @@ export default function GhostAnalytics() {
         loadAnalytics();
     }, []);
 
+    const [retryCount, setRetryCount] = useState(0);
+
     const loadAnalytics = async () => {
         setLoading(true);
 
-        // Get system ID from ghostService
-        const sysId = ghostService.systemId;
-        if (!sysId || sysId === "ID_PENDING") {
-            console.warn("System ID not ready yet");
-            setTimeout(loadAnalytics, 1000);
-            return;
+        try {
+            // Get system ID from ghostService
+            let sysId = ghostService.systemId;
+
+            // Retry logic for System ID (Max 5 attempts)
+            if (!sysId || sysId === "ID_PENDING") {
+                if (retryCount < 5) {
+                    console.warn(`System ID pending. Retrying... (${retryCount + 1}/5)`);
+                    setRetryCount(prev => prev + 1);
+                    setTimeout(loadAnalytics, 1000);
+                    return;
+                } else {
+                    console.error("System ID fetch timeout. Using fallback.");
+                    sysId = "OFFLINE_DEBUG"; // Fallback to show empty state instead of infinite spinner
+                }
+            }
+
+            setSystemId(sysId);
+
+            // Load all analytics data
+            // Added explicit error handling per request to ensure Promise.all completes
+            const [summaryRes, questionsRes, hourlyRes, topicsRes, dailyRes] = await Promise.all([
+                ghostAnalytics.getSummaryStats(sysId).catch(e => ({ data: null, error: e })),
+                ghostAnalytics.getTopQuestions(sysId, 10).catch(e => ({ data: [], error: e })),
+                ghostAnalytics.getUsageByHour(sysId).catch(e => ({ data: [], error: e })),
+                ghostAnalytics.getTopicDistribution(sysId, 30).catch(e => ({ data: [], error: e })),
+                ghostAnalytics.getDailyStats(sysId, 7).catch(e => ({ data: [], error: e }))
+            ]);
+
+            setSummary(summaryRes.data || { totalMessages: 0, userMessages: 0, assistantMessages: 0 });
+            setTopQuestions(questionsRes.data || []);
+            setUsageByHour(hourlyRes.data || []);
+            setTopicDistribution(topicsRes.data || []);
+            setDailyStats(dailyRes.data || []);
+
+        } catch (error) {
+            console.error("CRITICAL ERROR loading analytics:", error);
+            // Initialize empty states to prevent crashing
+            setSummary({ totalMessages: 0 });
+            setTopQuestions([]);
+            setUsageByHour([]);
+            setTopicDistribution([]);
+            setDailyStats([]);
+        } finally {
+            setLoading(false);
         }
-
-        setSystemId(sysId);
-
-        // Load all analytics data
-        const [summaryRes, questionsRes, hourlyRes, topicsRes, dailyRes] = await Promise.all([
-            ghostAnalytics.getSummaryStats(sysId),
-            ghostAnalytics.getTopQuestions(sysId, 10),
-            ghostAnalytics.getUsageByHour(sysId),
-            ghostAnalytics.getTopicDistribution(sysId, 30),
-            ghostAnalytics.getDailyStats(sysId, 7)
-        ]);
-
-        setSummary(summaryRes.data);
-        setTopQuestions(questionsRes.data);
-        setUsageByHour(hourlyRes.data);
-        setTopicDistribution(topicsRes.data);
-        setDailyStats(dailyRes.data);
-
-        setLoading(false);
     };
 
     if (loading) {

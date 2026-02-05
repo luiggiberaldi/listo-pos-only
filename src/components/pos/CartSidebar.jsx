@@ -15,7 +15,8 @@ export default function CartSidebar({
   onChangeUnit, // 🆕
   onCheckout,
   onHold,
-  isProcessing
+  isProcessing,
+  tasaInvalida // 🚫 NEW: Block checkout if rate = 0
 }) {
   // Use Custom Hook for Logic
   const {
@@ -139,18 +140,21 @@ export default function CartSidebar({
           {/* BOTÓN COBRAR (F9) */}
           <button
             onClick={onCheckout}
-            disabled={carrito.length === 0 || isProcessing}
+            disabled={carrito.length === 0 || isProcessing || tasaInvalida}
             className={`
                 flex-1 py-4 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg 
-                ${isProcessing
-                ? 'bg-content-secondary cursor-wait shadow-none opacity-80'
-                : 'bg-status-success hover:bg-emerald-500 active:scale-95 shadow-lg shadow-status-success/30'
+                ${tasaInvalida
+                ? 'bg-red-500/50 cursor-not-allowed opacity-50'
+                : isProcessing
+                  ? 'bg-content-secondary cursor-wait shadow-none opacity-80'
+                  : 'bg-status-success hover:bg-emerald-500 active:scale-95 shadow-lg shadow-status-success/30'
               }
             `}
+            title={tasaInvalida ? 'Tasa de cambio no configurada. Ve a Configuración.' : 'Cobrar (F9)'}
           >
-            {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-            {isProcessing ? 'PROCESANDO...' : 'COBRAR'}
-            {!isProcessing && <span className="opacity-50 text-xs font-normal ml-1">F9</span>}
+            {tasaInvalida ? <AlertTriangle size={20} /> : isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+            {tasaInvalida ? 'BLOQUEADO' : isProcessing ? 'PROCESANDO...' : 'COBRAR'}
+            {!isProcessing && !tasaInvalida && <span className="opacity-50 text-xs font-normal ml-1">F9</span>}
           </button>
         </div>
       </div>

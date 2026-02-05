@@ -3,7 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChatContext } from '../../utils/ghost/chatContext';
 import { ghostService } from '../../services/ghostAI';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import { db } from '../../db';
 
 // --- ICONS (Minimalist & Technical) ---
@@ -62,6 +63,39 @@ const NodeStatus = ({ provider }) => {
 
 export const Assistant = ({ variant = 'floating' }) => {
     const location = useLocation();
+    const navigate = useNavigate();
+
+    // Custom Markdown Components for Navigation
+    const markdownComponents = {
+        a: ({ node, href, children, ...props }) => {
+            const isInternal = href && href.startsWith('/');
+
+            const handleClick = (e) => {
+                if (isInternal) {
+                    e.preventDefault();
+                    setIsOpen(false); // Close chat to view the page
+                    navigate(href);
+                }
+            };
+
+            return (
+                <a
+                    href={href}
+                    onClick={handleClick}
+                    className={`font-bold underline decoration-2 underline-offset-2 transition-colors ${isInternal
+                            ? 'text-indigo-600 hover:text-indigo-800 cursor-pointer'
+                            : 'text-blue-500 hover:text-blue-700'
+                        }`}
+                    {...props}
+                    target={isInternal ? undefined : "_blank"}
+                    rel={isInternal ? undefined : "noopener noreferrer"}
+                >
+                    {children}
+                </a>
+            );
+        }
+    };
+
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { id: 1, role: 'ghost', text: 'Hola. Soy tu asistente Ghost. ¿En qué te puedo ayudar hoy?' }
@@ -252,7 +286,7 @@ export const Assistant = ({ variant = 'floating' }) => {
                             <motion.div key={msg.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm shadow-indigo-200' : msg.role === 'system' ? 'bg-amber-50 text-amber-900 border border-amber-200 text-xs italic mx-auto w-full text-center font-medium' : 'bg-white text-slate-900 border border-slate-200 rounded-tl-sm shadow-slate-200/50 font-medium'}`}>
                                     <div className="prose prose-sm max-w-none prose-p:my-0 prose-ul:my-1 prose-strong:text-current">
-                                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                        <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
                                     </div>
                                 </div>
                             </motion.div>

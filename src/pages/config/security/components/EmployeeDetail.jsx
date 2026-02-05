@@ -9,7 +9,7 @@ import Swal from 'sweetalert2';
 export default function EmployeeDetail({ usuario, onClose }) {
     const { obtenerFinanzas, actualizarConfiguracion, procesarPagoNomina, obtenerHistorial } = useEmployeeFinance();
     const { revertirMovimiento } = useFinanceIntegrator();
-    const { configuracion } = useStore();
+    const { configuracion, actualizarUsuario } = useStore(); // ✅ Added actualizarUsuario
 
     const [finanzas, setFinanzas] = useState(null);
     const [historial, setHistorial] = useState([]); // 📜 Historial
@@ -19,7 +19,8 @@ export default function EmployeeDetail({ usuario, onClose }) {
     // Form para configuración
     const [formData, setFormData] = useState({
         sueldoBase: 0,
-        frecuenciaPago: 'Semanal'
+        frecuenciaPago: 'Semanal',
+        allowSelfConsume: false // 🛡️ New Permission
     });
 
     useEffect(() => {
@@ -38,7 +39,8 @@ export default function EmployeeDetail({ usuario, onClose }) {
             setHistorial(hist || []);
             setFormData({
                 sueldoBase: data.sueldoBase || 0,
-                frecuenciaPago: data.frecuenciaPago || 'Semanal'
+                frecuenciaPago: data.frecuenciaPago || 'Semanal',
+                allowSelfConsume: usuario.allowSelfConsume || false // 📥 Load from User Prop
             });
         } catch (e) {
             console.error(e);
@@ -48,9 +50,26 @@ export default function EmployeeDetail({ usuario, onClose }) {
     };
 
     const handleSaveConfig = async () => {
-        await actualizarConfiguracion(usuario.id, formData);
+        // ✅ Actualizar estado local inmediatamente
+        setFinanzas(prev => ({
+            ...prev,
+            sueldoBase: formData.sueldoBase,
+            frecuenciaPago: formData.frecuenciaPago
+        }));
+
+        // 1. Guardar Finanzas (Sueldo)
+        await actualizarConfiguracion(usuario.id, {
+            sueldoBase: formData.sueldoBase,
+            frecuenciaPago: formData.frecuenciaPago
+        });
+
+        // 2. Guardar Permisos (Usuario)
+        if (actualizarUsuario) {
+            await actualizarUsuario(usuario.id, { allowSelfConsume: formData.allowSelfConsume });
+        }
+
         setConfigMode(false);
-        cargarDatos();
+        cargarDatos(); // Recargar desde DB para sincronizar
         Swal.fire('Guardado', 'Configuración de nómina actualizada', 'success');
     };
 
@@ -300,8 +319,35 @@ export default function EmployeeDetail({ usuario, onClose }) {
                             <option value="Mensual">Mensual</option>
                         </select>
                     </div>
-                    <button onClick={handleSaveConfig} className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700">
-                        <Save size={20} />
+                </div>
+            )}
+
+            {/* 🛡️ ZONA DE SEGURIDAD (PERMISOS EXTRA) */}
+            {configMode && (
+                <div className="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 delay-75">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <DollarSign size={12} /> Permisos Financieros
+                    </h4>
+                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 shadow-sm">
+                        <div>
+                            <p className="text-xs font-bold text-slate-700">Autoconsumo Permitido</p>
+                            <p className="text-[10px] text-slate-400">Permitir registrar sus propios consumos en caja.</p>
+                        </div>
+                        <button
+                            onClick={() => setFormData(prev => ({ ...prev, allowSelfConsume: !prev.allowSelfConsume }))}
+                            className={`w-11 h-6 rounded-full transition-colors relative ${formData.allowSelfConsume ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                        >
+                            <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-sm transition-transform ${formData.allowSelfConsume ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* BOTÓN GUARDAR CONFIGURACIÓN */}
+            {configMode && (
+                <div className="flex justify-end mb-6">
+                    <button onClick={handleSaveConfig} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 font-bold text-xs shadow-lg shadow-indigo-500/20">
+                        <Save size={16} /> GUARDAR CAMBIOS
                     </button>
                 </div>
             )}

@@ -49,7 +49,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 768,
     title: "Listo POS",
-    icon: isDev ? path.join(__dirname, '../public/ICONO.ico') : path.join(__dirname, '../dist/ICONO.ico'),
+    icon: path.join(__dirname, '../build/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

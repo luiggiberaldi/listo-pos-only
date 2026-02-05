@@ -111,7 +111,10 @@ export default function ConfigPage() {
   const handleGuardar = (e) => {
     if (e) e.preventDefault();
     if (readOnly) return;
+    console.log('💾 GUARDANDO CONFIGURACIÓN:', form);
+    console.log('💾 sonidoBeep en config:', form.sonidoBeep);
     guardarConfiguracion({ ...form });
+    console.log('✅ Configuración guardada en BD');
     Swal.fire({ icon: 'success', title: 'Configuración Actualizada', timer: 1000, showConfirmButton: false });
   };
 

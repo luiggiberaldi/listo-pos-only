@@ -100,6 +100,9 @@ export default function PosPage() {
   const calculos = useCartCalculations(carrito, configuracion);
   const tasaCaida = calculos.tasa === 1;
 
+  // 🚫 VALIDACIÓN: Prohibir ventas si la tasa es 0
+  const tasaInvalida = configuracion?.tasa === 0;
+
   const {
     modales, setModales, abrirPago, cerrarPago, abrirEspera, cerrarEspera,
     abrirPesaje, cerrarPesaje, abrirJerarquia, cerrarJerarquia, toggleAyuda
@@ -226,6 +229,7 @@ export default function PosPage() {
         categorias={categorias}
         tasa={calculos.tasa}
         tasaCaida={tasaCaida}
+        tasaInvalida={tasaInvalida} // 🚫 NEW: Exchange Rate Validation
         tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
         handleSearchInputKeyDown={handleSearchInputKeyDown}
         multiplicadorPendiente={multiplicadorPendiente}
@@ -278,6 +282,7 @@ export default function PosPage() {
       categorias={categorias}
       tasa={calculos.tasa}
       tasaCaida={tasaCaida}
+      tasaInvalida={tasaInvalida} // 🚫 NEW: Exchange Rate Validation
       tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
       handleSearchInputKeyDown={handleSearchInputKeyDown}
       multiplicadorPendiente={multiplicadorPendiente}

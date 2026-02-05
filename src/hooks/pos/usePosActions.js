@@ -87,7 +87,10 @@ export const usePosActions = (
             ejecutarAccionSegura({
                 permiso: PERMISOS.POS_VOID_ITEM,
                 nombreAccion: `Quitar ${item.nombre}`,
-                accion: () => { eliminarDelCarrito(idx); }
+                accion: () => {
+                    eliminarDelCarrito(idx);
+                    if (playSound) playSound('TRASH');
+                }
             });
         },
         prepararAgregar: (producto) => {
@@ -126,6 +129,7 @@ export const usePosActions = (
             }
 
             if (autoAdd && !isNaN(finalPrice) && finalPrice > 0) {
+                if (playSound) playSound('SCAN');
                 setBusqueda('');
                 agregarAlCarrito(producto, cantidadFinal, unitType, finalPrice);
                 setSelectedIndex(0);
@@ -141,6 +145,7 @@ export const usePosActions = (
             }
 
             const precioBase = (!isNaN(parseFloat(producto.precio)) && parseFloat(producto.precio) > 0) ? parseFloat(producto.precio) : 0;
+            if (playSound) playSound('SCAN');
             agregarAlCarrito(producto, cantidadFinal, 'unidad', precioBase);
             setBusqueda(''); setSelectedIndex(0);
             setTimeout(() => { if (searchInputRef.current) searchInputRef.current.blur(); }, 10);
@@ -150,6 +155,7 @@ export const usePosActions = (
             const precioBaseUSD = parseFloat((montoBs / tasa).toFixed(6));
             const nombreProd = aplicaIva ? 'VARIOS (GRAVADO)' : 'VARIOS (EXENTO)';
             const productoRapido = { id: `QUICK-${Date.now()}`, nombre: nombreProd, tipoUnidad: 'unidad', stock: 999999, codigo: 'QUICK', aplicaIva: aplicaIva, exento: !aplicaIva };
+            if (playSound) playSound('SCAN');
             agregarAlCarrito(productoRapido, multiplicadorPendiente, 'unidad', precioBaseUSD);
             setMultiplicadorPendiente(1); setBusqueda(''); setSelectedIndex(0);
             setTimeout(() => searchInputRef.current?.blur(), 10);
@@ -162,6 +168,7 @@ export const usePosActions = (
             if (!cajaAbierta || isProcessing) return;
             // Limpia el buscador y agrega directamente
             setBusqueda('');
+            if (playSound) playSound('SCAN');
             agregarAlCarrito(producto, peso, 'peso', parseFloat(producto.precio));
             setSelectedIndex(0);
             setTimeout(() => { if (searchInputRef.current) searchInputRef.current.blur(); }, 10);
