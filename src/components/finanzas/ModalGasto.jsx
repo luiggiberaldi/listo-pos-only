@@ -6,75 +6,66 @@ import GoodsConsumptionView from './components/GoodsConsumptionView';
 
 export default function ModalGasto({ isOpen, onClose }) {
     const [mode, setMode] = useState('MONEY');
-    const activeColor = mode === 'MONEY' ? 'indigo' : 'emerald';
 
+    // Reset mode when opening
     useEffect(() => {
-        if (!isOpen) {
-            setMode('MONEY');
-        }
+        if (isOpen) setMode('MONEY');
     }, [isOpen]);
 
     if (!isOpen) return null;
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm transition-all">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ type: "spring", duration: 0.4 }}
-                    className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col border border-white/50 ring-1 ring-slate-900/5 h-full"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                    className="w-full max-w-6xl h-[85vh] flex flex-col relative"
                 >
-                    {/* Header */}
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
-                        <div>
-                            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
-                                <div className={`p-2.5 rounded-2xl text-white shadow-lg shadow-${activeColor}-500/30 transition-colors duration-300 bg-${activeColor}-600`}>
-                                    <FileText size={24} strokeWidth={2.5} />
-                                </div>
-                                <span>Registro de Salidas</span>
-                            </h2>
-                            <p className="text-slate-500 text-sm font-medium mt-1 ml-1 opacity-80">Gestión contable de egresos</p>
-                        </div>
-                        <button onClick={onClose} className="p-2.5 hover:bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-all active:scale-95">
-                            <X size={24} strokeWidth={2.5} />
-                        </button>
-                    </div>
-
-                    {/* Tabs */}
-                    <div className="flex border-b border-slate-100 bg-slate-50/50 p-1.5 gap-2 shrink-0">
+                    {/* Floating Navigation Tabs (Top Center) */}
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl gap-2 shadow-2xl z-50">
                         {[
-                            { id: 'MONEY', label: 'Salida de Dinero', icon: DollarSign, color: 'indigo' },
-                            { id: 'GOODS', label: 'Consumo de Mercancía', icon: Package, color: 'emerald' }
+                            { id: 'MONEY', label: 'Dinero', icon: DollarSign },
+                            { id: 'GOODS', label: 'Inventario', icon: Package }
                         ].map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setMode(tab.id)}
-                                className={`flex-1 p-3.5 text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all rounded-xl relative overflow-hidden group ${mode === tab.id
-                                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                                    : 'text-slate-400 hover:bg-white/60 hover:text-slate-600'
+                                className={`px-6 py-2.5 rounded-xl text-sm font-black tracking-wide flex items-center gap-2 transition-all ${mode === tab.id
+                                        ? 'bg-white text-slate-900 shadow-xl scale-105'
+                                        : 'text-white/70 hover:bg-white/10 hover:text-white'
                                     }`}
                             >
-                                <tab.icon
-                                    size={18}
-                                    className={`transition-colors duration-300 ${mode === tab.id ? `text-${tab.color}-600` : 'group-hover:text-slate-500'}`}
-                                    strokeWidth={2.5}
-                                />
+                                <tab.icon size={16} strokeWidth={3} />
                                 {tab.label}
-                                {mode === tab.id && (
-                                    <div className={`absolute bottom-0 left-0 right-0 h-1 bg-${tab.color}-500 rounded-b-xl`} />
-                                )}
                             </button>
                         ))}
                     </div>
 
-                    {/* Content Views */}
-                    {mode === 'MONEY' ? (
-                        <MoneyExpenseView onClose={onClose} />
-                    ) : (
-                        <GoodsConsumptionView onClose={onClose} />
-                    )}
+                    {/* Close Button (Top Right) */}
+                    <button
+                        onClick={onClose}
+                        className="absolute -top-12 -right-2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md border border-white/10 transition-all active:scale-90 z-50"
+                    >
+                        <X size={20} strokeWidth={3} />
+                    </button>
+
+                    {/* Content View */}
+                    <div className="flex-1 min-h-0 relative">
+                        <AnimatePresence mode='wait'>
+                            {mode === 'MONEY' ? (
+                                <motion.div key="money" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="h-full w-full">
+                                    <MoneyExpenseView onClose={onClose} />
+                                </motion.div>
+                            ) : (
+                                <motion.div key="goods" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
+                                    <GoodsConsumptionView onClose={onClose} />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
                 </motion.div>
             </div>

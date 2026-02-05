@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { calcularTesoreia, agruparMetodosNativos } from '../../utils/reportUtils';
 import { Wallet, Banknote, ArrowRightLeft, DollarSign, Calculator, Lock, PieChart } from 'lucide-react';
 
-export default function TreasuryMonitor({ ventas, tasa, balancesApertura = {} }) {
+export default function TreasuryMonitor({ ventas, tasa, balancesApertura = {}, gastos = [] }) {
 
   const safeTasa = parseFloat(tasa) || 1;
 
@@ -18,8 +18,18 @@ export default function TreasuryMonitor({ ventas, tasa, balancesApertura = {} })
     const openUSD = parseFloat(balancesApertura.usdCash || 0);
     const openVES = parseFloat(balancesApertura.vesCash || 0);
 
-    // 3. Generar desglose de métodos (Sólo Ventas del turno, para no duplicar apertura visualmente si ya se suma aparte)
-    // Pero el usuario quiere ver "Fondo de Apertura" en la lista.
+    // 2.1 Procesar GASTOS (Outflows)
+    let gastoUSD = 0;
+    let gastoVES = 0;
+
+    (gastos || []).forEach(g => {
+      const monto = parseFloat(g.cantidad || 0);
+      // Compatibilidad con meta o directo (dependiendo de como guarde el log)
+      const moneda = g.meta?.moneda || g.referencia || 'USD';
+
+      if (moneda === 'USD') gastoUSD += monto;
+      else if (moneda === 'VES') gastoVES += monto;
+    });
 
     // 3. Generar desglose de métodos (NATIVO: Sin distorsión por tasa)
     const { usd: rawUSD, bs: rawBS } = agruparMetodosNativos(ventas || []);
@@ -31,26 +41,34 @@ export default function TreasuryMonitor({ ventas, tasa, balancesApertura = {} })
     if (openUSD > 0) mapUSD.unshift({ name: 'Fondo de Apertura', value: openUSD });
     if (openVES > 0) mapBS.push({ name: 'Fondo de Apertura', value: openVES });
 
+    // Inyectar GASTOS (Como resta)
+    if (gastoUSD > 0) mapUSD.push({ name: 'Salidas (Gastos)', value: -gastoUSD });
+    if (gastoVES > 0) mapBS.push({ name: 'Salidas (Gastos)', value: -gastoVES });
+
     // Agregar lo generado nativamente
     mapBS.push(...rawBS);
 
 
-    // 4. Totales Finales (Directo del Motor V4)
-    const totalInUSD = tesoreria.usdCash + tesoreria.usdDigital + ((tesoreria.vesCash + tesoreria.vesDigital) / (safeTasa || 1));
-    const totalInBS = ((tesoreria.usdCash + tesoreria.usdDigital) * safeTasa) + (tesoreria.vesCash + tesoreria.vesDigital);
+    // 4. Totales Finales (Directo del Motor V4 MENOS GASTOS)
+    // tesoreria ya tiene (Apertura + Ventas). Restamos Gastos.
+    const netUSD = (tesoreria.usdCash + tesoreria.usdDigital) - gastoUSD;
+    const netBS = (tesoreria.vesCash + tesoreria.vesDigital) - gastoVES;
+
+    const totalInUSD = netUSD + (netBS / (safeTasa || 1));
+    const totalInBS = (netUSD * safeTasa) + netBS;
 
     return {
       breakdown: { usd: mapUSD, bs: mapBS },
       totals: {
         // Subtotales por moneda (Cash + Digital)
-        subtotalUSD: tesoreria.usdCash + tesoreria.usdDigital,
-        subtotalBS: tesoreria.vesCash + tesoreria.vesDigital,
-        appliedToWallet: tesoreria.appliedToWallet, // 🆕 Include in totals 
+        subtotalUSD: netUSD,
+        subtotalBS: netBS,
+        appliedToWallet: tesoreria.appliedToWallet,
         totalInUSD,
         totalInBS
       }
     };
-  }, [ventas, safeTasa, balancesApertura]);
+  }, [ventas, safeTasa, balancesApertura, gastos]);
 
   const formatCurrency = (val, currency) => {
     if (currency === 'Bs') {

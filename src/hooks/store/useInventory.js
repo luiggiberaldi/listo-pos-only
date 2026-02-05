@@ -310,9 +310,13 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                 const prod = await db.productos.get(idKey);
                 if (!prod) continue;
 
-                const stockAnterior = prod.stock;
+                const stockAnterior = parseFloat(prod.stock) || 0; // ✅ Force Float
                 const cantidadReduccion = parseFloat(item.cantidad) || 0;
                 const nuevoStock = fixFloat(stockAnterior - cantidadReduccion);
+
+                // ✅ Calculate diff safely
+                const diff = Math.abs(fixFloat(stockAnterior - nuevoStock));
+                const finalDiff = isNaN(diff) ? cantidadReduccion : diff; // Fallback
 
                 await db.productos.update(idKey, {
                     stock: nuevoStock,
@@ -329,7 +333,7 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                     'CONSUMO_INTERNO',
                     prod.id,
                     prod.nombre,
-                    Math.abs(stockAnterior - nuevoStock),
+                    finalDiff, // ✅ Use Safe Diff
                     nuevoStock,
                     'INTERNO',
                     motivo,

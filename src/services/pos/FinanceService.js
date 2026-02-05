@@ -141,5 +141,25 @@ export const FinanceService = {
             // SalesService maneja Ingresos por Ventas.
             return true;
         });
+    },
+
+    /**
+     * Obtiene los gastos registrados en un rango de fechas.
+     */
+    getReporteGastos: async (fechaInicio, fechaFin) => {
+        // Convertir a Date objects para comparación
+        const start = new Date(fechaInicio);
+        const end = new Date(fechaFin);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        // Query Logs: 'GASTO_CAJA' y 'GASTO_REVERTIDO'
+        const logs = await db.logs
+            .where('fecha')
+            .between(start.toISOString(), end.toISOString(), true, true)
+            .and(log => log.tipo === 'GASTO_CAJA' || log.tipo === 'GASTO_REVERTIDO')
+            .toArray();
+
+        return logs;
     }
 };

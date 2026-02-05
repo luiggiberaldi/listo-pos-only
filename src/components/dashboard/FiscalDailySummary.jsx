@@ -2,12 +2,29 @@ import React, { useMemo } from 'react';
 import { calcularKPIs } from '../../utils/reportUtils';
 import { TrendingUp, TrendingDown, DollarSign, Percent, Scale, PieChart } from 'lucide-react';
 
-export default function FiscalDailySummary({ ventas, config }) {
+export default function FiscalDailySummary({ ventas, config, gastos = [] }) { // [UPDATED]
 
     const kpis = useMemo(() => {
         const taxRate = config?.porcentajeIva !== undefined ? parseFloat(config.porcentajeIva) : 16;
-        return calcularKPIs(ventas, taxRate);
-    }, [ventas, config]);
+        const baseKPIs = calcularKPIs(ventas, taxRate);
+
+        // Calcular Gastos
+        const totalGastos = gastos.reduce((sum, g) => {
+            // Si el gasto fue en BS, convertir a USD aprox para el KPI unificado
+            const amount = parseFloat(g.cantidad || 0);
+            const moneda = g.meta?.moneda || g.referencia || 'USD';
+            if (moneda === 'VES') {
+                return sum + (amount / (config.tasa || 1));
+            }
+            return sum + amount;
+        }, 0);
+
+        return {
+            ...baseKPIs,
+            totalGastos,
+            ganancia: baseKPIs.ganancia - totalGastos // Neto real
+        };
+    }, [ventas, config, gastos]);
 
     const formatCurrency = (val) => {
         return `$ ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0)}`;
@@ -89,10 +106,15 @@ export default function FiscalDailySummary({ ventas, config }) {
                     <h4 className={`text-3xl font-black font-numbers tracking-tight ${kpis.ganancia >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600'}`}>
                         {formatCurrency(kpis.ganancia)}
                     </h4>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${kpis.ganancia >= 0 ? 'bg-emerald-200/50 text-emerald-800' : 'bg-red-200/50 text-red-800'}`}>
                             <Percent size={10} /> {kpis.margen}% Margen
                         </span>
+                        {kpis.totalGastos > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200">
+                                -{formatCurrency(kpis.totalGastos)} Gastos
+                            </span>
+                        )}
                     </div>
                     <div className={`absolute top-6 right-6 p-2 rounded-lg transition-all ${kpis.ganancia >= 0 ? 'bg-emerald-200 text-emerald-700' : 'bg-red-200 text-red-700'}`}>
                         <TrendingUp size={18} />

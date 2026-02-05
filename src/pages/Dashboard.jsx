@@ -244,10 +244,11 @@ export default function Dashboard() {
             {/* BOTÓN GASTOS [NEW] */}
             <button
               onClick={() => setShowGastoModal(true)}
-              className="ml-2 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-black border border-amber-200 transition-colors flex items-center gap-1 shadow-sm"
+              className="ml-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 dark:from-amber-900/20 dark:to-orange-900/20 dark:text-amber-400 rounded-xl text-xs font-black border border-amber-200 dark:border-amber-800 transition-all flex items-center gap-2 shadow-sm hover:shadow-md transform active:scale-95"
               title="Registrar Gasto o Consumo"
             >
-              💸 Gastos
+              <Wallet size={16} />
+              GASTOS
             </button>
           </div>
 

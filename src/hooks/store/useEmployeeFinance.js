@@ -263,6 +263,34 @@ export const useEmployeeFinance = (usuarioActivo) => {
         }));
     }, []);
 
+    // 🛡️ VALIDAR CAPACIDAD DE ENDEUDAMIENTO
+    const validarCapacidadEndeudamiento = useCallback(async (empleadoId, montoNuevo) => {
+        const finanzas = await db.empleados_finanzas.get(empleadoId);
+
+        // Si no tiene registro, técnicamente su sueldo es 0, así que no puede endeudarse.
+        // Pero para flexibilidad, si no existe el registro, asumimos que no hay config y retornamos false con mensaje.
+        if (!finanzas) return { puede: false, mensaje: 'El empleado no tiene configuración financiera (Sueldo Base).' };
+
+        const sueldo = parseFloat(finanzas.sueldoBase) || 0;
+        const deudaActual = parseFloat(finanzas.deudaAcumulada) || 0;
+        const nuevoTotal = deudaActual + montoNuevo;
+
+        if (sueldo <= 0) {
+            return { puede: false, mensaje: 'El empleado no tiene un sueldo base asignado para cubrir deudas.' };
+        }
+
+        if (nuevoTotal > sueldo) {
+            const disponible = Math.max(0, sueldo - deudaActual);
+            return {
+                puede: false,
+                mensaje: `El monto excede el sueldo disponible.`,
+                detalles: { sueldo, deudaActual, disponible, nuevoTotal }
+            };
+        }
+
+        return { puede: true, detalles: { sueldo, deudaActual } };
+    }, []);
+
     return {
         registrarDeuda,
         procesarPagoNomina,
@@ -272,6 +300,7 @@ export const useEmployeeFinance = (usuarioActivo) => {
         cerrarPeriodoGlobal, // 🆕 V2 (Global)
         anularMovimientoNomina,
         obtenerHistorial,
-        obtenerPeriodoActual // Exposed for UI
+        obtenerPeriodoActual, // Exposed for UI
+        validarCapacidadEndeudamiento // 🛡️ Exposed
     };
 };

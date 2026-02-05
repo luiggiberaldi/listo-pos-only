@@ -495,15 +495,44 @@ const KardexRow = ({ mov, isSelected, onToggle, onDelete, onShowDetails }) => {
         const esVenta = tipo.includes('VENTA');
         const esAjuste = tipo.includes('AJUSTE');
         const esEliminacion = tipo.includes('ELIMINADO');
+        const esConsumo = tipo.includes('CONSUMO');
+        const esGasto = tipo.includes('GASTO');
 
-        // Configuración Visual del Badge
+        // Configuración Visual del Badge - Prioridad de Matching
         let badgeConfig = { color: 'bg-slate-100 text-slate-600', icon: Filter, label: 'OTRO' };
 
-        if (esVenta) badgeConfig = { color: 'bg-red-100 text-red-700 border border-red-200', icon: TrendingDown, label: 'VENTA' };
-        else if (esEntrada && tipo.includes('DEVOLUCION')) badgeConfig = { color: 'bg-indigo-100 text-indigo-700 border border-indigo-200', icon: TrendingUp, label: 'DEVOLUCIÓN' };
-        else if (esEntrada) badgeConfig = { color: 'bg-emerald-100 text-emerald-700 border border-emerald-200', icon: TrendingUp, label: 'ENTRADA' };
-        else if (esAjuste) badgeConfig = { color: 'bg-amber-100 text-amber-700 border border-amber-200', icon: AlertCircle, label: 'AJUSTE' };
-        else if (esEliminacion) badgeConfig = { color: 'bg-slate-900 text-white border border-slate-800', icon: Trash2, label: 'ELIMINADO' };
+        // 🛠️ Casos Específicos (Prioridad Alta)
+        if (tipo === 'GASTO_CAJA') {
+            badgeConfig = { color: 'bg-purple-100 text-purple-700 border border-purple-200', icon: TrendingDown, label: 'GASTO' };
+        } else if (tipo === 'GASTO_REVERTIDO') {
+            badgeConfig = { color: 'bg-purple-50 text-purple-500 border border-purple-100', icon: TrendingUp, label: 'GASTO REVERTIDO' };
+        } else if (tipo === 'CONSUMO_INTERNO') {
+            badgeConfig = { color: 'bg-orange-100 text-orange-700 border border-orange-200', icon: TrendingDown, label: 'CONSUMO INTERNO' };
+        } else if (tipo === 'COBRO_DEUDA') {
+            badgeConfig = { color: 'bg-cyan-100 text-cyan-700 border border-cyan-200', icon: TrendingUp, label: 'COBRO DEUDA' };
+        } else if (tipo === 'AJUSTE_ADMINISTRATIVO') {
+            badgeConfig = { color: 'bg-amber-100 text-amber-700 border border-amber-200', icon: AlertCircle, label: 'AJUSTE ADMIN' };
+        } else if (tipo === 'CORTE_Z') {
+            badgeConfig = { color: 'bg-slate-700 text-white border border-slate-600', icon: Filter, label: 'CORTE Z' };
+
+            // 🏪 Casos Generales (Prioridad Media)
+        } else if (esVenta) {
+            badgeConfig = { color: 'bg-red-100 text-red-700 border border-red-200', icon: TrendingDown, label: 'VENTA' };
+        } else if (esEntrada && tipo.includes('DEVOLUCION')) {
+            badgeConfig = { color: 'bg-indigo-100 text-indigo-700 border border-indigo-200', icon: TrendingUp, label: 'DEVOLUCIÓN' };
+        } else if (esEntrada && tipo.includes('COMPRA')) {
+            badgeConfig = { color: 'bg-emerald-100 text-emerald-700 border border-emerald-200', icon: TrendingUp, label: 'COMPRA' };
+        } else if (esEntrada) {
+            badgeConfig = { color: 'bg-emerald-100 text-emerald-700 border border-emerald-200', icon: TrendingUp, label: 'ENTRADA' };
+        } else if (esConsumo) {
+            badgeConfig = { color: 'bg-orange-100 text-orange-700 border border-orange-200', icon: TrendingDown, label: 'CONSUMO' };
+        } else if (esGasto) {
+            badgeConfig = { color: 'bg-purple-100 text-purple-700 border border-purple-200', icon: TrendingDown, label: 'GASTO' };
+        } else if (esAjuste) {
+            badgeConfig = { color: 'bg-amber-100 text-amber-700 border border-amber-200', icon: AlertCircle, label: 'AJUSTE' };
+        } else if (esEliminacion) {
+            badgeConfig = { color: 'bg-slate-900 text-white border border-slate-800', icon: Trash2, label: 'ELIMINADO' };
+        }
 
         // Cálculo de Stock Anterior (Inverso) para mostrar flujo
         const cantidad = parseFloat(mov.cantidad);
@@ -551,17 +580,21 @@ const KardexRow = ({ mov, isSelected, onToggle, onDelete, onShowDetails }) => {
                 <td className={`p-4 text-center font-black text-sm font-numbers ${esEntrada ? 'text-emerald-600' : 'text-red-600'}`}>
                     <div className="flex flex-col items-center">
                         <span>
-                            {esEntrada ? '+' : '-'}{mov.meta ? parseFloat(mov.meta.cantidadOriginal).toFixed(2) : cantidad.toFixed(2)}
+                            {esEntrada ? '+' : '-'}{
+                                mov.meta?.cantidadOriginal
+                                    ? parseFloat(mov.meta.cantidadOriginal).toFixed(2)
+                                    : (isNaN(cantidad) ? '0.00' : cantidad.toFixed(2))
+                            }
                         </span>
-                        {mov.meta && (
+                        {mov.meta?.unidad && (
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
                                 {mov.meta.unidad}
                             </span>
                         )}
-                        {/* Subtitle with conversion if meta exists (DEBUG: Always show if meta exists) */}
-                        {mov.meta && (
+                        {/* Subtitle with conversion if meta exists */}
+                        {mov.meta?.factor && (
                             <span className="text-[9px] text-slate-300 font-mono mt-0.5">
-                                ({parseFloat(mov.cantidad).toFixed(2)} Base @ x{mov.meta.factor})
+                                ({(isNaN(cantidad) ? 0 : cantidad).toFixed(2)} Base @ x{mov.meta.factor})
                             </span>
                         )}
                     </div>

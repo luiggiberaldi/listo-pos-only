@@ -14,9 +14,11 @@ import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 import { timeProvider } from '../utils/TimeProvider';
 
+import { useFinance } from '../hooks/store/useFinance'; // [NEW]
+
 export default function TotalDiarioPage() {
   const { ventas, configuracion, usuario } = useStore();
-
+  const { getReporteGastos } = useFinance(); // [NEW]
 
   // ✅ Obtener apertura
   const { estado: cajaEstado, cortes } = useCajaEstado();
@@ -27,6 +29,7 @@ export default function TotalDiarioPage() {
   const [rango, setRango] = useState('hoy');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [gastos, setGastos] = useState([]); // [NEW]
 
   const balancesHoy = useMemo(() => {
     if (rango !== 'hoy') return {};
@@ -48,6 +51,43 @@ export default function TotalDiarioPage() {
     }
     return totalOpen;
   }, [cajaEstado, cortes, rango]);
+
+  // 🔄 EFECTO: Cargar Gastos cuando cambia el rango
+  React.useEffect(() => {
+    const fetchGastos = async () => {
+      let inicio = timeProvider.now();
+      let fin = timeProvider.now();
+      inicio.setHours(0, 0, 0, 0);
+      fin.setHours(23, 59, 59, 999);
+
+      if (rango === 'semana') {
+        const diaSemana = inicio.getDay() || 7;
+        inicio.setDate(inicio.getDate() - diaSemana + 1);
+      } else if (rango === 'mes') {
+        inicio.setDate(1);
+      } else if (rango === 'custom') {
+        if (!customStart) { setGastos([]); return; }
+        const [y1, m1, d1] = customStart.split('-');
+        inicio = new Date(y1, m1 - 1, d1, 0, 0, 0);
+
+        if (customEnd) {
+          const [y2, m2, d2] = customEnd.split('-');
+          fin = new Date(y2, m2 - 1, d2, 23, 59, 59);
+        } else {
+          fin = new Date(y1, m1 - 1, d1, 23, 59, 59);
+        }
+      }
+
+      try {
+        const data = await getReporteGastos(inicio.toISOString(), fin.toISOString());
+        setGastos(data);
+      } catch (err) {
+        console.error("Error cargando gastos:", err);
+      }
+    };
+
+    fetchGastos();
+  }, [rango, customStart, customEnd]);
 
   if (!puedeVerTotal) {
     return (
@@ -165,10 +205,11 @@ export default function TotalDiarioPage() {
         </div>
 
         {/* ✅ AUDITORIA FISCAL (NUEVO) */}
-        <FiscalDailySummary ventas={ventasFiltradas} config={configuracion} />
+        <FiscalDailySummary ventas={ventasFiltradas} gastos={gastos} config={configuracion} />
 
         <TreasuryMonitor
           ventas={ventasFiltradas}
+          gastos={gastos}
           tasa={configuracion.tasa}
           balancesApertura={balancesHoy}
         />
