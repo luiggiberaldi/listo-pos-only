@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Save, CreditCard, History, AlertCircle, UserX, RotateCcw } from 'lucide-react';
+import { DollarSign, Save, CreditCard, History, AlertCircle, UserX, RotateCcw, X } from 'lucide-react';
 import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance';
 import { useFinanceIntegrator } from '../../../../hooks/store/useFinanceIntegrator';
 import { useStore } from '../../../../context/StoreContext';
@@ -165,7 +165,7 @@ export default function EmployeeDetail({ usuario, onClose }) {
                     <h2 className="text-xl font-black text-slate-800">{usuario.nombre}</h2>
                     <p className="text-sm text-slate-500 font-medium">{usuario.rol}</p>
                 </div>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><AlertCircle /></button>
+                <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X /></button>
             </div>
 
             {/* TARJETAS RESUMEN */}
