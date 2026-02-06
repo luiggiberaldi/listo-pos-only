@@ -1,7 +1,7 @@
 {
   "name": "listo-pos",
   "private": true,
-  "version": "1.4.8",
+  "version": "1.4.9",
   "type": "module",
   "main": "electron/main.js",
   "description": "Sistema de Punto de Venta Profesional",
@@ -38,7 +38,8 @@
       "publish": {
         "provider": "github",
         "owner": "luiggiberaldi",
-        "repo": "listo-pos-only"
+        "repo": "listo-pos-only",
+        "releaseType": "release"
       }
     },
     "nsis": {
