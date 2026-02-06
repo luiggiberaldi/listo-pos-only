@@ -15,7 +15,8 @@ import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
 // --- CONFIGURACIÓN DE ACTUALIZACIONES ---
-autoUpdater.autoDownload = true;
+autoUpdater.autoDownload = false; // 🛑 NO descargar automáticamente para evitar lag
+autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 // --- CONFIGURACIÓN & ENTORNO ---
@@ -227,6 +228,10 @@ ipcMain.handle('open-file-location', (event, path) => {
 
 ipcMain.handle('open-file-default', (event, path) => {
   if (path) shell.openPath(path);
+});
+
+ipcMain.on('download_update', () => {
+  autoUpdater.downloadUpdate();
 });
 
 ipcMain.on('restart_app', () => {

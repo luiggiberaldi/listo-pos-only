@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateError: (callback) => ipcRenderer.on('update_error', (event, value) => callback(value)),
 
     // 🔄 Update Control
+    downloadUpdate: () => ipcRenderer.send('download_update'),
     restartApp: () => ipcRenderer.send('restart_app'),
     removeAllUpdateListeners: () => {
         ipcRenderer.removeAllListeners('update_available');
