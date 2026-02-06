@@ -1,7 +1,7 @@
 {
   "name": "listo-pos",
   "private": true,
-  "version": "1.4.9",
+  "version": "1.4.10",
   "type": "module",
   "main": "electron/main.js",
   "description": "Sistema de Punto de Venta Profesional",

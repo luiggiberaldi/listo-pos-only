@@ -182,7 +182,11 @@ export default function UserProfileModal({ onClose }) {
                                         ID de Sistema: <span className="font-mono font-bold">{usuario.id}</span>
                                     </p>
                                     <p className="text-xs text-blue-700">
-                                        Fecha Registro: <span className="font-mono">{new Date(usuario.fechaRegistro).toLocaleDateString()}</span>
+                                        Fecha Registro: <span className="font-mono">
+                                            {usuario.fechaRegistro && !isNaN(new Date(usuario.fechaRegistro).getTime())
+                                                ? new Date(usuario.fechaRegistro).toLocaleDateString()
+                                                : 'No disponible'}
+                                        </span>
                                     </p>
                                 </div>
                             </div>
