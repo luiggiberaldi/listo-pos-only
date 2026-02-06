@@ -7,7 +7,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { db } from '../../db';
 
-// --- ICONS (Minimalist & Technical) ---
+import ghostIcon from '../../assets/ghost.png';
+import ghostHeaderIcon from '../../assets/ghost_header.png';
 const GhostIcon = ({ className }) => (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z" />
@@ -83,8 +84,8 @@ export const Assistant = ({ variant = 'floating' }) => {
                     href={href}
                     onClick={handleClick}
                     className={`font-bold underline decoration-2 underline-offset-2 transition-colors ${isInternal
-                            ? 'text-indigo-600 hover:text-indigo-800 cursor-pointer'
-                            : 'text-blue-500 hover:text-blue-700'
+                        ? 'text-indigo-600 hover:text-indigo-800 cursor-pointer'
+                        : 'text-blue-500 hover:text-blue-700'
                         }`}
                     {...props}
                     target={isInternal ? undefined : "_blank"}
@@ -251,7 +252,7 @@ export const Assistant = ({ variant = 'floating' }) => {
             >
                 <div className="px-4 py-3 bg-indigo-600 flex justify-between items-center cursor-grab active:cursor-grabbing shrink-0 shadow-md z-10">
                     <div className="flex items-center gap-2 text-white">
-                        <img src="/ghost_header.png" alt="Ghost" className="h-9 w-auto object-contain drop-shadow-sm" />
+                        <img src={ghostHeaderIcon} alt="Ghost" className="h-9 w-auto object-contain drop-shadow-sm" />
                         <span className="text-white font-black tracking-tight text-lg drop-shadow-md">Listo Ghost</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -322,7 +323,7 @@ export const Assistant = ({ variant = 'floating' }) => {
                     className="ml-auto w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-all group border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm"
                     title="Abrir Asistente Ghost"
                 >
-                    <img src="/ghost.png" alt="G" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform" />
+                    <img src={ghostIcon} alt="G" className="w-5 h-5 object-contain group-hover:scale-110 transition-transform" />
                 </button>
             ) : (
                 /* TAB LATERAL DERECHA (SOLAPA) - Aparece en todas las páginas excepto Ventas */
@@ -337,7 +338,7 @@ export const Assistant = ({ variant = 'floating' }) => {
                         title="Abrir Asistente Ghost"
                     >
                         <img
-                            src="/ghost.png"
+                            src={ghostIcon}
                             alt="Ghost"
                             className="w-8 h-8 object-contain drop-shadow-sm group-hover:scale-110 transition-transform brightness-100"
                         />

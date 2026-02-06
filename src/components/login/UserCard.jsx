@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, MessageSquare, X } from 'lucide-react';
 import { CardBody, CardContainer, CardItem } from '../ui/3d-card';
 import LoginAvatar from './LoginAvatar';
-import LegalModal from '../auth/LegalModal';
 
 // 📝 TITLE CASE UTILITY
 const toTitleCase = (str) => {
@@ -52,7 +51,6 @@ const getRoleGradient = (rol) => {
 
 const UserCard = ({ user, index, onClick, messageCount }) => {
     const roleColors = getRoleGradient(user.rol);
-    const [legalModalState, setLegalModalState] = useState({ isOpen: false, docType: null });
     const isOwner = ['admin', 'dueño', 'dueno', 'superadmin'].includes(user.rol?.toLowerCase());
 
     return (
@@ -127,36 +125,12 @@ const UserCard = ({ user, index, onClick, messageCount }) => {
                             {user.rol && <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-content-secondary group-hover/card:text-primary/70">{user.rol}</span>}
                         </CardItem>
 
-                        {/* --- LEGAL FOOTER --- */}
-                        {/* Only show on hover or selected? Actually logic showed it inside the card previously which was a bit weird for "footer", but keeping logic consistent. */}
-                        <CardItem translateZ="60" className="mt-8">
-                            <div className="w-full flex justify-center gap-6 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setLegalModalState({ isOpen: true, docType: 'EULA' }); }}
-                                    className="text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-[0.2em] transition-colors outline-none z-50 cursor-pointer"
-                                >
-                                    Documento Legal
-                                </button>
-                                <span className="w-px h-3 bg-slate-800" />
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setLegalModalState({ isOpen: true, docType: 'PRIVACY' }); }}
-                                    className="text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase tracking-[0.2em] transition-colors outline-none z-50 cursor-pointer"
-                                >
-                                    Términos
-                                </button>
-                            </div>
-                        </CardItem>
+
 
                     </CardBody>
                 </CardContainer>
             </div>
 
-            {/* 🟢 LEGAL MODAL */}
-            <LegalModal
-                isOpen={legalModalState.isOpen}
-                docType={legalModalState.docType}
-                onClose={() => setLegalModalState(prev => ({ ...prev, isOpen: false }))}
-            />
         </motion.div>
     );
 };

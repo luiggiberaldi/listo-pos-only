@@ -16,6 +16,7 @@ import Swal from 'sweetalert2';
 import UserCard from '../components/login/UserCard';
 import LoginPinModal from '../components/login/LoginPinModal';
 import LoginFeedbackModal from '../components/login/LoginFeedbackModal';
+import LegalModal from '../components/auth/LegalModal';
 
 const PIN_LENGTH = 6;
 
@@ -36,6 +37,7 @@ export default function LoginScreen() {
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [feedbackData, setFeedbackData] = useState({ title: '', message: '' });
     const [sendingFeedback, setSendingFeedback] = useState(false);
+    const [legalModalState, setLegalModalState] = useState({ isOpen: false, docType: null });
 
     // Notification Bubbles State
     const [userMessages, setUserMessages] = useState({});
@@ -252,6 +254,35 @@ export default function LoginScreen() {
                 setFeedbackData={setFeedbackData}
                 handleSendFeedback={handleSendFeedback}
                 sendingFeedback={sendingFeedback}
+            />
+
+            {/* 📜 LEGAL FOOTER (Bottom of Screen) */}
+            <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1 } }}
+                className="fixed bottom-4 left-0 right-0 flex justify-center gap-6 z-30 pointer-events-none"
+            >
+                <div className="pointer-events-auto flex items-center gap-6 bg-black/20 backdrop-blur-sm px-6 py-2 rounded-full border border-white/5 hover:bg-black/40 transition-colors">
+                    <button
+                        onClick={() => setLegalModalState({ isOpen: true, docType: 'EULA' })}
+                        className="text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-colors outline-none cursor-pointer"
+                    >
+                        Documento Legal
+                    </button>
+                    <span className="w-px h-3 bg-slate-600" />
+                    <button
+                        onClick={() => setLegalModalState({ isOpen: true, docType: 'PRIVACY' })}
+                        className="text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-colors outline-none cursor-pointer"
+                    >
+                        Términos
+                    </button>
+                </div>
+            </motion.div>
+
+            {/* 🟢 LEGAL MODAL */}
+            <LegalModal
+                isOpen={legalModalState.isOpen}
+                docType={legalModalState.docType}
+                onClose={() => setLegalModalState(prev => ({ ...prev, isOpen: false }))}
             />
 
         </div>

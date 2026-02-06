@@ -1,7 +1,7 @@
 {
   "name": "listo-pos",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "main": "electron/main.js",
   "description": "Sistema de Punto de Venta Profesional",
@@ -34,7 +34,12 @@
       ],
       "icon": "build/icon.ico",
       "publisherName": "Inversiones Luigi C.A.",
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "publish": {
+        "provider": "github",
+        "owner": "luiggiberaldi",
+        "repo": "listo-pos-only"
+      }
     },
     "nsis": {
       "oneClick": false,
@@ -61,6 +66,7 @@
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.7.3",
     "firebase": "^12.7.0",
     "framer-motion": "^12.26.2",
     "fuse.js": "^7.1.0",

@@ -114,12 +114,17 @@ export const useLicenseGuard = () => {
                     }
                 }
             } else {
-                // El documento no existe en Firestore
-                // Esto puede pasar brevemente durante la creación inicial
-                // POLICY: Bloquear por seguridad hasta que exista con ACTIVE
-                console.warn("⚠️ [FÉNIX] Terminal no encontrado en Master DB. Bloqueando por seguridad.");
+                // 🗑️ TERMINAL ELIMINADO (REMOTE WIPE TRIGGERED)
+                console.error("⛔ [FÉNIX] TERMINAL ELIMINADO REMOTAMENTE. EJECUTANDO PROTOCOLO DE AUTODESTRUCCIÓN DE LICENCIA.");
+
+                // 1. Bloqueo inmediato
                 localStorage.setItem('listo_lock_down', 'true');
                 setIsSuspended(true);
+
+                // 2. 💥 BORRADO SEGURO DE LICENCIA Y CONTRATO 💥
+                // Esto obliga a re-ingresar licencia y re-firmar contrato (Factory Reset UX)
+                localStorage.removeItem('listo_license_key');
+                localStorage.removeItem('listo_contract_signed');
             }
         }, (error) => {
             console.warn("⚠️ [FÉNIX] Conexión inestable con Master:", error.code);

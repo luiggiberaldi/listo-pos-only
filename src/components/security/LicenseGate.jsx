@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Lock, Terminal, ShieldCheck, Server, AlertCircle, ArrowRight, Key, WifiOff } from 'lucide-react';
+import { ShieldAlert, Lock, Terminal, ShieldCheck, Server, AlertCircle, ArrowRight, Key, WifiOff, Copy, Check } from 'lucide-react';
 import { useLicenseGuard } from '../../hooks/security/useLicenseGuard';
 import OwnerLockScreen from './OwnerLockScreen'; // 🟠 NEW TACTICAL LOCK
 import { generateChallenge, validateSOS } from '../../utils/securityUtils';
@@ -16,6 +16,7 @@ export default function LicenseGate({ children }) {
     const [inputCode, setInputCode] = useState('');
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [activationError, setActivationError] = useState(null);
+    const [copied, setCopied] = useState(false);
 
     // SOS States
     const [sosMode, setSosMode] = useState(false);
@@ -147,13 +148,31 @@ export default function LicenseGate({ children }) {
                                 <p className="text-lg text-slate-300 leading-relaxed font-medium">
                                     Para reactivar el servicio, contacte a soporte técnico proporcionando su ID:
                                 </p>
-                                <div className="mt-6 p-5 bg-black/80 rounded-xl border border-red-800/50 flex items-center justify-center gap-4 group cursor-pointer hover:border-red-500 transition-colors"
-                                    onClick={() => navigator.clipboard.writeText(machineId)}
-                                    title="Click para copiar">
-                                    <Terminal size={24} className="text-red-500" />
-                                    <span className="font-mono text-2xl font-bold text-yellow-500 tracking-wider select-all break-all">
-                                        {machineId || 'IDENTIFICANDO...'}
-                                    </span>
+                                <div className="mt-6 p-4 bg-black/80 rounded-xl border border-red-800/50 flex items-center justify-between gap-4 group/copy">
+                                    <div className="flex items-center gap-4 min-w-0">
+                                        <Terminal size={24} className="text-red-500 shrink-0" />
+                                        <span
+                                            className="font-mono text-xl font-bold text-yellow-500 tracking-wider select-all break-all cursor-pointer hover:text-yellow-400 transition-colors"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(machineId);
+                                                setCopied(true);
+                                                setTimeout(() => setCopied(false), 2000);
+                                            }}
+                                        >
+                                            {machineId || 'IDENTIFICANDO...'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(machineId);
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                        className="p-3 bg-red-900/30 hover:bg-red-500 text-red-400 hover:text-white rounded-xl transition-colors shrink-0 border border-red-900/50 hover:border-red-400"
+                                        title="Copiar ID"
+                                    >
+                                        {copied ? <Check size={20} className="text-white" /> : <Copy size={20} />}
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -312,11 +331,31 @@ export default function LicenseGate({ children }) {
                             <p className="text-slate-400 text-sm leading-relaxed mb-4">
                                 El sistema ha detectado un cambio de hardware o una nueva instalación. Por seguridad, se requiere una reactivación manual.
                             </p>
-                            <div className="p-4 bg-slate-900 rounded-xl border border-slate-800">
-                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-2 tracking-wider">HARDWARE ID DETECTADO</p>
-                                <p className="font-mono text-xs text-blue-400 break-all select-all hover:text-white transition-colors cursor-pointer" onClick={() => navigator.clipboard.writeText(machineId)}>
-                                    {machineId || 'Generando ID...'}
-                                </p>
+                            <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between gap-3 group/copy">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1 tracking-wider">HARDWARE ID DETECTADO</p>
+                                    <p
+                                        className="font-mono text-xs text-blue-400 break-all select-all hover:text-white transition-colors cursor-pointer"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(machineId);
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                    >
+                                        {machineId || 'Generando ID...'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(machineId);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition-colors shrink-0"
+                                    title="Copiar ID"
+                                >
+                                    {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                </button>
                             </div>
                         </div>
 

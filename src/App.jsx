@@ -11,6 +11,7 @@ import { PERMISSIONS } from './config/permissions';
 import RouteGuard from './components/security/RouteGuard';
 import { GhostEye } from './components/ghost/GhostEye';
 import { Assistant } from './components/ghost/Assistant';
+import UpdateNotification from './components/common/UpdateNotification';
 
 // Layouts & Pages
 import MainLayout from './layout/MainLayout';
@@ -103,6 +104,7 @@ function App() {
     <LicenseGate>
       <ContractGuard>
         <HashRouter>
+          <UpdateNotification />
           <Routes>
             {!isAuthenticated ? (
               <>

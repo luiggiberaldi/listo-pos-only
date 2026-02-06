@@ -11,6 +11,12 @@ const { machineIdSync } = nodeMachineId;
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import checkDiskSpace from 'check-disk-space';
+import pkg from 'electron-updater';
+const { autoUpdater } = pkg;
+
+// --- CONFIGURACIÓN DE ACTUALIZACIONES ---
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
 
 // --- CONFIGURACIÓN & ENTORNO ---
 const __filename = fileURLToPath(import.meta.url);
@@ -90,6 +96,11 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  // Iniciar AutoUpdater después de un breve retraso
+  setTimeout(() => {
+    setupAutoUpdater();
+  }, 3000);
 });
 
 app.on('window-all-closed', () => {
@@ -98,6 +109,42 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
 });
+
+// --- ACTUALIZACIONES AUTOMÁTICAS ---
+function setupAutoUpdater() {
+  console.log('🔄 [AutoUpdater] Iniciando verificación de actualizaciones...');
+
+  autoUpdater.checkForUpdatesAndNotify();
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('🔄 [AutoUpdater] Buscando actualizaciones...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('⬇️ [AutoUpdater] Actualización disponible:', info.version);
+    if (mainWindow) mainWindow.webContents.send('update_available', info);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('✅ [AutoUpdater] No hay actualizaciones pendientes.');
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('❌ [AutoUpdater] Error:', err);
+    if (mainWindow) mainWindow.webContents.send('update_error', err.message);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let log_message = "Descargando: " + Math.round(progressObj.percent) + '%';
+    console.log(log_message);
+    if (mainWindow) mainWindow.webContents.send('update_download_progress', progressObj);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('✅ [AutoUpdater] Descarga completada.');
+    if (mainWindow) mainWindow.webContents.send('update_downloaded', info);
+  });
+}
 
 // --- COMUNICACIÓN (IPC) ---
 
@@ -180,4 +227,8 @@ ipcMain.handle('open-file-location', (event, path) => {
 
 ipcMain.handle('open-file-default', (event, path) => {
   if (path) shell.openPath(path);
+});
+
+ipcMain.on('restart_app', () => {
+  autoUpdater.quitAndInstall();
 });

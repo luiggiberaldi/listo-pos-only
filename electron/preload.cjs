@@ -30,8 +30,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openFileDefault: (path) => ipcRenderer.invoke('open-file-default', path),
 
     // 📩 Listeners (Main -> Renderer)
-    onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
-    onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback)
+    onUpdateAvailable: (callback) => ipcRenderer.on('update_available', (event, value) => callback(value)),
+    onUpdateProgress: (callback) => ipcRenderer.on('update_download_progress', (event, value) => callback(value)),
+    onUpdateDownloaded: (callback) => ipcRenderer.on('update_downloaded', (event, value) => callback(value)),
+    onUpdateError: (callback) => ipcRenderer.on('update_error', (event, value) => callback(value)),
+
+    // 🔄 Update Control
+    restartApp: () => ipcRenderer.send('restart_app'),
+    removeAllUpdateListeners: () => {
+        ipcRenderer.removeAllListeners('update_available');
+        ipcRenderer.removeAllListeners('update_download_progress');
+        ipcRenderer.removeAllListeners('update_downloaded');
+        ipcRenderer.removeAllListeners('update_error');
+    }
 });
 
 console.log("🛡️ [PRELOAD] Puente seguro establecido.");
