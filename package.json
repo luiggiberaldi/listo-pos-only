@@ -1,7 +1,7 @@
 {
   "name": "listo-pos",
   "private": true,
-  "version": "1.4.11",
+  "version": "1.4.14",
   "type": "module",
   "main": "electron/main.js",
   "description": "Sistema de Punto de Venta Profesional",
@@ -48,7 +48,8 @@
       "createDesktopShortcut": true,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
     }
   },
   "dependencies": {

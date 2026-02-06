@@ -24,7 +24,7 @@ export const useAuthStore = create(
             setUsuarios: (newUsers) => set({ usuarios: newUsers }),
 
             agregarUsuario: (newUser) => set(state => ({
-                usuarios: [...state.usuarios, newUser]
+                usuarios: [...state.usuarios, { ...newUser, fechaRegistro: newUser.fechaRegistro || new Date().toISOString() }]
             })),
 
             actualizarUsuario: (id, updates) => set(state => {

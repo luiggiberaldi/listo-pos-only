@@ -61,7 +61,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
-      devTools: isDev
+      devTools: true // 🛠️ Habilitado para depuración en producción
     },
     show: false
   });
@@ -92,6 +92,12 @@ function createWindow() {
 
 // --- CICLO DE VIDA ---
 app.whenReady().then(() => {
+  // 🛠️ Atajo de Depuración (F12)
+  const { globalShortcut } = require('electron');
+  globalShortcut.register('F12', () => {
+    if (mainWindow) mainWindow.webContents.toggleDevTools();
+  });
+
   createWindow();
 
   app.on('activate', () => {
@@ -112,13 +118,17 @@ app.on('will-quit', () => {
 });
 
 // --- ACTUALIZACIONES AUTOMÁTICAS ---
+// --- ACTUALIZACIONES AUTOMÁTICAS ---
 function setupAutoUpdater() {
   console.log('🔄 [AutoUpdater] Iniciando verificación de actualizaciones...');
 
-  autoUpdater.checkForUpdatesAndNotify();
+  // 1. Check inicial (Silencioso, sin notificación nativa)
+  autoUpdater.checkForUpdates();
 
+  // 2. Eventos
   autoUpdater.on('checking-for-update', () => {
     console.log('🔄 [AutoUpdater] Buscando actualizaciones...');
+    if (mainWindow) mainWindow.webContents.send('checking_for_update');
   });
 
   autoUpdater.on('update-available', (info) => {
@@ -128,6 +138,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', () => {
     console.log('✅ [AutoUpdater] No hay actualizaciones pendientes.');
+    if (mainWindow) mainWindow.webContents.send('update_not_available');
   });
 
   autoUpdater.on('error', (err) => {
@@ -146,6 +157,43 @@ function setupAutoUpdater() {
     if (mainWindow) mainWindow.webContents.send('update_downloaded', info);
   });
 }
+
+// 3. Listener Manual (desde UI)
+ipcMain.on('check_for_updates', () => {
+  console.log('👆 [AutoUpdater] Verificación manual solicitada per usuario.');
+  autoUpdater.checkForUpdates();
+});
+
+// 4. Configuración Persistente (Runtime Environment)
+ipcMain.handle('get-custom-env', () => {
+  try {
+    const fs = require('fs');
+    const envPath = path.join(app.getPath('userData'), 'custom-env.json');
+    if (fs.existsSync(envPath)) {
+      const raw = fs.readFileSync(envPath, 'utf-8');
+      const customEnv = JSON.parse(raw);
+      console.log('🔑 [Main] Cargada configuración personalizada desde disk.');
+      return customEnv;
+    }
+  } catch (e) {
+    console.error('❌ [Main] Error leyendo custom-env.json:', e);
+  }
+  return {};
+});
+
+// 5. Guardar Configuración (Para UI de "Recuperar Conexión")
+ipcMain.handle('save-custom-env', (event, envData) => {
+  try {
+    const fs = require('fs');
+    const envPath = path.join(app.getPath('userData'), 'custom-env.json');
+    fs.writeFileSync(envPath, JSON.stringify(envData, null, 2));
+    console.log('💾 [Main] Guardada configuración personalizada.');
+    return true;
+  } catch (e) {
+    console.error('❌ [Main] Error guardando custom-env.json:', e);
+    return false;
+  }
+});
 
 // --- COMUNICACIÓN (IPC) ---
 
