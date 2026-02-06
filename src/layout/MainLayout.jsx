@@ -22,6 +22,7 @@ import SecurityReportPanel from '../components/security/SecurityReportPanel';
 import SecurityCriticalGate from '../components/security/SecurityCriticalGate';
 import { useListoGoSync } from '../hooks/sync/useListoGoSync';
 import { useRemoteTasa } from '../hooks/sync/useRemoteTasa';
+import UserProfileModal from '../components/user/UserProfileModal'; // 🆕 Zona de Usuario
 
 const SidebarItem = ({ to, icon: Icon, label, collapsed }) => {
   const location = useLocation();
@@ -101,6 +102,9 @@ export default function MainLayout() {
   const [logoClicks, setLogoClicks] = useState(0);
   const clickTimeoutRef = useRef(null);
 
+  // 🆕 USER ZONE STATE
+  const [showUserProfile, setShowUserProfile] = useState(false);
+
   const handleLogoClick = () => {
     if (playSound) playSound('CLICK');
     if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
@@ -178,8 +182,12 @@ export default function MainLayout() {
             )}
           </div>
 
-          {/* 2. USER CARD + STATUS INTEGRADO (Minimalista) */}
-          <div className={`flex items-center gap-3 transition-all w-full mt-2 ${isCollapsed ? 'justify-center flex-col' : 'px-2'}`}>
+          {/* 2. USER CARD + STATUS INTEGRADO (Clic para Zona de Usuario) */}
+          <div
+            className={`flex items-center gap-3 transition-all w-full mt-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 p-2 rounded-xl group ${isCollapsed ? 'justify-center flex-col' : 'px-2'}`}
+            onClick={() => setShowUserProfile(true)}
+            title="Ver Mi Perfil"
+          >
 
             {/* Avatar con Indicador de Estado */}
             <div className="relative">
@@ -257,6 +265,9 @@ export default function MainLayout() {
         <div className="flex-1 overflow-auto p-0 relative">
           <Outlet />
         </div>
+
+        {/* 🆕 MODAL ZONA DE USUARIO */}
+        {showUserProfile && <UserProfileModal onClose={() => setShowUserProfile(false)} />}
       </main>
     </div>
   );

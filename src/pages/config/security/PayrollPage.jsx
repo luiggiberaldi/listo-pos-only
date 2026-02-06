@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FileText, Printer, RotateCcw, Search, Eye, Calendar } from 'lucide-react';
+import { FileText, RotateCcw, Search, Eye, Calendar } from 'lucide-react';
 import { useStore } from '../../../context/StoreContext';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator'; // 🛡️ Synergy Hook
 import { ActionGuard } from '../../../components/security/ActionGuard';
 import EmployeeDetail from './components/EmployeeDetail'; // 🆕 Componente Detalle
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+
 import Swal from 'sweetalert2';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -59,54 +58,7 @@ export default function PayrollPage() {
 
     // --- ACCIONES DE REPORTE ---
 
-    const handlePrintReport = () => {
-        const doc = new jsPDF();
 
-        // Header
-        const periodoStr = periodoActual ? `Periodo #${periodoActual.id} (${new Date(periodoActual.fechaInicio).toLocaleDateString()})` : 'Periodo Actual';
-
-        doc.setFontSize(18);
-        doc.text("Reporte de Nómina y Descuentos", 14, 20);
-        doc.setFontSize(10);
-        doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 28);
-        doc.text(periodoStr, 14, 34);
-
-        // Tabla
-        const tableBody = filteredEmployees.map(emp => [
-            emp.nombre,
-            emp.rol,
-            `$${(emp.finanzas.sueldoBase || 0).toFixed(2)}`,
-            `$${(emp.finanzas.deudaAcumulada || 0).toFixed(2)}`,
-            `$${Math.max(0, (emp.finanzas.sueldoBase || 0) - (emp.finanzas.deudaAcumulada || 0)).toFixed(2)}`,
-            "__________________" // Firma
-        ]);
-
-        doc.autoTable({
-            startY: 40,
-            head: [['Empleado', 'Cargo', 'Sueldo Base', 'Descuentos', 'Neto a Pagar', 'Firma Recibido']],
-            body: tableBody,
-            theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] }, // Indigo color
-            styles: { fontSize: 9, cellPadding: 3 },
-            columnStyles: {
-                0: { cellWidth: 35 },
-                1: { cellWidth: 25 },
-                2: { halign: 'right' },
-                3: { halign: 'right', textColor: [220, 38, 38] },
-                4: { halign: 'right', fontStyle: 'bold' },
-                5: { cellWidth: 40 }
-            }
-        });
-
-        // Totales Totales
-        const totalDescuentos = filteredEmployees.reduce((ac, el) => ac + (el.finanzas.deudaAcumulada || 0), 0);
-        const finalY = doc.lastAutoTable.finalY + 10;
-
-        doc.setFontSize(12);
-        doc.text(`Total Descuentos Periodo: $${totalDescuentos.toFixed(2)}`, 14, finalY);
-
-        doc.save(`Nomina_Semana_${new Date().toISOString().split('T')[0]}.pdf`);
-    };
 
     // 🆕 CIERRE GLOBAL (Finance 2.0)
     const handleCloseGlobal = async () => {
@@ -192,13 +144,7 @@ export default function PayrollPage() {
                         </button>
                     </ActionGuard>
 
-                    <button
-                        onClick={handlePrintReport}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-                    >
-                        <Printer size={20} />
-                        <span>Imprimir Reporte</span>
-                    </button>
+
                 </div>
             </div>
 
