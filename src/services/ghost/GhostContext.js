@@ -86,15 +86,18 @@ export class GhostContextService {
             const filterEmployees = (mode) => allEmployees.filter(u => {
                 const name = normalize(u.nombre || "");
                 const role = normalize(u.rol || "");
+
                 if (mode === 'strict') {
-                    return terms.every(term => name.includes(term));
+                    // Search in Name OR Role
+                    return terms.every(term => name.includes(term) || role.includes(term));
                 } else {
-                    return terms.some(term => term.length > 2 && name.includes(term));
+                    return terms.some(term => term.length > 2 && (name.includes(term) || role.includes(term)));
                 }
             });
 
             let empMatches = filterEmployees('strict');
-            const hasSalaryIntent = queryNorm.match(/sueldo|pago|nomina|empleado|trabajador/);
+            // Add 'debe' related words to employee intent if "empleado" is explicitly mentioned
+            const hasSalaryIntent = queryNorm.match(/sueldo|pago|nomina|empleado|trabajador|debe|deuda|prestamo|adelanto/);
 
             if (empMatches.length === 0 && (hasSalaryIntent || looksLikeName)) {
                 empMatches = filterEmployees('relaxed');

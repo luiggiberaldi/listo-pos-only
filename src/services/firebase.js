@@ -6,6 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 // 📡 ANTENA A: CLIENT APP (Ventas y Datos del Usuario)
 // Configuración dinámica desde .env
@@ -35,6 +36,7 @@ let clientApp = null;
 
 let dbMaster = null;
 let authMaster = null;
+let storageMaster = null;
 let masterApp = null;
 
 // Inicialización Defensiva
@@ -64,6 +66,7 @@ try {
         // Sin persistencia pesada, es solo para telemetría
         dbMaster = getFirestore(masterApp);
         authMaster = getAuth(masterApp);
+        storageMaster = getStorage(masterApp); // 📦 STORAGE ACTIVADO
         // console.log("📡 [ANTENA B] Enlace Master listo.");
     }
 
@@ -99,5 +102,6 @@ export {
     dbClient,    // Explicit Client
     authClient,  // Explicit Client Auth
     dbMaster,    // Explicit Master
-    authMaster   // Explicit Master Auth
+    authMaster,   // Explicit Master Auth
+    storageMaster // Explicit Storage
 };

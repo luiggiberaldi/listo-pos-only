@@ -25,7 +25,7 @@ export const getChatContext = () => {
 
     return {
         screen: location || 'unknown',
-        user: authState.usuario?.nombre || 'Anónimo',
+        user: authState.usuario?.nombre || 'Amigo',
         active_modal: uiState.activeModal || 'NINGUNO',
         cart: {
             items_count: cartState.carrito.length,

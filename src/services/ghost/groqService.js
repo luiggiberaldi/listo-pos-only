@@ -12,7 +12,9 @@ const GROQ_KEYS_CONFIG = [
     import.meta.env.VITE_GROQ_API_KEY_5,
     import.meta.env.VITE_GROQ_API_KEY_6,
     import.meta.env.VITE_GROQ_API_KEY_7,
-    import.meta.env.VITE_GROQ_API_KEY_8
+    import.meta.env.VITE_GROQ_API_KEY_8,
+    import.meta.env.VITE_GROQ_API_KEY_9,
+    import.meta.env.VITE_GROQ_API_KEY_10
 ].filter(Boolean);
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';

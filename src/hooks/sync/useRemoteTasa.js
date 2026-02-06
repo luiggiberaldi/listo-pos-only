@@ -35,7 +35,7 @@ export const useRemoteTasa = () => {
 
     useEffect(() => {
         const systemId = getSystemID();
-        if (!systemId) return;
+        if (!systemId || !dbClient) return; // 🛡️ Abort if no System ID or no Database
 
         const unsub = onSnapshot(doc(dbClient, 'merchants', systemId), (docSnap) => {
             if (!docSnap.exists()) return;

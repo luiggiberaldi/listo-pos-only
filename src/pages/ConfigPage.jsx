@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import {
   Building2, Coins, Box, Receipt, Palette, ShieldCheck, Zap,
-  Database, ChevronRight, Settings2, Lock
+  Database, ChevronRight, Settings2, Lock, BrainCircuit
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -89,7 +89,8 @@ export default function ConfigPage() {
       'finanzas': PERMISOS.CONF_FINANZAS_EDITAR,
       'inventario': PERMISOS.INV_EDITAR,
       'seguridad': PERMISOS.CONF_USUARIOS_EDITAR,
-      'salud': PERMISOS.CONF_SISTEMA_EDITAR
+      'salud': PERMISOS.CONF_SISTEMA_EDITAR,
+      'ghost': PERMISOS.CONF_SISTEMA_EDITAR
     };
     return map[tab] ? !tienePermiso(map[tab]) : false;
   };

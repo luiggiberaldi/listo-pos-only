@@ -34,6 +34,11 @@ export const useSyncEngine = () => {
       return false;
     }
 
+    if (!targetDb) {
+      console.warn("⚠️ [SYNC-GO] No Database Connection. Snapshot omitido.");
+      return false;
+    }
+
     try {
       await setDoc(doc(targetDb, coleccion, docId), {
         ...datos,
@@ -70,6 +75,7 @@ export const useSyncEngine = () => {
       for (const item of pendientes) {
         // Intentar subir a Firebase
         try {
+          if (!cloudDb) throw new Error("Firebase no configurado");
           await addDoc(collection(cloudDb, item.collection), {
             ...item.data,
             _syncedAt: new Date().toISOString(),
