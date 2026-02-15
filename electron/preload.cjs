@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // 🤖 AI Control
     restartLocalAI: () => ipcRenderer.invoke('restart-ai'),
+    searchProductImage: (query) => ipcRenderer.invoke('search-product-image', query),
 
 
     // ☁️ Secure Cloud Sync (Renderer -> Main -> Firebase)

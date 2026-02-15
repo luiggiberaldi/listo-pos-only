@@ -15,6 +15,8 @@ import Swal from 'sweetalert2';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 // ✅ NUEVO: Importamos el estado de caja para obtener la apertura
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
+import { useConfigStore } from '../stores/useConfigStore'; // [NEW]
+import { hasFeature, FEATURES } from '../config/planTiers'; // [NEW]
 
 import DashboardStats from '../components/dashboard/DashboardStats';
 import ModalGasto from '../components/finanzas/ModalGasto'; // [NEW]
@@ -34,6 +36,7 @@ export default function Dashboard() {
 
   // ✅ Obtener estado de caja
   const { estado: cajaEstado, cortes } = useCajaEstado();
+  const license = useConfigStore(state => state.license); // [NEW]
 
   const { tienePermiso } = useRBAC(usuario);
   const navigate = useNavigate();
@@ -241,15 +244,17 @@ export default function Dashboard() {
               Bs {parseFloat(configuracion.tasa || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
 
-            {/* BOTÓN GASTOS [NEW] */}
-            <button
-              onClick={() => setShowGastoModal(true)}
-              className="ml-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 dark:from-amber-900/20 dark:to-orange-900/20 dark:text-amber-400 rounded-xl text-xs font-black border border-amber-200 dark:border-amber-800 transition-all flex items-center gap-2 shadow-sm hover:shadow-md transform active:scale-95"
-              title="Registrar Gasto o Consumo"
-            >
-              <Wallet size={16} />
-              GASTOS
-            </button>
+            {/* BOTÓN GASTOS [RESTRICTED] */}
+            {hasFeature(license?.plan || 'bodega', FEATURES.GASTOS) && (
+              <button
+                onClick={() => setShowGastoModal(true)}
+                className="ml-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 dark:from-amber-900/20 dark:to-orange-900/20 dark:text-amber-400 rounded-xl text-xs font-black border border-amber-200 dark:border-amber-800 transition-all flex items-center gap-2 shadow-sm hover:shadow-md transform active:scale-95"
+                title="Registrar Gasto o Consumo"
+              >
+                <Wallet size={16} />
+                GASTOS
+              </button>
+            )}
           </div>
 
           {/* ⚙️ PANEL DE CONFIGURACIÓN DE TASA */}

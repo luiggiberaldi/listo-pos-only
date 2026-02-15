@@ -106,10 +106,10 @@ export default function InventarioHeader({
           <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={onImportClick} actionName="Importar Masivo">
             <button
               className="p-3.5 bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-200 transition-all shadow-sm flex items-center gap-2"
-              title="Importar Excel"
+              title="Cargar productos desde Excel"
             >
               <FileSpreadsheet size={20} />
-              <span className="hidden sm:inline text-sm font-bold">Importar</span>
+              <span className="hidden sm:inline text-sm font-bold">Importar Excel</span>
             </button>
           </ActionGuard>
 
@@ -118,19 +118,19 @@ export default function InventarioHeader({
             <button
               onClick={onExportCatalog}
               className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all flex items-center gap-1.5"
-              title="Exportar Catálogo (JSON) — para copiar a otra PC"
+              title="Crear Respaldo (Guardar JSON)"
             >
               <Download size={18} />
-              <span className="hidden lg:inline text-xs font-bold">Exportar</span>
+              <span className="hidden lg:inline text-xs font-bold">Respaldar</span>
             </button>
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
             <button
               onClick={onImportCatalog}
               className="p-2.5 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-all flex items-center gap-1.5"
-              title="Importar Catálogo (JSON) — desde otra PC"
+              title="Restaurar Respaldo (Cargar JSON)"
             >
               <Upload size={18} />
-              <span className="hidden lg:inline text-xs font-bold">Importar</span>
+              <span className="hidden lg:inline text-xs font-bold">Restaurar</span>
             </button>
           </div>
 

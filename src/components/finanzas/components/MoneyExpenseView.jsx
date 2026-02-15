@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, AlertCircle, Banknote, User, Clock, FileText } from 'lucide-react';
+import { DollarSign, AlertCircle, Banknote, User, Clock, FileText, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../../db';
@@ -14,7 +14,7 @@ import HoldToConfirmButton from '../design/HoldToConfirmButton';
 
 export default function MoneyExpenseView({ onClose }) {
     const { usuario, configuracion, usuarios } = useStore();
-    const { registrarGasto } = useFinance();
+    const { registrarGasto, revertirGasto } = useFinance();
     const { registrarAdelantoSueldo } = useFinanceIntegrator();
     const { validarCapacidadEndeudamiento } = useEmployeeFinance(); // ✅ Destructure
 
@@ -40,6 +40,39 @@ export default function MoneyExpenseView({ onClose }) {
             .toArray();
         return logs.slice(0, 5); // últimos 5
     }, []) || [];
+
+    // 🗑️ Handle Revert
+    const handleDeleteGasto = async (gasto) => {
+        const result = await Swal.fire({
+            title: '¿Eliminar Gasto?',
+            text: `Se devolverá el dinero a la caja (${gasto.referencia} ${parseFloat(gasto.cantidad).toFixed(2)}). Esta acción no se puede deshacer.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // Pedir motivo opcional? Por rapidez usamos "Corrección de Usuario"
+                const res = await revertirGasto(gasto.id, `Eliminado por usuario: ${usuario?.nombre}`);
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: 'El dinero ha regresado a la gaveta.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    throw new Error(res.message);
+                }
+            } catch (error) {
+                Swal.fire('Error', error.message || 'No se pudo eliminar', 'error');
+            }
+        }
+    };
 
     const CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento', 'Limpieza', 'Varios'];
 
@@ -160,17 +193,28 @@ export default function MoneyExpenseView({ onClose }) {
                                 const mins = Math.round((Date.now() - new Date(g.fecha).getTime()) / 60000);
                                 const tiempoLabel = mins < 1 ? 'ahora' : mins < 60 ? `hace ${mins}m` : `hace ${Math.floor(mins / 60)}h`;
                                 return (
-                                    <div key={g.id || i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                                    <div key={g.id || i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
                                         <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center flex-shrink-0">
                                             <DollarSign size={14} strokeWidth={3} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-bold text-slate-700 truncate">{g.detalle || 'Gasto'}</p>
-                                            <p className="text-[10px] text-slate-400">{tiempoLabel}</p>
+                                            <p className="text-[10px] text-slate-400">
+                                                {tiempoLabel} • <span className="text-slate-300">{moneda}</span>
+                                            </p>
                                         </div>
-                                        <span className="text-xs font-black text-rose-600 flex-shrink-0">
-                                            -{simbolo}{monto.toFixed(2)}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-rose-600 flex-shrink-0">
+                                                -{simbolo}{monto.toFixed(2)}
+                                            </span>
+                                            <button
+                                                onClick={() => handleDeleteGasto(g)}
+                                                className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                                                title="Revertir este gasto"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}

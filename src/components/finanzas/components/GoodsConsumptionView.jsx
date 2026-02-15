@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Store, User, Package, Trash2, ShoppingCart, Plus, Minus } from 'lucide-react';
+import { Search, Store, User, Package, Trash2, ShoppingCart, Plus, Minus, Clock, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../../db';
 import { useInventory } from '../../../hooks/store/useInventory';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
@@ -10,7 +12,7 @@ import HoldToConfirmButton from '../design/HoldToConfirmButton';
 
 export default function GoodsConsumptionView({ onClose }) {
     const { usuario, productos, usuarios } = useStore();
-    const { registrarConsumoInterno } = useInventory(usuario);
+    const { registrarConsumoInterno, revertirConsumoInterno } = useInventory(usuario);
     const { registrarConsumoEmpleado } = useFinanceIntegrator();
     const { validarCapacidadEndeudamiento } = useEmployeeFinance();
 
@@ -18,6 +20,49 @@ export default function GoodsConsumptionView({ onClose }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [consumidorType, setConsumidorType] = useState('SYSTEM'); // 'SYSTEM' (Local) | 'EMPLOYEE'
     const [targetEmployeeId, setTargetEmployeeId] = useState('');
+
+    // 🔴 LIVE QUERY: Consumos de Hoy
+    const consumosRecientes = useLiveQuery(async () => {
+        const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 999);
+        const logs = await db.logs
+            .where('fecha')
+            .between(startOfDay.toISOString(), endOfDay.toISOString())
+            .and(l => l.tipo === 'CONSUMO_INTERNO')
+            .reverse()
+            .toArray();
+        return logs.slice(0, 5);
+    }, []) || [];
+
+    // 🗑️ Handle Revert
+    const handleDeleteConsumo = async (log) => {
+        const result = await Swal.fire({
+            title: '¿Revertir Consumo?',
+            text: `Se devolverá ${log.cantidad} ${log.producto} al inventario.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#e11d48',
+            confirmButtonText: 'Sí, restaurar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await revertirConsumoInterno(log.id, `Eliminado por usuario: ${usuario?.nombre}`, usuario);
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Restaurado',
+                        text: 'El producto ha vuelto al inventario.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            } catch (error) {
+                Swal.fire('Error', error.message || 'No se pudo revertir', 'error');
+            }
+        }
+    };
 
     // 🛒 CART STATE
     const [cart, setCart] = useState([]); // [{ product, cantidad, motivo }]
@@ -228,6 +273,38 @@ export default function GoodsConsumptionView({ onClose }) {
                 )}
             </div>
 
+
+
+            {/* 🆕 HISTORY SECTION */}
+            <div className="shrink-0 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100 max-h-40 overflow-y-auto custom-scrollbar">
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Clock size={10} /> Consumos Recientes
+                </h3>
+                {consumosRecientes.length === 0 ? (
+                    <p className="text-[10px] text-slate-300 text-center py-2">Sin movimientos hoy</p>
+                ) : (
+                    <div className="space-y-1.5">
+                        {consumosRecientes.map((log) => (
+                            <div key={log.id} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 group">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-bold text-slate-700 truncate">{log.producto}</p>
+                                    <p className="text-[9px] text-slate-400 truncate">
+                                        {log.detalle || 'Consumo'} • <span className="text-emerald-600 font-bold">-{parseFloat(log.cantidad).toFixed(2)}</span>
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleDeleteConsumo(log)}
+                                    className="ml-2 p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Devolver al Inventario"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {/* 2. Cart List (Scrollable) */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-0">
                 {cart.length === 0 ? (
@@ -302,7 +379,7 @@ export default function GoodsConsumptionView({ onClose }) {
                     disabled={cart.length === 0 || isSubmitting || !globalMotivo || (consumidorType === 'EMPLOYEE' && !targetEmployeeId)}
                 />
             </div>
-        </div>
+        </div >
     );
 
     return (

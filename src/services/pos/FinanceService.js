@@ -21,7 +21,7 @@ export const FinanceService = {
         if (!usuario || !usuario.id) throw new Error("Usuario requerido");
 
         // Transaction Scope: Caja (Sesión), Logs
-        return await db.transaction('rw', db.caja_sesion, db.logs, async () => {
+        return await db.transaction('rw', db.caja_sesion, db.logs, db.config, async () => {
 
             // 1. Validar Estado de Caja
             const currentSession = await db.caja_sesion.get(cajaId);
@@ -29,6 +29,10 @@ export const FinanceService = {
                 // TODO: Permitir configuración para gastos con caja cerrada? Por ahora STRICT.
                 throw new Error("La caja está cerrada. Abre un turno desde Ventas para registrar movimientos.");
             }
+
+            // 1.1 Obtener Tasa Actual (Snapshot)
+            const configGeneral = await db.config.get('general');
+            const tasaActual = parseFloat(configGeneral?.tasa) || 1;
 
             // 2. Actualizar Balances (Salida)
             const newBalances = { ...currentSession.balances };
@@ -58,6 +62,7 @@ export const FinanceService = {
                 meta: {
                     moneda,
                     medio,
+                    tasaSnapshot: tasaActual, // 📸 SNAPSHOT HISTÓRICO
                     balanceSnapshot: newBalances // Snapshot útil para auditoría
                 }
             });

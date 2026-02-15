@@ -318,11 +318,7 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                 const diff = Math.abs(fixFloat(stockAnterior - nuevoStock));
                 const finalDiff = isNaN(diff) ? cantidadReduccion : diff; // Fallback
 
-                await db.productos.update(idKey, {
-                    stock: nuevoStock,
-                    _motivo: motivo,
-                    _detalle: 'Consumo Interno'
-                });
+                await db.productos.update(idKey, { stock: nuevoStock });
 
                 const smartMetadata = {
                     tipo: 'CONSUMO_MODAL',
@@ -349,6 +345,44 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         return { success: true, message: 'Consumo registrado', logId: results };
     };
 
+    const revertirConsumoInterno = async (logId, motivoReversion, usuarioActor) => {
+        verify(PERMISSIONS.INVENTORY_ADJUST, 'Revertir Consumo');
+        return await db.transaction('rw', db.productos, db.logs, async () => {
+            const log = await db.logs.get(logId);
+            if (!log) throw new Error("Registro no encontrado");
+
+            const prod = await db.productos.get(log.productId);
+            if (!prod) throw new Error("Producto ya no existe en inventario");
+
+            // 1. Restaurar Stock
+            const cantidadRestaurar = parseFloat(log.cantidad) || 0;
+            const nuevoStock = fixFloat((parseFloat(prod.stock) || 0) + cantidadRestaurar);
+
+            await db.productos.update(prod.id, { stock: nuevoStock });
+
+            // 2. Marcar Log original como revertido
+            await db.logs.update(logId, {
+                tipo: 'CONSUMO_REVERTIDO',
+                detalle: `(REVERTIDO) ${log.detalle}`
+            });
+
+            // 3. Nuevo Log de Entrada (Reversión)
+            await logMovimientoInternal(
+                'ENTRADA_REVERSION',
+                prod.id,
+                prod.nombre,
+                cantidadRestaurar,
+                nuevoStock,
+                'REVERSION',
+                `Devolución: ${motivoReversion}`,
+                usuarioActor,
+                { reversionDe: logId }
+            );
+
+            return { success: true, message: 'Producto devuelto al inventario' };
+        });
+    };
+
     return {
         productos,
         categorias,
@@ -363,6 +397,7 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         transaccionAnulacion,
         eliminarMovimiento,
         eliminarMovimientos,
-        registrarConsumoInterno
+        registrarConsumoInterno,
+        revertirConsumoInterno
     };
 };

@@ -316,6 +316,195 @@ ipcMain.handle('lan-save-config', (event, config) => {
   }
 });
 
+// --- IPC: Smart Image Search ---
+ipcMain.handle('search-product-image', async (event, query) => {
+
+  // 🧠 Helper: Advanced Text Similarity Score
+  const getSimiliarity = (str1, str2) => {
+    if (!str1 || !str2) return 0;
+
+    // Pre-clean: Remove dots from acronyms (P.A.N. -> PAN)
+    const normalize = (s) => s.toLowerCase().replace(/\./g, '');
+
+    const s1 = normalize(str1.toString()); // Query
+    const s2 = normalize(str2.toString()); // Result Title
+
+    // Tokenize: Split by non-alphanumeric, keep everything
+    const clean = (s) => [...new Set(s.split(/[^a-z0-9]+/).filter(w => w.length > 0))];
+    const words1 = clean(s1); // Query Words
+    const words2 = clean(s2); // Result Words
+
+    if (words1.length === 0) return 0;
+
+    let matchCount = 0;
+    let exactMatches = 0;
+
+    words1.forEach(w => {
+      // 1. Exact Word Match
+      if (words2.includes(w)) {
+        matchCount++;
+        exactMatches++;
+      } else {
+        // 2. Partial Match (e.g. "bulto" in "bultos")
+        const partial = words2.some(rw => rw.includes(w) || w.includes(rw));
+        if (partial) matchCount += 0.8; // Almost as good as exact
+      }
+    });
+
+    const coverage = matchCount / words1.length;
+
+    // Simple Score: Coverage + Exact Bonus
+    let score = coverage;
+
+    if (exactMatches === words1.length) score += 0.5; // Perfect Match Bonus
+    if (exactMatches > 0) score += 0.1;
+
+    return score;
+  };
+
+  const searchProvider = async (url, selector, name) => {
+    return new Promise((resolve) => {
+      const win = new BrowserWindow({
+        width: 1366,
+        height: 768,
+        show: false,
+        webPreferences: {
+          offscreen: true,
+          images: false,
+          javascript: true
+        }
+      });
+
+      // 🥸 Stealth Mode
+      win.webContents.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+
+      const safeDestroy = () => {
+        if (!win.isDestroyed()) win.destroy();
+      };
+
+      const timeout = setTimeout(() => {
+        safeDestroy();
+        console.warn(`[SmartSearch] ${name} timed out.`);
+        resolve([]);
+      }, 15000); // Reduced to 15s
+
+      // Wait for content logic
+      const checkScript = `
+        (async () => {
+          const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+          const maxAttempts = 20;
+          
+          for (let i = 0; i < maxAttempts; i++) {
+            const images = Array.from(document.querySelectorAll('${selector}'));
+            const validImages = images.filter(img => img.src && img.src.startsWith('http') && img.offsetWidth > 0);
+            
+            if (validImages.length > 0) {
+              return validImages.map(img => {
+                let title = img.alt || img.title || '';
+                
+                // --- STRATEGY 2: Deep Search & Tree Climbing ---
+                // If simple attributes fail, we climb the DOM tree to find the product card text
+                if (!title || title.length < 5 || title.toLowerCase().includes('imagen')) {
+                    let current = img;
+                    for (let k = 0; k < 5; k++) { // Climb up to 5 levels
+                        if (!current.parentElement) break;
+                        current = current.parentElement;
+                        
+                        // Check if this parent looks like a container (has text)
+                        if (current.innerText && current.innerText.length > 10) {
+                             // Heuristic: Split by lines. Title is usually the first long line that isn't a price or discount.
+                             const lines = current.innerText.split('\\n')
+                                .map(l => l.trim())
+                                .filter(l => 
+                                    l.length > 5 && 
+                                    !l.includes('$') && 
+                                    !l.includes('Bs') && 
+                                    !l.includes('%') &&
+                                    !l.toLowerCase().includes('agregar')
+                                );
+                             
+                             if (lines.length > 0) {
+                                 title = lines[0]; // Take the first valid line
+                                 break; // Found it!
+                             }
+                        }
+                    }
+                }
+                
+                // Cleanup
+                title = (title || '').replace(/[\\n\\t]/g, ' ').trim();
+                
+                return { src: img.src, title };
+              }).slice(0, 20);
+            }
+            await sleep(500);
+          }
+          return [];
+        })()
+      `;
+
+      win.webContents.on('did-finish-load', async () => {
+        console.log(`[SmartSearch] ${name} Loaded.`);
+        try {
+          const results = await win.webContents.executeJavaScript(checkScript);
+          console.log(`[SmartSearch] ${name} found ${results.length} results.`);
+          safeDestroy();
+          clearTimeout(timeout);
+          resolve(results || []);
+        } catch (e) {
+          safeDestroy();
+          console.error(`[SmartSearch] ${name} Script Error:`, e.message);
+          resolve([]);
+        }
+      });
+
+      win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.error(`[SmartSearch] ${name} Failed to Load: ${errorDescription} (${errorCode})`);
+        // Don't kill immediately, sometimes it's partial, but let the timeout handle it if it stalls
+      });
+      win.loadURL(url);
+    });
+  };
+
+  try {
+    const q = encodeURIComponent(query);
+    console.log(`[SmartSearch] Searching for: "${query}"`);
+
+    // 🚀 Run search in parallel
+    const [tuzonaResults, cocoResults, instaResults] = await Promise.all([
+      searchProvider(`https://tuzonamarket.com/carabobo/buscar?q=${q}`, '.item-img img', 'TuZona'),
+      searchProvider(`https://www.cocomercado.com/search?q=${q}`, '.card__img img', 'Coco'),
+      searchProvider(`https://instamarketca.com/?s=${q}&post_type=product`, '.product-image img', 'InstaMarket')
+    ]);
+
+    const allResults = [...tuzonaResults, ...cocoResults, ...instaResults];
+
+    if (allResults.length === 0) return null;
+
+    // 🏆 Rank Results by Relevance
+    const ranked = allResults.map(item => ({
+      ...item,
+      score: getSimiliarity(query, item.title)
+    })).sort((a, b) => b.score - a.score);
+
+    console.log("[SmartSearch] Top Match:", ranked[0]);
+
+    // Validation: Return match if it has ANY relevance (low threshold)
+    if (ranked.length > 0 && ranked[0].score > 0.1) {
+      return ranked[0].src;
+    }
+
+    // Fallback: If we have results but low score, still return the best one if it's the only option?
+    // No, better to return null if complete garbage. 0.1 is very low (means at least 10% match).
+
+    return null; // No good match found
+
+  } catch (error) {
+    console.error("❌ [SmartSearch] Critical Error:", error);
+    return null;
+  }
+});
+
 // --- IPC: PDF Save ---
 ipcMain.handle('pdf-save', async (event, { buffer, filename }) => {
   try {

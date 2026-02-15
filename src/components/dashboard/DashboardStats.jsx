@@ -61,7 +61,9 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         const monto = parseFloat(g.cantidad) || 0;
         const moneda = g.meta?.moneda || g.referencia || 'USD';
         if (moneda === 'VES' || moneda === 'BS') {
-          return acc + (monto / (tasa || 1));
+          // 🛡️ CORRECCIÓN HISTÓRICA: Usar la tasa del momento (snapshot) si existe
+          const tasaHistorica = parseFloat(g.meta?.tasaSnapshot) || (tasa || 1);
+          return acc + (monto / tasaHistorica);
         }
         return acc + monto;
       } else if (g.tipo === 'CONSUMO_INTERNO') {

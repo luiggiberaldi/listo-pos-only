@@ -20,7 +20,9 @@ export default function FiscalDailySummary({ ventas, config, gastos = [] }) { //
             const amount = parseFloat(g.cantidad || 0);
             const moneda = g.meta?.moneda || g.referencia || 'USD';
             if (moneda === 'VES') {
-                return sum + (amount / (config.tasa || 1));
+                // 🛡️ CORRECCIÓN HISTÓRICA: Usar Tasa Snapshot
+                const tasaHistorica = parseFloat(g.meta?.tasaSnapshot) || (config.tasa || 1);
+                return sum + (amount / tasaHistorica);
             }
             return sum + amount;
         }, 0);

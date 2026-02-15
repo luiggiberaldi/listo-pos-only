@@ -60,25 +60,49 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
     }
   };
 
-  const handleSearchImage = () => {
+  // 🤖 SMART IMAGE SEARCH (ELECTRON ONLY)
+  const handleSearchImage = async () => {
     if (!form.nombre || form.nombre.trim() === '') {
       Swal.fire('Atención', 'Primero ingresa el nombre del producto para buscar imágenes.', 'info');
       return;
     }
 
-    const searchQuery = encodeURIComponent(form.nombre.trim());
+    // Check if running in Electron
+    if (!window.electronAPI?.searchProductImage) {
+      // Fallback for Web Mode
+      const searchQuery = encodeURIComponent(form.nombre.trim());
+      window.open(`https://tuzonamarket.com/carabobo?s=${searchQuery}`, '_blank');
+      window.open(`https://www.cocomercado.com/?s=${searchQuery}`, '_blank');
+      return;
+    }
 
-    // Open both websites in new tabs
-    window.open(`https://tuzonamarket.com/carabobo?s=${searchQuery}`, '_blank');
-    window.open(`https://www.cocomercado.com/?s=${searchQuery}`, '_blank');
+    setProcessing(true);
+    try {
+      const imageUrl = await window.electronAPI.searchProductImage(form.nombre.trim());
 
-    Swal.fire({
-      title: 'Búsqueda Iniciada',
-      html: 'Se abrieron 2 pestañas con los resultados de búsqueda.<br/><br/><small class="text-slate-500">Puedes copiar la imagen (clic derecho → Copiar imagen) y pegarla aquí con Ctrl+V</small>',
-      icon: 'success',
-      timer: 4000,
-      showConfirmButton: false
-    });
+      if (imageUrl) {
+        // Convert URL to Base64 (to avoid CORS issues in <img> tag if any) 
+        // OR save it directly if it's a public URL. 
+        // For now, let's try direct assignment.
+        // Ideally, we might want to "download" it via Electron to avoid hotlinking issues,
+        // but let's test direct URL first.
+        onChange('imagen', imageUrl);
+        Swal.fire({
+          title: 'Imagen Encontrada',
+          text: 'Se ha asignado la mejor coincidencia automáticamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('Sin Resultados', 'No se encontraron imágenes en las tiendas integradas.', 'warning');
+      }
+    } catch (error) {
+      console.error("Search Error:", error);
+      Swal.fire('Error', 'Falló la búsqueda automática.', 'error');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -124,14 +148,27 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
           )}
         </div>
 
-        {/* Search Image Online Button */}
+        {/* Smart Search Image Button */}
         <button
           type="button"
           onClick={handleSearchImage}
-          className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg shadow-blue-500/30"
+          disabled={processing}
+          className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg ${processing
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-indigo-500/30'
+            }`}
         >
-          <Search size={16} />
-          Buscar Foto en Internet
+          {processing ? (
+            <>
+              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+              Buscando IA...
+            </>
+          ) : (
+            <>
+              <Search size={16} />
+              Auto-Buscar Foto (Internet)
+            </>
+          )}
         </button>
 
         {/* Fallback Preview */}

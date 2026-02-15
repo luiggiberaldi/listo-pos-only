@@ -71,18 +71,43 @@ export const LabelStudioModal = ({ isOpen, onClose, selectedProducts = [], tasa 
 
     // Generar Preview (MOCK DINÁMICO)
     useEffect(() => {
-        const mockProduct = [{
-            nombre: mockData.nombre.toUpperCase(),
-            precioVenta: config._simulateHierarchy ? 30.00 : parseFloat(mockData.precio),
-            precio: parseFloat(mockData.precio),
-            codigo: mockData.codigo,
-            id: "mock-1",
-            _hierarchyLabel: config._simulateHierarchy ? 'BULTO x20' : null
-        }];
+        let isMounted = true;
+        let generatedUrl = null;
 
-        const url = generarPreviewURL(mockProduct, tasa, config);
-        setPreviewUrl(url);
-        return () => { if (url) URL.revokeObjectURL(url); };
+        const generate = async () => {
+            const mockProduct = [{
+                nombre: mockData.nombre.toUpperCase(),
+                precioVenta: config._simulateHierarchy ? 30.00 : parseFloat(mockData.precio),
+                precio: parseFloat(mockData.precio),
+                codigo: mockData.codigo,
+                id: "mock-1",
+                _hierarchyLabel: config._simulateHierarchy ? 'BULTO x20' : null
+            }];
+
+            const url = await generarPreviewURL(mockProduct, tasa, config);
+
+            if (isMounted && url) {
+                generatedUrl = url;
+                setPreviewUrl(url);
+            } else if (url) {
+                // Si desmontado, revocar inmediatamente
+                URL.revokeObjectURL(url);
+            }
+        };
+
+        generate();
+
+        return () => {
+            isMounted = false;
+            // No revocamos aquí inmediatamente para evitar parpadeos si React remounts fast?
+            // Pero como generamos uno nuevo cada vez que cambia config, DEBERÍAMOS limpiar el anterior.
+            // El problema es que previewUrl es state. Limpiamos en el next render?
+            // Mejor estrategia: Limpiar en el effect cleanup SI tenemos un URL en state?
+            // Simplificación: Revocamos el anterior antes de setear el nuevo no es fácil con hooks.
+            // Standard Pattern:
+            // return () => { if (generatedUrl) URL.revokeObjectURL(generatedUrl); }
+            if (generatedUrl) URL.revokeObjectURL(generatedUrl);
+        };
     }, [config, tasa, mockData]);
 
     if (!isOpen) return null;
