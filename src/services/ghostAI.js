@@ -12,13 +12,12 @@ import { ghostMemory } from "./ghost/GhostMemory";
 import { ghostContext } from "./ghost/GhostContext";
 import { ghostPrompt } from "./ghost/GhostPrompt";
 
+import { secretsService } from "../config/SecretsService";
+
 class GhostAIService {
     constructor() {
-        // Gemini Keys
-        this.keys = [
-            import.meta.env.VITE_GEMINI_API_KEY,      // KEY A
-            import.meta.env.VITE_GEMINI_API_KEY_2     // KEY B
-        ].filter(k => !!k);
+        // Initial Load (Default Env)
+        this.loadKeys();
 
         this.currentKeyIndex = 0;
 
@@ -28,17 +27,36 @@ class GhostAIService {
         this.groqAvailable = null;
         this.groqService = groqService;
 
-        // Gemini Models
+        // Gemini Models - Initial placeholder
+        this.models = [];
+        this.initModels();
+
+        console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Gemini`);
+        // 🚀 PERF: Provider checks deferred to first generateResponse() call
+        this._providersChecked = false;
+    }
+
+    loadKeys() {
+        this.keys = [
+            secretsService.get('VITE_GEMINI_API_KEY'),      // KEY A
+            secretsService.get('VITE_GEMINI_API_KEY_2')     // KEY B
+        ].filter(k => !!k);
+    }
+
+    initModels() {
         this.models = this.keys.map(key => {
             const genAI = new GoogleGenerativeAI(key);
             return genAI.getGenerativeModel({
                 model: import.meta.env.VITE_GEMINI_MODEL || "gemini-2.5-flash"
             });
         });
+    }
 
-        console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Gemini`);
-        // 🚀 PERF: Provider checks deferred to first generateResponse() call
-        this._providersChecked = false;
+    reloadKeys() {
+        console.log("🔄 GhostAI: Reloading Keys from SecretsService...");
+        this.loadKeys();
+        this.initModels();
+        console.log(`✅ GhostAI: Keys reloaded. Available Keys: ${this.keys.length}`);
     }
 
     /**

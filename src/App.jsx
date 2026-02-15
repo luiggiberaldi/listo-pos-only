@@ -14,6 +14,9 @@ import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
 import { initFirebase } from './services/firebase'; // 🚀 LAZY INIT
 import { useLanSync } from './hooks/sync/useLanSync'; // 📡 LAN MULTI-CAJA
+import { secretsService } from './services/config/SecretsService';
+import { initSupabase } from './services/supabaseClient';
+import { ghostService } from './services/ghostAI';
 
 // Layouts (eager - needed immediately)
 import MainLayout from './layout/MainLayout';
@@ -78,6 +81,21 @@ function App() {
       });
     }, 2000);
     return () => clearTimeout(timer);
+  }, []);
+
+  // 🔐 SECRETS BOOTSTRAP (Persist API Keys)
+  React.useEffect(() => {
+    const loadSecrets = async () => {
+      await secretsService.load();
+      // Init Supabase
+      initSupabase(
+        secretsService.get('VITE_SUPABASE_URL'),
+        secretsService.get('VITE_SUPABASE_ANON_KEY')
+      );
+      // Init Ghost
+      ghostService.reloadKeys();
+    };
+    loadSecrets();
   }, []);
 
   // 👻 GHOST MODE TOOLS (Development Only)
