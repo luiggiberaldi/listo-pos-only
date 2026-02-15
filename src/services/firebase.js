@@ -1,105 +1,124 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 2.0 (DOUBLE ANTENNA)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.0 (LAZY LOADING)
 // Archivo: src/services/firebase.js
-// Autorizado por Auditor en Fase 4 (Double Antenna)
-// Rastro: Multi-Tenancy Client vs Master [cite: 5581]
+// Cambio: Firebase SDK se carga dinámicamente DESPUÉS del render inicial.
+// Esto difiere ~458KB del bundle y los WebSockets hasta que realmente se necesiten.
+// Todos los consumers existentes usan guards defensivos (if (!db) return).
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+// --- EXPORTS (inicialmente null, se llenan con lazy init) ---
+// ES Module named exports son "live bindings" — consumers que importen
+// estas variables verán el valor actualizado después del init.
+export let db = null;
+export let dbClient = null;
+export let authClient = null;
+export let dbMaster = null;
+export let authMaster = null;
+export let storageMaster = null;
 
-// 📡 ANTENA A: CLIENT APP (Ventas y Datos del Usuario)
-// Configuración dinámica desde .env
-const clientConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
+let _initialized = false;
+let _initializing = false;
+let _initPromise = null;
 
-// 📡 ANTENA B: MASTER APP (Telemetría de Listo POS)
-// Configuración dinámica desde .env (Secured)
-const masterConfig = {
-    apiKey: import.meta.env.VITE_MASTER_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_MASTER_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_MASTER_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_MASTER_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_MASTER_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_MASTER_FIREBASE_APP_ID
-};
+/**
+ * Inicializa Firebase de forma lazy. Se puede llamar múltiples veces sin efecto.
+ * @returns {Promise<boolean>} true si se inicializó correctamente
+ */
+export async function initFirebase() {
+    if (_initialized) return true;
+    if (_initializing) return _initPromise;
 
-let dbClient = null;
-let authClient = null;
-let clientApp = null;
-
-let dbMaster = null;
-let authMaster = null;
-let storageMaster = null;
-let masterApp = null;
-
-// Inicialización Defensiva
-try {
-    // --- 1. INICIALIZAR ANTENA CLIENTE (LISTO GO) ---
-    if (clientConfig.apiKey) {
-        clientApp = initializeApp(clientConfig, "CLIENT_APP"); // Nombre explícito para evitar colisión
-
-        // Persistencia Offline solo para datos del cliente
-        // dbClient = initializeFirestore(clientApp, {
-        //    localCache: persistentLocalCache({
-        //        tabManager: persistentMultipleTabManager()
-        //    })
-        // });
-        dbClient = getFirestore(clientApp); // 🟢 CACHE DISABLED FOR DEBUG (Persistent Cache Disabled)
-
-        authClient = getAuth(clientApp);
-    } else {
-        console.warn("📡 [ANTENA A] Sin credenciales. Modo Offline Puro.");
-    }
-
-    // --- 2. INICIALIZAR ANTENA MASTER (LISTO MASTER) ---
-    if (masterConfig.apiKey) {
-        masterApp = initializeApp(masterConfig, "MASTER_APP");
-
-        // Sin persistencia pesada, es solo para telemetría
-        dbMaster = getFirestore(masterApp);
-        authMaster = getAuth(masterApp);
-        storageMaster = getStorage(masterApp); // 📦 STORAGE ACTIVADO
-    }
-
-    // --- 3. PROTOCOLO IRON DOME (DOBLE AUTENTICACIÓN) ---
-    const authenticateAntenna = (authInstance, label) => {
-        if (!authInstance) return;
-
-        onAuthStateChanged(authInstance, (user) => {
-            if (!user) {
-                // console.warn(`🛡️ [IRON DOME] ${label} desconectado. Re-autenticando...`);
-                signInAnonymously(authInstance).catch(e => console.error(`❌ Error Auth ${label}:`, e.message));
-            }
-        });
-
-        signInAnonymously(authInstance).catch(error => {
-            console.error(`❌ [IRON DOME] Fallo inicial en ${label}:`, error.code);
-        });
-    };
-
-    // Activar Escudos
-    authenticateAntenna(authClient, "CLIENTE");
-    authenticateAntenna(authMaster, "MASTER");
-
-} catch (error) {
-    console.error("🔥 [SYSTEM] Error crítico inicializando Antenas:", error);
+    _initializing = true;
+    _initPromise = _doInit();
+    return _initPromise;
 }
 
-// --- EXPORTACIONES ---
-const db = dbClient; // Alias de compatibilidad (Legacy Support)
+async function _doInit() {
+    try {
+        // 🚀 Dynamic imports — solo carga el SDK cuando se llama esta función
+        const [appModule, firestoreModule, authModule, storageModule] = await Promise.all([
+            import('firebase/app'),
+            import('firebase/firestore'),
+            import('firebase/auth'),
+            import('firebase/storage'),
+        ]);
 
-export {
-    db,          // Default (Legacy)
-    dbClient,    // Explicit Client
-    authClient,  // Explicit Client Auth
-    dbMaster,    // Explicit Master
-    authMaster,   // Explicit Master Auth
-    storageMaster // Explicit Storage
-};
+        const { initializeApp } = appModule;
+        const { getFirestore } = firestoreModule;
+        const { getAuth, signInAnonymously, onAuthStateChanged } = authModule;
+        const { getStorage } = storageModule;
+
+        // 📡 ANTENA A: CLIENT APP
+        const clientConfig = {
+            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            appId: import.meta.env.VITE_FIREBASE_APP_ID
+        };
+
+        // 📡 ANTENA B: MASTER APP
+        const masterConfig = {
+            apiKey: import.meta.env.VITE_MASTER_FIREBASE_API_KEY,
+            authDomain: import.meta.env.VITE_MASTER_FIREBASE_AUTH_DOMAIN,
+            projectId: import.meta.env.VITE_MASTER_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_MASTER_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_MASTER_FIREBASE_MESSAGING_SENDER_ID,
+            appId: import.meta.env.VITE_MASTER_FIREBASE_APP_ID
+        };
+
+        // --- 1. INICIALIZAR ANTENA CLIENTE ---
+        if (clientConfig.apiKey) {
+            const clientApp = initializeApp(clientConfig, "CLIENT_APP");
+            dbClient = getFirestore(clientApp);
+            authClient = getAuth(clientApp);
+            db = dbClient; // Alias legacy
+            console.log("📡 [LAZY] Antena Cliente inicializada.");
+        } else {
+            console.warn("📡 [ANTENA A] Sin credenciales. Modo Offline Puro.");
+        }
+
+        // --- 2. INICIALIZAR ANTENA MASTER ---
+        if (masterConfig.apiKey) {
+            const masterApp = initializeApp(masterConfig, "MASTER_APP");
+            dbMaster = getFirestore(masterApp);
+            authMaster = getAuth(masterApp);
+            storageMaster = getStorage(masterApp);
+            console.log("📡 [LAZY] Antena Master inicializada.");
+        }
+
+        // --- 3. DOBLE AUTENTICACIÓN (una sola vez) ---
+        const authenticateAntenna = (authInstance, label) => {
+            if (!authInstance) return;
+            onAuthStateChanged(authInstance, (user) => {
+                if (!user) {
+                    signInAnonymously(authInstance).catch(e =>
+                        console.error(`❌ Error Auth ${label}:`, e.message)
+                    );
+                }
+            });
+            signInAnonymously(authInstance).catch(error => {
+                console.error(`❌ [IRON DOME] Fallo inicial en ${label}:`, error.code);
+            });
+        };
+
+        authenticateAntenna(authClient, "CLIENTE");
+        authenticateAntenna(authMaster, "MASTER");
+
+        _initialized = true;
+        console.log("🔥 [LAZY] Firebase completamente inicializado.");
+        return true;
+
+    } catch (error) {
+        console.error("🔥 [SYSTEM] Error crítico inicializando Firebase:", error);
+        _initializing = false;
+        _initPromise = null;
+        return false;
+    }
+}
+
+/**
+ * Helper: Verifica si Firebase ya fue inicializado
+ */
+export function isFirebaseReady() {
+    return _initialized;
+}

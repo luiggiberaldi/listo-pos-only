@@ -12,6 +12,7 @@ import RouteGuard from './components/security/RouteGuard';
 import { GhostEye } from './components/ghost/GhostEye';
 import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
+import { initFirebase } from './services/firebase'; // 🚀 LAZY INIT
 
 // Layouts (eager - needed immediately)
 import MainLayout from './layout/MainLayout';
@@ -45,6 +46,16 @@ function App() {
   // 🔒 RUNTIME INTEGRITY CHECK (Fiscal Lock)
   React.useEffect(() => {
     auditFiscalLogic();
+  }, []);
+
+  // 🚀 LAZY: Inicializar Firebase después del render inicial (2s delay)
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      initFirebase().then(ok => {
+        if (ok) console.log('🔥 Firebase listo (carga diferida)');
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   // 👻 GHOST MODE TOOLS (Development Only)
