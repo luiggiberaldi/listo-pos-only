@@ -1,4 +1,4 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 3.3 (PERFORMANCE: LAZY LOADING)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.4 (PERFORMANCE: LAZY LOADING + PLAN GATING)
 // Archivo: src/App.jsx
 
 import React, { Suspense, lazy } from 'react';
@@ -13,6 +13,7 @@ import { GhostEye } from './components/ghost/GhostEye';
 import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
 import { initFirebase } from './services/firebase'; // 🚀 LAZY INIT
+import { useLanSync } from './hooks/sync/useLanSync'; // 📡 LAN MULTI-CAJA
 
 // Layouts (eager - needed immediately)
 import MainLayout from './layout/MainLayout';
@@ -35,13 +36,34 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 // Security Gate
 import LicenseGate from './components/security/LicenseGate';
 import ContractGuard from './components/security/ContractGuard'; // 🟢 CONTRACT GUARD
+import PlanGate from './components/security/PlanGate'; // 🏪 PLAN TIER GATE
+import { FEATURES, hasFeature } from './config/planTiers';
+import { useConfigStore } from './stores/useConfigStore';
 import { auditFiscalLogic } from './utils/fiscal_lock';
+
+// 🏪 PLAN-GATED HOME: Redirige a POS si no tiene Dashboard
+function PlanGatedHome() {
+  const { license } = useConfigStore();
+  const plan = license?.plan || 'bodega';
+  if (hasFeature(plan, FEATURES.DASHBOARD)) {
+    return <Dashboard />;
+  }
+  return <PosPage />;
+}
 
 function App() {
   const { isAuthenticated } = useSecurity();
   useMasterTelemetry(); // 📡 ALWAYS ON: Monitoring for Remote PIN Resets & Telemetry
   useListoGoSync();     // 🔄 ALWAYS ON: Syncing Sales/Inventory to Mobile App
   useRemoteLockListener(); // 🔓 ALWAYS ON: Monitoring for Remote Unlock (Panic Release)
+
+  // 📡 LAN MULTI-CAJA: Sync inventario entre PCs offline
+  const lanConfig = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('listo-lan-config') || '{}');
+    } catch { return {}; }
+  }, []);
+  useLanSync(lanConfig.role || 'principal', lanConfig.targetIP || '');
 
   // 🔒 RUNTIME INTEGRITY CHECK (Fiscal Lock)
   React.useEffect(() => {
@@ -134,8 +156,8 @@ function App() {
               ) : (
                 <Route path="/" element={<MainLayout />}>
 
-                  {/* 🏠 INICIO (DASHBOARD) */}
-                  <Route index element={<Dashboard />} />
+                  {/* 🏠 INICIO — Dashboard si Minimarket, POS si no */}
+                  <Route index element={<PlanGatedHome />} />
 
                   {/* 🛒 PUNTO DE VENTA */}
                   <Route
@@ -157,43 +179,51 @@ function App() {
                     }
                   />
 
-                  {/* 👥 CLIENTES */}
+                  {/* 👥 CLIENTES (Abasto+) */}
                   <Route
                     path="clientes"
                     element={
-                      <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
-                        <ClientesPage />
-                      </RouteGuard>
+                      <PlanGate requiredFeature={FEATURES.CLIENTES}>
+                        <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
+                          <ClientesPage />
+                        </RouteGuard>
+                      </PlanGate>
                     }
                   />
 
-                  {/* 📈 ESTADÍSTICAS */}
+                  {/* 📈 ESTADÍSTICAS (Minimarket) */}
                   <Route
                     path="reportes"
                     element={
-                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_DASHBOARD}>
-                        <ReportesPage />
-                      </RouteGuard>
+                      <PlanGate requiredFeature={FEATURES.REPORTES}>
+                        <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_DASHBOARD}>
+                          <ReportesPage />
+                        </RouteGuard>
+                      </PlanGate>
                     }
                   />
 
-                  {/* 💰 TESORERÍA */}
+                  {/* 💰 TESORERÍA (Abasto+) */}
                   <Route
                     path="total-diario"
                     element={
-                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_TOTAL_DIARIO}>
-                        <TotalDiarioPage />
-                      </RouteGuard>
+                      <PlanGate requiredFeature={FEATURES.TOTAL_DIARIO}>
+                        <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_TOTAL_DIARIO}>
+                          <TotalDiarioPage />
+                        </RouteGuard>
+                      </PlanGate>
                     }
                   />
 
-                  {/* 📜 HISTORIAL DE VENTAS (NUEVA RUTA) */}
+                  {/* 📜 HISTORIAL DE VENTAS (Abasto+) */}
                   <Route
                     path="historial-ventas"
                     element={
-                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_VENTAS}>
-                        <SalesHistoryPage />
-                      </RouteGuard>
+                      <PlanGate requiredFeature={FEATURES.HISTORIAL}>
+                        <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_VENTAS}>
+                          <SalesHistoryPage />
+                        </RouteGuard>
+                      </PlanGate>
                     }
                   />
 
@@ -218,8 +248,12 @@ function App() {
                   />
 
 
-                  {/* 🧪 LABORATORIO */}
-                  <Route path="simulation" element={<SimulationPage />} />
+                  {/* 🧪 LABORATORIO (Minimarket) */}
+                  <Route path="simulation" element={
+                    <PlanGate requiredFeature={FEATURES.SIMULADOR}>
+                      <SimulationPage />
+                    </PlanGate>
+                  } />
 
                   {/* 🔄 Catch-all: Silent redirect to home */}
                   <Route path="*" element={<Navigate to="/" replace />} />

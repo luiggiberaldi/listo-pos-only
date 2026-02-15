@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, History, ShieldAlert, Filter, ChevronDown, ChevronUp, X, FolderOpen, FileSpreadsheet, Printer, Settings, List } from 'lucide-react';
+import { Search, Plus, History, ShieldAlert, Filter, ChevronDown, ChevronUp, X, FolderOpen, FileSpreadsheet, Printer, Settings, List, Download, Upload } from 'lucide-react';
 import { ActionGuard } from '../../components/security/ActionGuard';
 import { PERMISSIONS } from '../../config/permissions';
 
@@ -17,8 +17,10 @@ export default function InventarioHeader({
   // 🆕
   onImportClick,
   onPrintAllClick,
-  onOpenLabelStudio, // 🆕
-  selectedCount = 0 // 🆕
+  onOpenLabelStudio,
+  onExportCatalog,
+  onImportCatalog,
+  selectedCount = 0
 }) {
 
   const isFiltering = filtroCategoria !== 'Todas' && filtroCategoria !== 'General';
@@ -110,6 +112,27 @@ export default function InventarioHeader({
               <span className="hidden sm:inline text-sm font-bold">Importar</span>
             </button>
           </ActionGuard>
+
+          {/* 📦 CATÁLOGO: EXPORTAR / IMPORTAR */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-1">
+            <button
+              onClick={onExportCatalog}
+              className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all flex items-center gap-1.5"
+              title="Exportar Catálogo (JSON) — para copiar a otra PC"
+            >
+              <Download size={18} />
+              <span className="hidden lg:inline text-xs font-bold">Exportar</span>
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
+            <button
+              onClick={onImportCatalog}
+              className="p-2.5 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-all flex items-center gap-1.5"
+              title="Importar Catálogo (JSON) — desde otra PC"
+            >
+              <Upload size={18} />
+              <span className="hidden lg:inline text-xs font-bold">Importar</span>
+            </button>
+          </div>
 
           <button
             onClick={() => typeof setMostrarKardex === 'function' && setMostrarKardex(true)}

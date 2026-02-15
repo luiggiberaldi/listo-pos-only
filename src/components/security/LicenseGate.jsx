@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Lock, Terminal, ShieldCheck, Server, AlertCircle, ArrowRight, Key, WifiOff, Copy, Check } from 'lucide-react';
+import { ShieldAlert, Lock, Terminal, ShieldCheck, Server, AlertCircle, ArrowRight, Key, WifiOff, Copy, Check, Wifi, Monitor, Loader2 } from 'lucide-react';
 import { useLicenseGuard } from '../../hooks/security/useLicenseGuard';
 import OwnerLockScreen from './OwnerLockScreen'; // 🟠 NEW TACTICAL LOCK
 import { generateChallenge, validateSOS } from '../../utils/securityUtils';
 import { useConfigStore } from '../../stores/useConfigStore';
+import { dbMaster } from '../../services/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // SALT must match useLicenseGuard.js
 const LICENSE_SALT = "LISTO_POS_V1_SECURE_SALT_998877";
+const LAN_PORT = 3847;
 
 export default function LicenseGate({ children }) {
     // Consumimos el estado consolidado del Guardián
-    const { status: localStatus, machineId, isSuspended } = useLicenseGuard();
+    const { status: localStatus, machineId, isSuspended, plan } = useLicenseGuard();
 
     // Estados Locales (Activation UI)
     const [inputCode, setInputCode] = useState('');
@@ -24,21 +27,111 @@ export default function LicenseGate({ children }) {
     const [sosPin, setSosPin] = useState('');
     const [sosError, setSosError] = useState(null);
 
+    // 🔑 MULTI-CAJA STATES
+    const [multiCajaMode, setMultiCajaMode] = useState(false);
+    const [serverIP, setServerIP] = useState('');
+    const [multiCajaStatus, setMultiCajaStatus] = useState(''); // '', 'connecting', 'success', 'error'
+    const [multiCajaError, setMultiCajaError] = useState(null);
+
     // 🆕 HOISTED HOOKS (Fixing 'Rendered fewer hooks than expected')
-    const { license, loadConfig } = useConfigStore();
+    const { license, loadConfig, setPlan: setStorePlan } = useConfigStore();
 
     useEffect(() => {
         if (license.usageCount === 0) loadConfig();
     }, []);
 
+    // 🏪 SYNC PLAN: Cuando el plan cambia en Firebase, actualizar el store
+    useEffect(() => {
+        if (plan && setStorePlan) setStorePlan(plan);
+    }, [plan]);
+
     const handleSOSClick = () => {
         if (!sosMode) {
             setChallenge(generateChallenge());
             setSosMode(true);
+            setMultiCajaMode(false); // Cerrar multi-caja si estaba abierto
         } else {
             setSosMode(false);
             setSosPin('');
             setSosError(null);
+        }
+    };
+
+    // 🔑 MULTI-CAJA: Activar como Caja Secundaria
+    const handleMultiCajaActivation = async () => {
+        if (!serverIP.trim() || !machineId) return;
+        setMultiCajaStatus('connecting');
+        setMultiCajaError(null);
+
+        try {
+            // 1. Ping al servidor para verificar que existe
+            const pingRes = await fetch(`http://${serverIP.trim()}:${LAN_PORT}/api/ping`, {
+                signal: AbortSignal.timeout(5000),
+            });
+            if (!pingRes.ok) throw new Error('Servidor no responde');
+            const pingData = await pingRes.json();
+
+            // 2. Solicitar licencia al servidor
+            const licRes = await fetch(`http://${serverIP.trim()}:${LAN_PORT}/api/license-grant`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    machineId: machineId,
+                    cajaLabel: 'Caja Secundaria',
+                }),
+                signal: AbortSignal.timeout(10000),
+            });
+
+            if (!licRes.ok) {
+                const errData = await licRes.json().catch(() => ({}));
+                throw new Error(errData.error || `Error ${licRes.status}`);
+            }
+
+            const { licenseKey, negocio, serverMachineId, plan: grantedPlan } = await licRes.json();
+
+            // 3. Guardar la licencia y plan localmente
+            localStorage.setItem('listo_license_key', licenseKey);
+            localStorage.setItem('listo_plan', grantedPlan || 'bodega');
+
+            // 4. Registrar en Firebase como terminal vinculado
+            if (dbMaster) {
+                try {
+                    await setDoc(doc(dbMaster, 'terminales', machineId), {
+                        status: 'ACTIVE',
+                        role: 'secundaria',
+                        plan: grantedPlan || 'bodega',
+                        parentId: serverMachineId || 'unknown',
+                        negocio: negocio || '',
+                        linkedAt: serverTimestamp(),
+                        lastSeen: serverTimestamp(),
+                        ip: serverIP.trim(),
+                    }, { merge: true });
+                } catch (fbErr) {
+                    console.warn('⚠️ Firebase registro falló (no crítico):', fbErr.message);
+                }
+            }
+
+            // 5. Guardar config LAN
+            if (window.electronAPI?.lanSaveConfig) {
+                await window.electronAPI.lanSaveConfig({
+                    role: 'secundaria',
+                    targetIP: serverIP.trim(),
+                });
+            }
+
+            setMultiCajaStatus('success');
+
+            // 6. Recargar después de un breve delay para que el usuario vea el éxito
+            setTimeout(() => window.location.reload(), 1500);
+
+        } catch (err) {
+            console.error('❌ [MULTI-CAJA] Error:', err);
+            setMultiCajaStatus('error');
+            setMultiCajaError(
+                err.name === 'TimeoutError' || err.name === 'AbortError'
+                    ? 'No se pudo conectar. Verifica la IP y que PC1 esté encendida.'
+                    : err.message || 'Error de conexión'
+            );
         }
     };
 
@@ -204,10 +297,7 @@ export default function LicenseGate({ children }) {
     }
 
     // 🆕 2.5 DEMO SHIELD LOCK (CUOTAS AGOTADAS) 🧪
-    // Logic moved up to top, only check remains here
-
-    // 🔧 TEMPORALMENTE DESHABILITADO — se retoma después
-    if (false && license.isDemo && license.isQuotaBlocked) {
+    if (license.isDemo && license.isQuotaBlocked) {
         return (
             <div className="h-screen w-screen bg-[#0f172a] flex items-center justify-center p-8 z-[60] fixed inset-0 font-sans overflow-hidden">
                 {/* Decoration */}
@@ -424,10 +514,83 @@ export default function LicenseGate({ children }) {
                                 </button>
                             </div>
 
-                            <div className="pt-8 border-t border-slate-800 text-center">
-                                <p className="text-xs text-slate-500">
-                                    ¿No tienes una licencia? Contacta a tu proveedor.
-                                </p>
+                            {/* ═══ SEPARADOR + MULTI-CAJA ═══ */}
+                            <div className="pt-6 border-t border-slate-800 space-y-4">
+                                {!multiCajaMode ? (
+                                    <div className="flex flex-col items-center gap-3">
+                                        <p className="text-xs text-slate-500">
+                                            ¿No tienes una licencia? Contacta a tu proveedor.
+                                        </p>
+                                        <button
+                                            onClick={() => { setMultiCajaMode(true); setSosMode(false); }}
+                                            className="flex items-center gap-2 text-xs font-bold text-emerald-500/70 hover:text-emerald-400 uppercase tracking-widest transition-colors py-2 cursor-pointer"
+                                        >
+                                            <Wifi size={14} /> Activar como Caja Secundaria (Multi-Caja)
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-emerald-950/30 p-6 rounded-2xl border border-emerald-800/50 animate-in slide-in-from-bottom-4 space-y-4">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="p-2 bg-emerald-600/20 rounded-lg">
+                                                <Monitor size={18} className="text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-white">Caja Secundaria</p>
+                                                <p className="text-xs text-slate-400">Ingresa la IP del servidor principal</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                                                IP de la Caja Principal
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={serverIP}
+                                                onChange={(e) => { setServerIP(e.target.value); setMultiCajaError(null); }}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleMultiCajaActivation()}
+                                                disabled={multiCajaStatus === 'connecting' || multiCajaStatus === 'success'}
+                                                className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-sm py-3 px-4 rounded-lg focus:outline-none focus:border-emerald-500 transition-colors placeholder-slate-600"
+                                                placeholder="Ej: 192.168.1.100"
+                                            />
+                                        </div>
+
+                                        {multiCajaError && (
+                                            <div className="flex items-center gap-2 text-red-400 text-xs font-bold bg-red-950/40 px-3 py-2 rounded-lg">
+                                                <AlertCircle size={14} /> {multiCajaError}
+                                            </div>
+                                        )}
+
+                                        {multiCajaStatus === 'success' && (
+                                            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-950/40 px-3 py-2 rounded-lg">
+                                                <Check size={14} /> ¡Licencia recibida! Reiniciando...
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => { setMultiCajaMode(false); setMultiCajaError(null); setMultiCajaStatus(''); }}
+                                                disabled={multiCajaStatus === 'connecting' || multiCajaStatus === 'success'}
+                                                className="flex-1 py-3 rounded-lg border border-slate-700 text-slate-400 hover:bg-slate-800 font-bold text-sm transition-colors disabled:opacity-50"
+                                            >
+                                                CANCELAR
+                                            </button>
+                                            <button
+                                                onClick={handleMultiCajaActivation}
+                                                disabled={!serverIP.trim() || multiCajaStatus === 'connecting' || multiCajaStatus === 'success'}
+                                                className="flex-1 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                {multiCajaStatus === 'connecting' ? (
+                                                    <><Loader2 size={16} className="animate-spin" /> CONECTANDO...</>
+                                                ) : multiCajaStatus === 'success' ? (
+                                                    <><Check size={16} /> ACTIVADO</>
+                                                ) : (
+                                                    <><Wifi size={16} /> VINCULAR</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                         </div>

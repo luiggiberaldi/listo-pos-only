@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import nodeMachineId from 'node-machine-id';
 const { machineIdSync } = nodeMachineId;
 import checkDiskSpace from 'check-disk-space';
+import { startLanServer, updateProductCache, getLocalIP } from './lanServer.js';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
@@ -130,14 +131,29 @@ app.whenReady().then(() => {
 
   createWindow();
 
+  // 📡 LAN SYNC: Arrancar servidor local para multi-caja
+  // Lee config persistente para determinar si es Caja Principal
+  try {
+    const lanConfigPath = path.join(app.getPath('userData'), 'lan-config.json');
+    let lanConfig = { role: 'principal' }; // Default: siempre servidor
+    if (fs.existsSync(lanConfigPath)) {
+      lanConfig = JSON.parse(fs.readFileSync(lanConfigPath, 'utf-8'));
+    }
+    if (lanConfig.role === 'principal') {
+      startLanServer(mainWindow);
+    }
+  } catch (e) {
+    console.error('❌ [LAN] Error iniciando servidor:', e.message);
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // AutoUpdater con retraso (no saturar al inicio)
+  // AutoUpdater con retraso
   setTimeout(() => {
     setupAutoUpdater();
-  }, 5000); // Aumentado de 3s a 5s para dar más tiempo al renderer
+  }, 5000);
 });
 
 app.on('window-all-closed', () => {
@@ -254,9 +270,50 @@ ipcMain.handle('get-disk-info', async () => {
   }
 });
 
-// --- IPC: Firebase Sync (ahora solo devuelve error, Firebase removido) ---
+// --- IPC: Firebase Sync (legacy, deshabilitado) ---
 ipcMain.handle('firebase-sync', async () => {
   return { success: false, error: "Firebase deshabilitado — use sincronización LAN" };
+});
+
+// ═══════════════════════════════════════════════════════════
+// 📡 IPC: LAN SYNC (Multi-Caja Offline)
+// ═══════════════════════════════════════════════════════════
+
+// Renderer envía productos actualizados → cache del servidor
+ipcMain.on('lan-sync-products', (event, { products, categories, config }) => {
+  // Enriquecer config con machineId y estado de licencia para el endpoint /api/license-grant
+  const enrichedConfig = {
+    ...config,
+    _machineId: (() => { try { return machineIdSync(); } catch { return 'UNKNOWN'; } })(),
+    _licenseActive: !!config?._licenseActive, // El renderer indica si tiene licencia
+  };
+  updateProductCache(products, categories, enrichedConfig);
+});
+
+// Obtener IP local para mostrar en UI
+ipcMain.handle('lan-get-ip', () => {
+  return getLocalIP();
+});
+
+// Obtener/guardar configuración LAN
+ipcMain.handle('lan-get-config', () => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'lan-config.json');
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    }
+  } catch (e) { /* default */ }
+  return { role: 'principal', targetIP: '' };
+});
+
+ipcMain.handle('lan-save-config', (event, config) => {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'lan-config.json');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    return true;
+  } catch (e) {
+    return false;
+  }
 });
 
 // --- IPC: PDF Save ---

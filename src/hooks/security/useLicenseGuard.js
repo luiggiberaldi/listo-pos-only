@@ -2,16 +2,28 @@
 // Archivo: src/hooks/security/useLicenseGuard.js
 
 import { useState, useEffect } from 'react';
-import { dbMaster } from '../../services/firebase';
+import { dbMaster, initFirebase } from '../../services/firebase'; // 🚀 Init Import
 import { doc, onSnapshot } from 'firebase/firestore';
+import { DEFAULT_PLAN } from '../../config/planTiers';
 
 // SALT SECRETO (En producción esto debería estar ofuscado o venir de env cifrado)
-const LICENSE_SALT = "LISTO_POS_V1_SECURE_SALT_998877";
+const LICENSE_SALT = import.meta.env.VITE_LICENSE_SALT || "LISTO_POS_V1_SECURE_SALT_998877";
 
 export const useLicenseGuard = () => {
-    const [status, setStatus] = useState('checking'); // checking | authorized | unauthorized
+    const [status, setStatus] = useState('checking'); // checking | authorized | unauthorized | connecting
     const [machineId, setMachineId] = useState(null);
     const [isSuspended, setIsSuspended] = useState(false);
+    const [plan, setPlan] = useState(DEFAULT_PLAN);
+    const [firebaseReady, setFirebaseReady] = useState(false);
+
+    // 0. BOOTSTRAP: INICIALIZAR FIREBASE (Evitar Race Conditions)
+    useEffect(() => {
+        let mounted = true;
+        initFirebase().then(ok => {
+            if (mounted && ok) setFirebaseReady(true);
+        });
+        return () => { mounted = false; };
+    }, []);
 
     // 1. VERIFICACIÓN DE INTEGRIDAD LOCAL (HARDWARE BINDING)
     useEffect(() => {
@@ -49,11 +61,8 @@ export const useLicenseGuard = () => {
                 setMachineId(currentId);
 
                 // LÓGICA DE VALIDACIÓN (LAYER 1)
-                if (!isElectron) {
-                    // En Web confiamos ciegamente (Solo Desarrollo/Demo)
-                    setStatus('authorized');
-                    return;
-                }
+                // 🚨 SECURITY FIX: Ya no confiamos ciegamente en WEB.
+                // Todo terminal debe tener licencia válida o estar en proceso de activación.
 
                 // Generar Hash Esperado (ID + SALT)
                 const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
@@ -67,7 +76,11 @@ export const useLicenseGuard = () => {
                 if (storedLicense === expectedLicense) {
                     setStatus('authorized');
                 } else {
-                    console.error("⛔ [FÉNIX] HARDWARE MISMATCH. Bloqueando sistema.");
+                    // Si no tiene licencia local, tal vez es nuevo.
+                    // NO bloqueamos inmediatamente si es Web start-up, pero
+                    // el Cloud Lock (Layer 2) decidirá si lo deja pasar o no.
+                    // Por defecto: Unauthorized hasta que se demuestre lo contrario.
+                    console.warn("⚠️ [FÉNIX] Licencia local no encontrada o inválida.");
                     setStatus('unauthorized');
                 }
 
@@ -85,10 +98,10 @@ export const useLicenseGuard = () => {
         // 👻 GHOST BYPASS
         if (localStorage.getItem('ghost_bypass') === 'true') return;
 
-        // Necesitamos el Machine ID y la conexión a Master
-        if (!machineId || !dbMaster) return;
+        // 🛑 WAIT FOR FIREBASE & MACHINE ID
+        if (!firebaseReady || !machineId || !dbMaster) return;
 
-        console.log("🛡️ [FÉNIX] Activando Escucha Remota para:", machineId);
+        console.log("🛡️ [FÉNIX] Conectando con Torre de Control para:", machineId);
 
         const docRef = doc(dbMaster, 'terminales', machineId);
 
@@ -99,9 +112,8 @@ export const useLicenseGuard = () => {
 
                 // 🔒 STRICT ACTIVE-ONLY POLICY
                 // Solo el estado explícito 'ACTIVE' permite operar
-                // Cualquier otro valor (SUSPENDED, PENDING, null, undefined) = BLOQUEO
                 if (data.status !== 'ACTIVE') {
-                    console.error("⛔ [FÉNIX] ACCESO DENEGADO. Estado:", data.status || 'UNDEFINED');
+                    console.error("⛔ [FÉNIX] ACCESO DENEGADO REMOTAMENTE. Estado:", data.status || 'UNDEFINED');
                     localStorage.setItem('listo_lock_down', 'true');
                     setIsSuspended(true);
                 } else {
@@ -112,30 +124,36 @@ export const useLicenseGuard = () => {
                         localStorage.removeItem('listo_lock_down');
                         setIsSuspended(false);
                     }
+                    // Si la licencia local fallaba pero el remoto dice ACTIVE,
+                    // podríamos considerar auto-reparar la licencia (future feature).
+                    // Por ahora, solo mantenemos el bloqueo de suspensión sync.
                 }
+
+                // 🏪 PLAN TIER: Leer plan del terminal
+                const remotePlan = data.plan || DEFAULT_PLAN;
+                setPlan(remotePlan);
+                localStorage.setItem('listo_plan', remotePlan);
+                console.log(`🏪 [FÉNIX] Plan activo: ${remotePlan}`);
+
+                // 🛡️ DEMO SHIELD: Leer config demo del terminal
+                const remoteIsDemo = data.isDemo === true;
+                const remoteQuotaLimit = data.quotaLimit || 100;
+                localStorage.setItem('listo_isDemo', String(remoteIsDemo));
+                localStorage.setItem('listo_quotaLimit', String(remoteQuotaLimit));
+                console.log(`🛡️ [FÉNIX] Demo: ${remoteIsDemo}, Quota: ${remoteQuotaLimit}`);
             } else {
-                // 🗑️ TERMINAL ELIMINADO (REMOTE WIPE TRIGGERED)
-                console.error("⛔ [FÉNIX] TERMINAL ELIMINADO REMOTAMENTE. EJECUTANDO PROTOCOLO DE AUTODESTRUCCIÓN DE LICENCIA.");
-
-                // 1. Bloqueo inmediato
-                localStorage.setItem('listo_lock_down', 'true');
-                setIsSuspended(true);
-
-                // 2. 💥 BORRADO SEGURO DE LICENCIA Y CONTRATO 💥
-                // Esto obliga a re-ingresar licencia y re-firmar contrato (Factory Reset UX)
-                localStorage.removeItem('listo_license_key');
-                localStorage.removeItem('listo_contract_signed');
+                // 🆕 TERMINAL NUEVO (No existe en Cloud)
+                // No hacemos nada destructivo aún. Esperamos activación manual.
+                console.log("☁️ [FÉNIX] Terminal no registrado en nube. Esperando vinculación.");
             }
         }, (error) => {
             console.warn("⚠️ [FÉNIX] Conexión inestable con Master:", error.code);
-            // FAIL-SAFE OFFLINE:
-            // Si hay error de conexión, MANTENEMOS el estado actual.
-            // Si ya estaba bloqueado en localStorage, se mantiene bloqueado.
-            // Si estaba libre, se mantiene libre (asumiendo inocencia).
+            // FAIL-SAFE OFFLINE: Mantenemos estado actual.
         });
 
         return () => unsubscribe();
-    }, [machineId]);
+    }, [machineId, firebaseReady]); // Dependencia clave: firebaseReady
 
-    return { status, machineId, isSuspended };
+    return { status, machineId, isSuspended, plan };
 };
+

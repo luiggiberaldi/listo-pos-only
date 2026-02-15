@@ -61,12 +61,13 @@ export const useConfigStore = create(
         (set, get) => ({
             configuracion: DEFAULTS,
 
-            // 🛡️ DEMO SHIELD STATE
+            // 🛡️ DEMO SHIELD STATE (read from Firebase via useLicenseGuard → localStorage)
             license: {
-                quotaLimit: 100,
-                isDemo: true,
+                quotaLimit: parseInt(localStorage.getItem('listo_quotaLimit')) || 100,
+                isDemo: localStorage.getItem('listo_isDemo') === 'true',
                 usageCount: 0,
-                isQuotaBlocked: false
+                isQuotaBlocked: false,
+                plan: localStorage.getItem('listo_plan') || 'bodega',
             },
 
             // 👻 GHOST NEURAL QUOTA (Safety Counter)
@@ -78,11 +79,19 @@ export const useConfigStore = create(
 
             // ACTIONS
             setConfiguracion: (newConfig) => set(state => {
-                // Merge recursive? No, let's do shallow merge + explicit overwrite
-                // similar to previous logic.
                 const merged = { ...state.configuracion, ...newConfig };
                 return { configuracion: merged };
             }),
+
+            // 🏪 PLAN TIER ACTION
+            setPlan: (planId) => set(state => ({
+                license: { ...state.license, plan: planId }
+            })),
+
+            // 🛡️ DEMO CONFIG ACTION
+            setDemoConfig: (isDemo, quotaLimit) => set(state => ({
+                license: { ...state.license, isDemo, quotaLimit }
+            })),
 
             loadConfig: async () => {
                 try {

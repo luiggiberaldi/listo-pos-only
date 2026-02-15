@@ -52,7 +52,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.removeAllListeners('update_download_progress');
         ipcRenderer.removeAllListeners('update_downloaded');
         ipcRenderer.removeAllListeners('update_error');
-    }
+    },
+
+    // ═══════════════════════════════════════════════
+    // 📡 LAN SYNC (Multi-Caja Offline)
+    // ═══════════════════════════════════════════════
+    lanSyncProducts: (products, categories, config) =>
+        ipcRenderer.send('lan-sync-products', { products, categories, config }),
+    lanGetIP: () => ipcRenderer.invoke('lan-get-ip'),
+    lanGetConfig: () => ipcRenderer.invoke('lan-get-config'),
+    lanSaveConfig: (config) => ipcRenderer.invoke('lan-save-config', config),
+    onLanStockUpdate: (callback) =>
+        ipcRenderer.on('lan-stock-update', (event, updates) => callback(updates)),
+    onLanStockAlert: (callback) =>
+        ipcRenderer.on('lan-stock-alert', (event, alerts) => callback(alerts)),
+    removeLanListeners: () => {
+        ipcRenderer.removeAllListeners('lan-stock-update');
+        ipcRenderer.removeAllListeners('lan-stock-alert');
+    },
 });
 
 console.log("🛡️ [PRELOAD] Puente seguro establecido.");

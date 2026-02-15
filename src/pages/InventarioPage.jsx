@@ -30,7 +30,8 @@ import { useInventoryPagination } from '../hooks/ui/useInventoryPagination';
 import { generarEtiquetas } from '../components/inventario/PriceLabelGenerator';
 import { BulkImportModal } from '../components/inventario/BulkImportModal';
 import { LabelStudioModal } from '../components/inventario/LabelStudioModal';
-import { PrintListsModal } from '../components/inventario/PrintListsModal'; // 🆕
+import { PrintListsModal } from '../components/inventario/PrintListsModal';
+import { exportarCatalogo, importarCatalogo } from '../utils/catalogTransfer';
 
 export default function InventarioPage() {
     const {
@@ -329,8 +330,10 @@ export default function InventarioPage() {
                     // 🆕 PROPS NUEVAS
                     onImportClick={() => setMostrarImportModal(true)}
                     onPrintAllClick={handleOpenPrintLists}
-                    onOpenLabelStudio={handleOpenLabelStudio} // 🆕
-                    selectedCount={selectedIds.size} // Pasamos cuenta
+                    onOpenLabelStudio={handleOpenLabelStudio}
+                    onExportCatalog={() => exportarCatalogo(productos, categorias, configuracion)}
+                    onImportCatalog={() => importarCatalogo(agregarProducto, crearCategoria)}
+                    selectedCount={selectedIds.size}
                 />
 
                 {/* TABLA MAESTRA */}
