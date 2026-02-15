@@ -149,7 +149,7 @@ async function abrirCaja(perfil) {
     const empleado = pickRandom(EMPLEADOS_SIM);
 
     await db.caja_sesion.put({
-        key: 'actual',
+        key: 'caja-1',
         isAbierta: true,
         fondoInicial,
         fechaApertura: ts,
@@ -508,7 +508,7 @@ async function cerrarCaja(perfil) {
     const empleado = pickRandom(EMPLEADOS_SIM);
 
     // Leer sesión actual para calcular cierre
-    const sesion = await db.caja_sesion.get('actual');
+    const sesion = await db.caja_sesion.get('caja-1');
     const fondoInicial = sesion?.fondoInicial || 100;
 
     const ventasNetas = simState.ventasDelDia;
@@ -516,7 +516,7 @@ async function cerrarCaja(perfil) {
     const efectivoFinal = +(fondoInicial + ventasNetas - gastosNetos).toFixed(2);
 
     await db.caja_sesion.put({
-        key: 'actual',
+        key: 'caja-1',
         isAbierta: false,
         fondoInicial,
         fechaApertura: sesion?.fechaApertura,
@@ -760,7 +760,7 @@ async function anularVentasAleatorias() {
 async function cerrarCajaConCorteZ(perfil) {
     const ts = simTimekeeper.generarTimestamp(21, 30);
     const empleado = pickRandom(EMPLEADOS_SIM);
-    const sesion = await db.caja_sesion.get('actual');
+    const sesion = await db.caja_sesion.get('caja-1');
     if (!sesion || !sesion.isAbierta) return;
 
     const fondoInicial = sesion?.fondoInicial || 100;
@@ -813,7 +813,7 @@ async function cerrarCajaConCorteZ(perfil) {
 
     // Cerrar sesión de caja
     await db.caja_sesion.put({
-        key: 'actual',
+        key: 'caja-1',
         isAbierta: false,
         fondoInicial,
         fechaApertura: sesion?.fechaApertura,

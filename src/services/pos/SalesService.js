@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { FinancialController } from '../../controllers/FinancialController';
 import math from '../../utils/mathCore';
 import { timeProvider } from '../../utils/TimeProvider';
+import { DEFAULT_CAJA } from '../../config/cajaDefaults';
 
 // Constantes locales
 const CURRENCY = { USD: 'USD', VES: 'VES', EUR: 'EUR' };
@@ -23,9 +24,9 @@ export const SalesService = {
      * @param {Function} actualizarBalances - Función para actualizar caja.
      * @param {Function} generarCorrelativo - Función para generar ID.
      */
-    registrarVenta: async (ventaFinal, usuario, configuracion, transaccionVenta, actualizarBalances, generarCorrelativo) => {
+    registrarVenta: async (ventaFinal, usuario, configuracion, transaccionVenta, actualizarBalances, generarCorrelativo, cajaId = DEFAULT_CAJA) => {
         // Validación de Estado (Lectura directa a DB)
-        const sesion = await db.caja_sesion.get('actual');
+        const sesion = await db.caja_sesion.get(cajaId);
         if (!sesion || !sesion.isAbierta) throw new Error("Caja cerrada. Abra turno.");
 
         // 🛡️ DEMO SHIELD: QUOTA CHECK
@@ -333,8 +334,8 @@ export const SalesService = {
     /**
      * Registra un abono a cuenta (Cobranza).
      */
-    registrarAbono: async (clienteId, metodosPago = [], totalAbono = 0, referencia = '', usuario, configuracion, actualizarBalances, generarCorrelativo) => {
-        const sesion = await db.caja_sesion.get('actual');
+    registrarAbono: async (clienteId, metodosPago = [], totalAbono = 0, referencia = '', usuario, configuracion, actualizarBalances, generarCorrelativo, cajaId = DEFAULT_CAJA) => {
+        const sesion = await db.caja_sesion.get(cajaId);
         if (!sesion || !sesion.isAbierta) throw new Error("Caja cerrada. Abra turno.");
 
         return await db.transaction('rw', db.ventas, db.logs, db.clientes, db.caja_sesion, db.config, async () => {

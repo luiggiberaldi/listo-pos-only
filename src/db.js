@@ -114,6 +114,36 @@ const applySchema = (dbInstance) => {
   dbInstance.version(17).stores({
     ghost_history: '++id, sessionId, role, content, timestamp'
   });
+
+  // 🏪 V. 18: MULTI-CAJA SUPPORT
+  // Agrega cajaId a ventas y cortes para filtrar por caja
+  // Migra sesión 'actual' → 'caja-1'
+  dbInstance.version(18).stores({
+    ventas: '++id, fecha, corteId, clienteId, status, cajaId',
+    cortes: 'id, fecha, idApertura, cajaId'
+  }).upgrade(tx => {
+    // Renombrar sesión 'actual' → 'caja-1'
+    return tx.table('caja_sesion').get('actual').then(sesion => {
+      if (sesion) {
+        return tx.table('caja_sesion').delete('actual').then(() => {
+          sesion.key = 'caja-1';
+          sesion.cajaId = 'caja-1';
+          sesion.nombreCaja = 'Caja Principal';
+          return tx.table('caja_sesion').put(sesion);
+        });
+      }
+    }).then(() => {
+      // Etiquetar ventas existentes como caja-1
+      return tx.table('ventas').toCollection().modify(v => {
+        if (!v.cajaId) v.cajaId = 'caja-1';
+      });
+    }).then(() => {
+      // Etiquetar cortes existentes como caja-1
+      return tx.table('cortes').toCollection().modify(c => {
+        if (!c.cajaId) c.cajaId = 'caja-1';
+      });
+    });
+  });
 };
 
 // 🏭 DATABASE INSTANCE CREATION
@@ -167,7 +197,7 @@ const migrarCaja = async () => {
   if (!cajaRaw) return;
 
   const caja = JSON.parse(cajaRaw);
-  await db.caja_sesion.put({ key: 'actual', ...caja });
+  await db.caja_sesion.put({ key: 'caja-1', cajaId: 'caja-1', nombreCaja: 'Caja Principal', ...caja });
 };
 
 // 🧹 V. 15: SANITIZACIÓN DE DEUDAS (Dust Sweeper)

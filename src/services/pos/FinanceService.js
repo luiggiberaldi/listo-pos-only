@@ -2,6 +2,7 @@
 import { db } from '../../db';
 import math from '../../utils/mathCore';
 import { timeProvider } from '../../utils/TimeProvider';
+import { DEFAULT_CAJA } from '../../config/cajaDefaults';
 
 /**
  * Servicio de Finanzas (Finance Service)
@@ -14,7 +15,7 @@ export const FinanceService = {
      * Registra un gasto monetario (Salida de Caja).
      * @param {Object} datos - { monto, moneda, medio, motivo, usuario }
      */
-    registrarGasto: async ({ monto, moneda, medio, motivo, usuario }) => {
+    registrarGasto: async ({ monto, moneda, medio, motivo, usuario, cajaId = DEFAULT_CAJA }) => {
         // Validaciones Bese
         if (!monto || monto <= 0) throw new Error("Monto inválido");
         if (!usuario || !usuario.id) throw new Error("Usuario requerido");
@@ -23,7 +24,7 @@ export const FinanceService = {
         return await db.transaction('rw', db.caja_sesion, db.logs, async () => {
 
             // 1. Validar Estado de Caja
-            const currentSession = await db.caja_sesion.get('actual');
+            const currentSession = await db.caja_sesion.get(cajaId);
             if (!currentSession || !currentSession.isAbierta) {
                 // TODO: Permitir configuración para gastos con caja cerrada? Por ahora STRICT.
                 throw new Error("La caja está cerrada. Abre un turno desde Ventas para registrar movimientos.");
@@ -41,7 +42,7 @@ export const FinanceService = {
                 else newBalances.vesDigital = math.round(newBalances.vesDigital - amount);
             }
 
-            await db.caja_sesion.update('actual', { balances: newBalances });
+            await db.caja_sesion.update(cajaId, { balances: newBalances });
 
             // 3. Registrar Log de Auditoría
             const logId = await db.logs.add({
@@ -69,14 +70,14 @@ export const FinanceService = {
      * 🛡️ BLINDAJE: Revertir Gasto (Devolver dinero a Caja)
      * Usado cuando se anula un adelanto o se corrige un error.
      */
-    revertirGasto: async (logIdOriginal, motivoReversion) => {
+    revertirGasto: async (logIdOriginal, motivoReversion, cajaId = DEFAULT_CAJA) => {
         return await db.transaction('rw', db.caja_sesion, db.logs, async () => {
             // 1. Obtener Log Original
             const log = await db.logs.get(logIdOriginal);
             if (!log) throw new Error("Registro de gasto no encontrado.");
 
             // 2. Validar Estado Caja
-            const currentSession = await db.caja_sesion.get('actual');
+            const currentSession = await db.caja_sesion.get(cajaId);
             if (!currentSession || !currentSession.isAbierta) {
                 // TODO: Manejar reversion con caja cerrada (Quizás "Ingreso Diferido"?)
                 // Por ahora, asumimos que solo se puede revertir con caja abierta para cuadrar.
@@ -99,7 +100,7 @@ export const FinanceService = {
                 else newBalances.vesDigital = math.round(newBalances.vesDigital + monto);
             }
 
-            await db.caja_sesion.update('actual', { balances: newBalances });
+            await db.caja_sesion.update(cajaId, { balances: newBalances });
 
             // 4. Update Log Original (Marcar como Revertido)
             await db.logs.update(logIdOriginal, {
@@ -131,9 +132,9 @@ export const FinanceService = {
      * Actualiza los balances de caja de forma atómica (Para usos externos si es necesario).
      * Nota: registrarGasto ya hace esto internamente para atomicidad.
      */
-    actualizarBalances: async (transactionType, payments = [], change = []) => {
+    actualizarBalances: async (transactionType, payments = [], change = [], cajaId = DEFAULT_CAJA) => {
         return await db.transaction('rw', db.caja_sesion, async () => {
-            const currentSession = await db.caja_sesion.get('actual');
+            const currentSession = await db.caja_sesion.get(cajaId);
             if (!currentSession || !currentSession.isAbierta) throw new Error("Caja cerrada");
 
             // ⚠️ STUB INTENCIONAL: FinanceService solo maneja Gastos (salidas de caja).

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUnifiedAnalytics } from '../hooks/analytics/useUnifiedAnalytics';
 import { useStore } from '../context/StoreContext';
 import {
@@ -11,9 +11,12 @@ import {
   Star,
   ArrowUpRight,
   ArrowDownRight,
-  Lock // 🔒 Icono de bloqueo
+  Lock,
+  FileDown,
+  Loader2
 } from 'lucide-react';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
+import { generateDailyReportPDF } from '../utils/pdf/generateDailyReportPDF';
 
 /**
  * ReportesPage.jsx
@@ -22,12 +25,24 @@ import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
  */
 const ReportesPage = () => {
   const { kpis, variacionAyer, heatmapHoras, topProductos, topClientes, saludDatos } = useUnifiedAnalytics();
-  const { monedaSimbolo, usuario } = useStore(); // ✅ Usuario para RBAC
+  const { monedaSimbolo, usuario, configuracion } = useStore();
   const { tienePermiso } = useRBAC(usuario);
   const canSeeFinance = tienePermiso(PERMISOS.REP_VER_TOTAL_DIARIO);
+  const [exportando, setExportando] = useState(false);
 
   // Cálculo para escala del Heatmap (CSS puro)
-  const maxVentaHora = Math.max(...heatmapHoras, 1); // Evitar división por cero
+  const maxVentaHora = Math.max(...heatmapHoras, 1);
+
+  const handleExportPDF = async () => {
+    setExportando(true);
+    try {
+      await generateDailyReportPDF({ kpis, variacionAyer, topProductos, topClientes, saludDatos }, configuracion);
+    } catch (e) {
+      console.error('Error generating PDF:', e);
+    } finally {
+      setExportando(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -38,8 +53,20 @@ const ReportesPage = () => {
           <h1 className="text-3xl font-black text-slate-900 dark:text-white">Análisis de Negocio</h1>
           <p className="text-slate-500 dark:text-slate-400">Datos procesados al corte de: {saludDatos.ultimaActualizacion}</p>
         </div>
-        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-sm font-bold">
-          Transacciones analizadas: {saludDatos.totalRegistros}
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-sm font-bold">
+            Transacciones analizadas: {saludDatos.totalRegistros}
+          </div>
+          {canSeeFinance && (
+            <button
+              onClick={handleExportPDF}
+              disabled={exportando}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50"
+            >
+              {exportando ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+              PDF
+            </button>
+          )}
         </div>
       </header>
 

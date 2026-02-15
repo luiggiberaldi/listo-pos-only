@@ -6,6 +6,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { CajaEstadoContext } from './CajaEstadoContext';
 import { db } from '../../db';
+import { DEFAULT_CAJA } from '../../config/cajaDefaults';
 
 const DEFAULT_STATE = {
   isAbierta: false,
@@ -26,12 +27,12 @@ const DEFAULT_STATE = {
   idApertura: null
 };
 
-export const CajaEstadoProvider = ({ children }) => {
+export const CajaEstadoProvider = ({ children, cajaId = DEFAULT_CAJA }) => {
   // 1. ESTADO DE LA SESIÓN ACTUAL (Vivo - Dexie)
-  // useLiveQuery se suscribe a cambios en DB.
+  // useLiveQuery se suscribe a cambios en DB. cajaId determina qué caja está activa.
   const sesionDB = useLiveQuery(
-    () => db.caja_sesion.get('actual'),
-    []
+    () => db.caja_sesion.get(cajaId),
+    [cajaId]
   );
 
   // Fallback seguro mientras carga o si no hay sesión
@@ -81,7 +82,7 @@ export const CajaEstadoProvider = ({ children }) => {
     // console.log("[CAJA] Balances Iniciales calculados:", initialBalances);
 
     const nuevoEstado = {
-      key: 'actual', // IMPORTANTE para Dexie
+      key: cajaId, // Multi-caja: usa cajaId dinámico
       isAbierta: true,
       fechaApertura: new Date().toISOString(),
       usuarioApertura: {
@@ -109,7 +110,7 @@ export const CajaEstadoProvider = ({ children }) => {
 
     // Si no estamos en transaction, crea una nueva.
     return await db.transaction('rw', db.caja_sesion, async () => {
-      const currentSession = await db.caja_sesion.get('actual');
+      const currentSession = await db.caja_sesion.get(cajaId);
       if (!currentSession || !currentSession.isAbierta) {
         console.warn('[CAJA] Cannot update balances: register closed');
         return false;
@@ -142,7 +143,7 @@ export const CajaEstadoProvider = ({ children }) => {
         }
       });
 
-      await db.caja_sesion.update('actual', { balances: newBalances });
+      await db.caja_sesion.update(cajaId, { balances: newBalances });
       return newBalances;
     });
   }, []);
@@ -150,7 +151,7 @@ export const CajaEstadoProvider = ({ children }) => {
   // --- 💸 REGISTRO DE GASTOS/SALIDAS (ATOMIC) ---
   const registrarSalidaCaja = useCallback(async (monto, moneda = 'USD', medio = 'CASH', _motivo = 'Gasto') => {
     return await db.transaction('rw', db.caja_sesion, async () => {
-      const currentSession = await db.caja_sesion.get('actual');
+      const currentSession = await db.caja_sesion.get(cajaId);
       if (!currentSession || !currentSession.isAbierta) {
         console.warn('[CAJA] No se puede registrar salida: Caja cerrada.');
         // TODO: Quizás permitir gastos con caja cerrada en el futuro, por ahora STRICT MODE.
@@ -171,7 +172,7 @@ export const CajaEstadoProvider = ({ children }) => {
         else newBalances.vesDigital -= amount;
       }
 
-      await db.caja_sesion.update('actual', { balances: newBalances });
+      await db.caja_sesion.update(cajaId, { balances: newBalances });
       return true;
     });
   }, []);
@@ -179,7 +180,7 @@ export const CajaEstadoProvider = ({ children }) => {
   // --- 🔥 MÉTODO CRÍTICO: CERRAR CAJA + GUARDAR EN DB (ATOMIC) ---
   const cerrarCaja = useCallback(async (datosExtra = {}) => {
     return await db.transaction('rw', db.caja_sesion, db.cortes, async () => {
-      const currentSession = await db.caja_sesion.get('actual');
+      const currentSession = await db.caja_sesion.get(cajaId);
       if (!currentSession || !currentSession.isAbierta) return false;
 
 
@@ -188,6 +189,7 @@ export const CajaEstadoProvider = ({ children }) => {
         id: `Z-${Date.now()}`,
         fecha: new Date().toISOString(),
         idApertura: currentSession.idApertura,
+        cajaId, // Multi-caja: etiquetar corte
         balancesApertura: currentSession.balancesApertura,
         usuario: currentSession.usuarioApertura,
         balancesFinales: currentSession.balances, // Snapshot final real
@@ -198,7 +200,7 @@ export const CajaEstadoProvider = ({ children }) => {
       await db.cortes.put(nuevoCorte);
 
       // 3. Borrar Sesión Activa (Cierre)
-      await db.caja_sesion.delete('actual');
+      await db.caja_sesion.delete(cajaId);
 
       return true;
     });
@@ -208,6 +210,7 @@ export const CajaEstadoProvider = ({ children }) => {
 
   const value = React.useMemo(() => ({
     estado,
+    cajaId,
     cortes,
     isCajaAbierta,
     getEstadoCaja,
@@ -217,7 +220,7 @@ export const CajaEstadoProvider = ({ children }) => {
 
     actualizarBalances,
     registrarSalidaCaja
-  }), [estado, cortes, isCajaAbierta, getEstadoCaja, abrirCaja, cerrarCaja, cerrarSesionCaja, actualizarBalances, registrarSalidaCaja]);
+  }), [estado, cajaId, cortes, isCajaAbierta, getEstadoCaja, abrirCaja, cerrarCaja, cerrarSesionCaja, actualizarBalances, registrarSalidaCaja]);
 
   return (
     <CajaEstadoContext.Provider value={value}>

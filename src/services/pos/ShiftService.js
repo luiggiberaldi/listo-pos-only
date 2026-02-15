@@ -2,6 +2,7 @@
 import { db } from '../../db';
 import { generarReporteZ } from '../../utils/reportUtils';
 import { timeProvider } from '../../utils/TimeProvider';
+import { DEFAULT_CAJA } from '../../config/cajaDefaults';
 
 /**
  * Servicio de Turnos (Shift Service)
@@ -15,9 +16,9 @@ export const ShiftService = {
      * @param {Object} datosInyectados - Datos extra para el reporte (ej: conteo de efectivo)
      * @param {Function} playSound - Función opcional para feedback
      */
-    cerrarCaja: async (usuario, datosInyectados = {}, playSound) => {
+    cerrarCaja: async (usuario, datosInyectados = {}, playSound, cajaId = DEFAULT_CAJA) => {
         // Validación de Estado
-        const sesion = await db.caja_sesion.get('actual');
+        const sesion = await db.caja_sesion.get(cajaId);
         if (!sesion || !sesion.isAbierta) throw new Error("Caja ya está cerrada.");
 
         try {
@@ -73,6 +74,7 @@ export const ShiftService = {
                     id: `Z-${timeProvider.timestamp()}`,
                     fecha: timeProvider.toISOString(),
                     idApertura: sesion.idApertura,
+                    cajaId, // Multi-caja: etiquetar corte
                     balancesApertura: sesion.balancesApertura,
                     usuario: sesion.usuarioApertura,
                     balancesFinales: sesion.balances,
@@ -82,7 +84,7 @@ export const ShiftService = {
                 await db.cortes.put(corteFinal);
 
                 // 4. Close Session (Delete Active)
-                await db.caja_sesion.delete('actual');
+                await db.caja_sesion.delete(cajaId);
 
                 return report;
             });

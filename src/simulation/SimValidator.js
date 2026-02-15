@@ -70,7 +70,7 @@ export async function validarIntegridadDiaria(ctx = {}) {
 
     // ── CHECK 4: Balances de caja cuadran ──
     try {
-        const sesion = await db.caja_sesion.get('actual');
+        const sesion = await db.caja_sesion.get('caja-1');
         if (sesion && sesion.isAbierta && sesion.balances) {
             const b = sesion.balances;
             const totalCaja = (b.usdCash || 0) + (b.usdDigital || 0);
@@ -189,7 +189,7 @@ export async function ejecutarEdgeCases(addLog) {
 
     // ── EDGE 2: Doble cierre de caja ──
     try {
-        const sesion = await db.caja_sesion.get('actual');
+        const sesion = await db.caja_sesion.get('caja-1');
         if (!sesion || !sesion.isAbierta) {
             // Intentar cerrar caja ya cerrada — importar ShiftService
             const { ShiftService } = await import('../services/pos/ShiftService');
