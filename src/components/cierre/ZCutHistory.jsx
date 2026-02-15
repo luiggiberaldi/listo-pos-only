@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { Printer, Calendar, Search, AlertCircle, FileText, TrendingUp, DollarSign, Eye, X } from 'lucide-react';
+import { Printer, Calendar, Search, AlertCircle, FileText, TrendingUp, DollarSign, Eye, X, FileDown, Loader2 } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import ReporteZUniversal from './ReporteZUniversal';
 import Swal from 'sweetalert2';
 import { useStore } from '../../context/StoreContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { generateCorteZPDF } from '../../utils/pdf/generateCorteZPDF';
 
 /**
  * Normaliza un objeto de corte histórico para garantizar que tenga la estructura
@@ -86,11 +87,12 @@ const normalizarCorteParaTicket = (corteRaw, taxRate = 16) => {
 };
 
 export default function ZCutHistory() {
-    const { configuracion } = useStore(); // Get Config
+    const { configuracion } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
-    const [corteSeleccionado, setCorteSeleccionado] = useState(null); // Para imprimir (invisible)
-    const [viewCorte, setViewCorte] = useState(null); // Para ver en modal
-    const [paperSize, setPaperSize] = useState('80mm'); // 🆕 Selector de Tamaño
+    const [corteSeleccionado, setCorteSeleccionado] = useState(null);
+    const [viewCorte, setViewCorte] = useState(null);
+    const [paperSize, setPaperSize] = useState('80mm');
+    const [exportandoPdf, setExportandoPdf] = useState(null);
     const printRef = useRef();
     const viewRef = useRef();
 
@@ -242,6 +244,19 @@ export default function ZCutHistory() {
                                                         title="Ver Ticket"
                                                     >
                                                         <Eye size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            setExportandoPdf(corte.id);
+                                                            try { await generateCorteZPDF(corte, configuracion); }
+                                                            catch (e) { console.error('PDF error:', e); }
+                                                            finally { setExportandoPdf(null); }
+                                                        }}
+                                                        disabled={exportandoPdf === corte.id}
+                                                        className="bg-white dark:bg-surface-dark border border-border-DEFAULT hover:border-indigo-500 hover:text-indigo-600 text-content-secondary p-2 rounded-lg transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                                                        title="Descargar PDF"
+                                                    >
+                                                        {exportandoPdf === corte.id ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
                                                     </button>
                                                     <button
                                                         onClick={() => handlePrintRequest(corte)}

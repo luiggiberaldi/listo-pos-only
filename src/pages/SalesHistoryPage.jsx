@@ -5,12 +5,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search, Calendar, Filter, ChevronLeft, ChevronRight,
-  FileText, ArrowUpRight, Ban, CheckCircle, Printer
+  FileText, ArrowUpRight, Ban, CheckCircle, Printer, FileDown, Loader2
 } from 'lucide-react';
-import { db } from '../db'; // Acceso directo a Dexie
+import { db } from '../db';
 import ModalDetalleVenta from '../components/ventas/ModalDetalleVenta';
 import { useStore } from '../context/StoreContext';
 import { timeProvider } from '../utils/TimeProvider';
+import { generateSalesHistoryPDF } from '../utils/pdf/generateSalesHistoryPDF';
 
 export default function SalesHistoryPage() {
   const { configuracion } = useStore();
@@ -42,6 +43,7 @@ export default function SalesHistoryPage() {
   // Modal
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [expandedRows, setExpandedRows] = useState([]);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
 
   const toggleRow = (id) => {
     setExpandedRows(prev =>
@@ -151,16 +153,31 @@ export default function SalesHistoryPage() {
           <p className="text-slate-500 font-medium">Consulta, auditoría y reimpresión global.</p>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex gap-4 text-center">
-          <div className="px-4">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Resultados</p>
-            <p className="font-black text-xl text-slate-700 dark:text-white">{totalRegistros}</p>
+        <div className="flex items-center gap-3">
+          <div className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex gap-4 text-center">
+            <div className="px-4">
+              <p className="text-[10px] uppercase font-bold text-slate-400">Resultados</p>
+              <p className="font-black text-xl text-slate-700 dark:text-white">{totalRegistros}</p>
+            </div>
+            <div className="w-px bg-slate-100 dark:bg-slate-700"></div>
+            <div className="px-4">
+              <p className="text-[10px] uppercase font-bold text-slate-400">Página</p>
+              <p className="font-black text-xl text-blue-600">{pagina + 1} <span className="text-sm text-slate-400">/ {totalPaginas || 1}</span></p>
+            </div>
           </div>
-          <div className="w-px bg-slate-100 dark:bg-slate-700"></div>
-          <div className="px-4">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Página</p>
-            <p className="font-black text-xl text-blue-600">{pagina + 1} <span className="text-sm text-slate-400">/ {totalPaginas || 1}</span></p>
-          </div>
+          <button
+            onClick={async () => {
+              setExportandoPdf(true);
+              try { await generateSalesHistoryPDF(ventas, { desde: filtroFechaDesde, hasta: filtroFechaHasta, estado: filtroEstado, busqueda }, configuracion); }
+              catch (e) { console.error('PDF error:', e); }
+              finally { setExportandoPdf(false); }
+            }}
+            disabled={exportandoPdf || ventas.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 h-fit"
+          >
+            {exportandoPdf ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+            PDF
+          </button>
         </div>
       </div>
 

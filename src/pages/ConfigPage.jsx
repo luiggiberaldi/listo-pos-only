@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import {
   Building2, Coins, Box, Receipt, Palette, ShieldCheck, Zap,
-  Database, ChevronRight, Settings2, Lock, BrainCircuit, RefreshCw, Cloud
+  Database, ChevronRight, Settings2, Lock, BrainCircuit, RefreshCw
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -20,8 +20,7 @@ import ConfigApariencia from './config/ConfigApariencia';
 
 import ConfigSalud from './config/ConfigSalud';
 import ConfigSeguridad from './config/ConfigSeguridad';
-import ConfigActualizaciones from './config/ConfigActualizaciones'; // 🆕
-import ConfigConexiones from './config/ConfigConexiones'; // 🆕
+import ConfigActualizaciones from './config/ConfigActualizaciones';
 
 
 import { useSecureAction } from '../hooks/security/useSecureAction';
@@ -77,7 +76,6 @@ export default function ConfigPage() {
       items: [
         { id: 'seguridad', label: 'Mi Perfil/Equipo', icon: ShieldCheck, perm: PERMISOS.CONF_USUARIOS_VER },
         { id: 'salud', label: 'Salud de Datos', icon: Database, perm: PERMISOS.CONF_SISTEMA_VER },
-        { id: 'conexiones', label: 'Conexiones Nube', icon: Cloud, perm: PERMISOS.CONF_SISTEMA_EDITAR }, // 🆕
         { id: 'actualizaciones', label: 'Actualizaciones', icon: RefreshCw, perm: PERMISOS.CONF_SISTEMA_VER },
       ]
     }
@@ -201,7 +199,6 @@ export default function ConfigPage() {
               {activeTab === 'apariencia' && <Palette className="text-pink-500" size={32} />}
               {activeTab === 'seguridad' && <ShieldCheck className="text-emerald-600" size={32} />}
               {activeTab === 'actualizaciones' && <RefreshCw className="text-indigo-600" size={32} />}
-              {activeTab === 'conexiones' && <Cloud className="text-sky-500" size={32} />}
 
             </div>
             <div>
@@ -225,7 +222,6 @@ export default function ConfigPage() {
             {activeTab === 'apariencia' && <ConfigApariencia form={form} setForm={setForm} handleGuardar={handleGuardar} handleThemeToggle={handleThemeToggle} readOnly={readOnly} />}
             {activeTab === 'seguridad' && <ConfigSeguridad exportarDatos={exportarDatos} handleArchivo={handleArchivo} fileInputRef={fileInputRef} readOnly={readOnly} />}
             {activeTab === 'actualizaciones' && <ConfigActualizaciones />}
-            {activeTab === 'conexiones' && <ConfigConexiones />}
 
 
           </div>
