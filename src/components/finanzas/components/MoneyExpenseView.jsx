@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DollarSign, AlertCircle, Banknote, User, Clock, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../../db';
 import { useFinance } from '../../../hooks/store/useFinance';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance'; // ✅ Import
@@ -25,6 +27,19 @@ export default function MoneyExpenseView({ onClose }) {
         esAdelanto: false
     });
     const [targetEmployeeId, setTargetEmployeeId] = useState('');
+
+    // 📊 Live query: últimos gastos de hoy
+    const gastosRecientes = useLiveQuery(async () => {
+        const inicio = new Date(); inicio.setHours(0, 0, 0, 0);
+        const fin = new Date(); fin.setHours(23, 59, 59, 999);
+        const logs = await db.logs
+            .where('fecha')
+            .between(inicio.toISOString(), fin.toISOString())
+            .and(l => l.tipo === 'GASTO_CAJA')
+            .reverse()
+            .toArray();
+        return logs.slice(0, 5); // últimos 5
+    }, []) || [];
 
     const CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento', 'Limpieza', 'Varios'];
 
@@ -126,9 +141,41 @@ export default function MoneyExpenseView({ onClose }) {
                     </div>
                 </div>
             ) : (
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 h-48 flex flex-col items-center justify-center text-center opacity-60">
-                    <Clock size={32} className="text-slate-300 mb-2" />
-                    <p className="text-sm font-medium text-slate-400">Historial reciente vacío</p>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 max-h-52 overflow-y-auto">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Clock size={12} /> Historial de Hoy
+                    </h3>
+                    {gastosRecientes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center py-6 opacity-60">
+                            <Clock size={28} className="text-slate-300 mb-2" />
+                            <p className="text-xs font-medium text-slate-400">Sin gastos registrados hoy</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {gastosRecientes.map((g, i) => {
+                                const moneda = g.meta?.moneda || g.referencia || 'USD';
+                                const simbolo = moneda === 'VES' || moneda === 'BS' ? 'Bs' : '$';
+                                const monto = parseFloat(g.cantidad) || 0;
+                                // Tiempo relativo
+                                const mins = Math.round((Date.now() - new Date(g.fecha).getTime()) / 60000);
+                                const tiempoLabel = mins < 1 ? 'ahora' : mins < 60 ? `hace ${mins}m` : `hace ${Math.floor(mins / 60)}h`;
+                                return (
+                                    <div key={g.id || i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                                        <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center flex-shrink-0">
+                                            <DollarSign size={14} strokeWidth={3} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{g.detalle || 'Gasto'}</p>
+                                            <p className="text-[10px] text-slate-400">{tiempoLabel}</p>
+                                        </div>
+                                        <span className="text-xs font-black text-rose-600 flex-shrink-0">
+                                            -{simbolo}{monto.toFixed(2)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -18,7 +18,11 @@ export const usePOS = (
     contextos // { clientes, setClientes, actualizarSaldoCliente } - (Legacy/Unused but kept for signature compat)
 ) => {
     // 1. Live Queries (Lecturas globales)
-    const ventas = useLiveQuery(() => db.ventas.toArray(), []) || [];
+    const ventas = useLiveQuery(() => {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        return db.ventas.where('fecha').above(hoy.toISOString()).toArray();
+    }, []) || [];
     const cortes = useLiveQuery(() => db.logs.where('tipo').equals('CORTE_Z').toArray(), []) || [];
 
     // 2. Estado de Caja (Contexto Global)
@@ -111,7 +115,9 @@ export const usePOS = (
                 const diffPrecio = Math.abs(precioActualCarrito - precioEsperado) > 0.001;
                 const diffStock = Math.abs((parseFloat(item.stock) || 0) - stockActual) > 0.001;
                 const diffNombre = item.nombre !== p.nombre;
-                const diffJerarquiaVal = JSON.stringify(item.jerarquia) !== JSON.stringify(p.jerarquia);
+                const diffJerarquiaVal = item.jerarquia?.bulto?.precio !== p.jerarquia?.bulto?.precio
+                    || item.jerarquia?.paquete?.precio !== p.jerarquia?.paquete?.precio
+                    || item.jerarquia?.unidad?.precio !== p.jerarquia?.unidad?.precio;
 
                 if (diffPrecio || diffStock || diffNombre || diffJerarquiaVal) {
                     cambioDetectado = true;
@@ -138,7 +144,7 @@ export const usePOS = (
             if (helpers.playSound) helpers.playSound('ERROR');
         }
 
-    }, [productos, carrito, setCarrito]);
+    }, [productos]); // Only re-sync when inventory changes, not when cart changes (avoids loop)
 
     // Combined Processing State
     const isProcessing = isSalesProcessing || isShiftProcessing;

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, Suspense, lazy } from 'react';
 import { Trash2, Clock, HelpCircle } from 'lucide-react';
 import Ticket from '../Ticket';
 import TicketSaldoFavor from '../TicketSaldoFavor';
@@ -17,9 +17,10 @@ import ModalEspera from './ModalEspera';
 import WelcomeScreen from './WelcomeScreen';
 
 // Modals are in src/components/
-import ModalPago from '../ModalPago';
-import ModalPesaje from '../ModalPesaje';
-import ModalJerarquia from '../ModalJerarquia';
+// 🚀 Lazy load heavy modals
+const ModalPago = lazy(() => import('../ModalPago'));
+const ModalPesaje = lazy(() => import('../ModalPesaje'));
+const ModalJerarquia = lazy(() => import('../ModalJerarquia'));
 
 export default function DesktopLayout({
     cajaAbierta,
@@ -119,13 +120,13 @@ export default function DesktopLayout({
             )}
 
             {cajaAbierta && (
-                <>
+                <Suspense fallback={<div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
                     {/* ✅ ATOMIC MODAL HANDLING */}
                     {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); cerrarPesaje(); }} onClose={cerrarPesaje} />}
                     {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); cerrarJerarquia(); }} onClose={cerrarJerarquia} />}
                     {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} totalImpuesto={calculos.totalImpuesto} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} onClose={cerrarPago} />}
                     {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={cerrarEspera} />}
-                </>
+                </Suspense>
             )}
 
             <div style={{ display: 'none' }}>

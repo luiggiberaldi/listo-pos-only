@@ -193,7 +193,7 @@ export const FinancialController = {
                 deuda = 0;
             } else {
                 favor = 0;
-                deuda = Math.abs(net);
+                deuda = math.abs(net);
             }
         }
 

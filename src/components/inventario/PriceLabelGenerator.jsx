@@ -1,16 +1,18 @@
-import jsPDF from 'jspdf';
-
+// 🚀 jsPDF is now dynamically imported for lazy loading
 /**
  * GENERADOR DE ETIQUETAS "PRO" (WYSIWYG)
  * Genera el documento PDF y lo devuelve para descarga o preview.
  * 
- * V2.1 - Soporte de Jerarquías (Bulto/Paquete)
+ * V2.2 - Lazy Loading jsPDF (Sprint 4)
  */
 
 // --- API PÚBLICA ---
 
-export const generarEtiquetas = (productos, tasa, config) => {
-    const doc = createPDFDoc(productos, tasa, config);
+export const generarEtiquetas = async (productos, tasa, config) => {
+    // 🚀 Dynamic import for lazy loading
+    const { default: jsPDF } = await import('jspdf');
+
+    const doc = createPDFDoc(productos, tasa, config, jsPDF);
     if (!doc) return;
 
     if (config.papel === 'letter') {
@@ -36,15 +38,18 @@ export const generarEtiquetas = (productos, tasa, config) => {
     }
 };
 
-export const generarPreviewURL = (productos, tasa, config) => {
-    const doc = createPDFDoc(productos, tasa, config);
+export const generarPreviewURL = async (productos, tasa, config) => {
+    // 🚀 Dynamic import for lazy loading
+    const { default: jsPDF } = await import('jspdf');
+
+    const doc = createPDFDoc(productos, tasa, config, jsPDF);
     if (!doc) return null;
     return doc.output('bloburl');
 };
 
 // --- CORE ENGINE ---
 
-const createPDFDoc = (productos, tasa, config) => {
+const createPDFDoc = (productos, tasa, config, jsPDF) => {
     if (!productos || productos.length === 0) return null;
 
     const cfg = {

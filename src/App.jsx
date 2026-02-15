@@ -1,7 +1,7 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 3.2 (SALES HISTORY ROUTE)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.3 (PERFORMANCE: LAZY LOADING)
 // Archivo: src/App.jsx
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useSecurity } from './hooks/security/useSecurity';
 import { useMasterTelemetry } from './hooks/sync/useMasterTelemetry'; // 🔌 GLOBAL SECURITY LISTENER
@@ -13,20 +13,22 @@ import { GhostEye } from './components/ghost/GhostEye';
 import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
 
-// Layouts & Pages
+// Layouts (eager - needed immediately)
 import MainLayout from './layout/MainLayout';
-import Dashboard from './pages/Dashboard';
-import PosPage from './pages/PosPage';
-import InventarioPage from './pages/InventarioPage';
-import ConfigPage from './pages/ConfigPage';
-import CierrePage from './pages/CierrePage';
-import ClientesPage from './pages/ClientesPage';
 import LoginScreen from './pages/LoginScreen';
-import TotalDiarioPage from './pages/TotalDiarioPage';
-import ReportesPage from './pages/ReportesPage';
-import SimulationPage from './pages/SimulationPage';
-import SalesHistoryPage from './pages/SalesHistoryPage';
-import NotFound from './pages/NotFound';
+
+// 🚀 LAZY LOADED PAGES (Route-based code splitting)
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const PosPage = lazy(() => import('./pages/PosPage'));
+const InventarioPage = lazy(() => import('./pages/InventarioPage'));
+const ConfigPage = lazy(() => import('./pages/ConfigPage'));
+const CierrePage = lazy(() => import('./pages/CierrePage'));
+const ClientesPage = lazy(() => import('./pages/ClientesPage'));
+const TotalDiarioPage = lazy(() => import('./pages/TotalDiarioPage'));
+const ReportesPage = lazy(() => import('./pages/ReportesPage'));
+const SimulationPage = lazy(() => import('./pages/SimulationPage'));
+const SalesHistoryPage = lazy(() => import('./pages/SalesHistoryPage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 
 // Security Gate
@@ -45,10 +47,10 @@ function App() {
     auditFiscalLogic();
   }, []);
 
-  // 👻 GHOST MODE TOOLS
-  // Expose tools for Playwright/Manual Testing
+  // 👻 GHOST MODE TOOLS (Development Only)
   React.useEffect(() => {
-    // Dynamically import to ensure circular deps work if needed, or just use imports
+    if (!import.meta.env.DEV) return; // 🛡️ Block in production
+
     import('./db').then(({ toggleGhostMode, isGhostMode }) => {
       import('./utils/TimeProvider').then(({ timeProvider }) => {
         window.GhostTools = {
@@ -63,7 +65,6 @@ function App() {
           document.body.style.boxSizing = 'border-box';
           document.body.setAttribute('data-ghost-mode', 'true');
 
-          // Floating Indicator just in case
           const div = document.createElement('div');
           div.style.position = 'fixed';
           div.style.bottom = '10px';
@@ -105,107 +106,116 @@ function App() {
       <ContractGuard>
         <HashRouter>
           <UpdateNotification />
-          <Routes>
-            {!isAuthenticated ? (
-              <>
-                <Route path="/login" element={<LoginScreen />} />
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </>
-            ) : (
-              <Route path="/" element={<MainLayout />}>
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-app-light dark:bg-app-dark">
+              <div className="text-center">
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-content-secondary font-medium">Cargando...</p>
+              </div>
+            </div>
+          }>
+            <Routes>
+              {!isAuthenticated ? (
+                <>
+                  <Route path="/login" element={<LoginScreen />} />
+                  <Route path="*" element={<Navigate to="/login" replace />} />
+                </>
+              ) : (
+                <Route path="/" element={<MainLayout />}>
 
-                {/* 🏠 INICIO (DASHBOARD) */}
-                <Route index element={<Dashboard />} />
+                  {/* 🏠 INICIO (DASHBOARD) */}
+                  <Route index element={<Dashboard />} />
 
-                {/* 🛒 PUNTO DE VENTA */}
-                <Route
-                  path="vender"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
-                      <PosPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 🛒 PUNTO DE VENTA */}
+                  <Route
+                    path="vender"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
+                        <PosPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 📦 INVENTARIO */}
-                <Route
-                  path="inventario"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.INV_VER}>
-                      <InventarioPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 📦 INVENTARIO */}
+                  <Route
+                    path="inventario"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.INV_VER}>
+                        <InventarioPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 👥 CLIENTES */}
-                <Route
-                  path="clientes"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
-                      <ClientesPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 👥 CLIENTES */}
+                  <Route
+                    path="clientes"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
+                        <ClientesPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 📈 ESTADÍSTICAS */}
-                <Route
-                  path="reportes"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_DASHBOARD}>
-                      <ReportesPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 📈 ESTADÍSTICAS */}
+                  <Route
+                    path="reportes"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_DASHBOARD}>
+                        <ReportesPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 💰 TESORERÍA */}
-                <Route
-                  path="total-diario"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_TOTAL_DIARIO}>
-                      <TotalDiarioPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 💰 TESORERÍA */}
+                  <Route
+                    path="total-diario"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_TOTAL_DIARIO}>
+                        <TotalDiarioPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 📜 HISTORIAL DE VENTAS (NUEVA RUTA) */}
-                <Route
-                  path="historial-ventas"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_VENTAS}>
-                      <SalesHistoryPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 📜 HISTORIAL DE VENTAS (NUEVA RUTA) */}
+                  <Route
+                    path="historial-ventas"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_VENTAS}>
+                        <SalesHistoryPage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* 🔒 CIERRE DE CAJA */}
-                <Route
-                  path="cierre"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.CAJA_CERRAR}>
-                      <CierrePage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* 🔒 CIERRE DE CAJA */}
+                  <Route
+                    path="cierre"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.CAJA_CERRAR}>
+                        <CierrePage />
+                      </RouteGuard>
+                    }
+                  />
 
-                {/* ⚙️ CONFIGURACIÓN */}
-                <Route
-                  path="configuracion"
-                  element={
-                    <RouteGuard requiredPermiso={PERMISSIONS.CONF_ACCESO}>
-                      <ConfigPage />
-                    </RouteGuard>
-                  }
-                />
+                  {/* ⚙️ CONFIGURACIÓN */}
+                  <Route
+                    path="configuracion"
+                    element={
+                      <RouteGuard requiredPermiso={PERMISSIONS.CONF_ACCESO}>
+                        <ConfigPage />
+                      </RouteGuard>
+                    }
+                  />
 
 
-                {/* 🧪 LABORATORIO */}
-                <Route path="simulation" element={<SimulationPage />} />
+                  {/* 🧪 LABORATORIO */}
+                  <Route path="simulation" element={<SimulationPage />} />
 
-                {/* 🔄 Catch-all: Silent redirect to home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            )}
-          </Routes>
+                  {/* 🔄 Catch-all: Silent redirect to home */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              )}
+            </Routes>
+          </Suspense>
           <Assistant variant="floating" />
         </HashRouter>
       </ContractGuard>

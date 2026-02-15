@@ -10,7 +10,13 @@ export default function FiscalDailySummary({ ventas, config, gastos = [] }) { //
 
         // Calcular Gastos
         const totalGastos = gastos.reduce((sum, g) => {
-            // Si el gasto fue en BS, convertir a USD aprox para el KPI unificado
+            if (g.tipo === 'CONSUMO_INTERNO') {
+                // Consumo interno: unidades × costo unitario snapshot
+                const unidades = parseFloat(g.cantidad) || 0;
+                const costoUnitario = parseFloat(g.meta?.costoSnapshot) || 0;
+                return sum + (unidades * costoUnitario);
+            }
+            // GASTO_CAJA / GASTO_REVERTIDO: monto directo
             const amount = parseFloat(g.cantidad || 0);
             const moneda = g.meta?.moneda || g.referencia || 'USD';
             if (moneda === 'VES') {

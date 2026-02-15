@@ -1,13 +1,13 @@
 // ✅ SYSTEM IMPLEMENTATION - V. 4.0 (UX OPTIMIZED FOR LARGE ORDERS)
 // Archivo: src/components/pos/CartSidebar.jsx
 
-import React from 'react';
+import React, { memo } from 'react';
 import { ShoppingBasket, Layers, Package, Scale, Calculator, X, Minus, Plus, Save, Loader2, PauseCircle, Search, AlertTriangle } from 'lucide-react';
 import { useCartSidebar } from '../../hooks/useCartSidebar';
 import { Assistant } from '../ghost/Assistant';
 import CartItem from './CartItem';
 
-export default function CartSidebar({
+const CartSidebar = ({
   carrito,
   calculos,
   onRemoveItem,
@@ -17,7 +17,7 @@ export default function CartSidebar({
   onHold,
   isProcessing,
   tasaInvalida // 🚫 NEW: Block checkout if rate = 0
-}) {
+}) => {
   // Use Custom Hook for Logic
   const {
     viewMode,
@@ -160,4 +160,12 @@ export default function CartSidebar({
       </div>
     </div>
   );
-}
+};
+
+// Memoize to prevent re-renders when cart hasn't changed
+export default memo(CartSidebar, (prevProps, nextProps) => {
+  return prevProps.carrito.length === nextProps.carrito.length &&
+    prevProps.calculos.totalUSD === nextProps.calculos.totalUSD &&
+    prevProps.isProcessing === nextProps.isProcessing &&
+    prevProps.tasaInvalida === nextProps.tasaInvalida;
+});

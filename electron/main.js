@@ -24,6 +24,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development';
 
+// 🚀 PERF: Memory optimization for low-end PCs (2-4GB RAM)
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
   authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -57,17 +61,29 @@ function createWindow() {
     minHeight: 768,
     title: "Listo POS",
     icon: path.join(__dirname, '../build/icon.ico'),
+    frame: true, // Ensure window has frame
+    show: false, // Don't show until ready
+    backgroundColor: '#ffffff', // Prevent white flash
+    skipTaskbar: false, // Ensure it appears in taskbar
+    alwaysOnTop: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
       devTools: true // 🛠️ Habilitado para depuración en producción
-    },
-    show: false
+    }
   });
 
-  mainWindow.maximize();
-  mainWindow.show();
+  // 🔧 FIX: Explicitly ensure taskbar visibility
+  mainWindow.setSkipTaskbar(false);
+
+  // 🔧 FIX: Show window only when ready to prevent blank screen
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.maximize();
+    mainWindow.focus(); // Force focus on Windows
+    mainWindow.moveTop(); // Bring to front
+  });
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -90,12 +106,29 @@ function createWindow() {
   });
 }
 
+// 🔧 FIX: Prevent multiple instances and restore window when clicking icon
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 // --- CICLO DE VIDA ---
 app.whenReady().then(() => {
   // 🛠️ Atajo de Depuración (F12)
-  const { globalShortcut } = require('electron');
-  globalShortcut.register('F12', () => {
-    if (mainWindow) mainWindow.webContents.toggleDevTools();
+  import('electron').then(({ globalShortcut }) => {
+    globalShortcut.register('F12', () => {
+      if (mainWindow) mainWindow.webContents.toggleDevTools();
+    });
   });
 
   createWindow();

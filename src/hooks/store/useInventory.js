@@ -326,7 +326,9 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
 
                 const smartMetadata = {
                     tipo: 'CONSUMO_MODAL',
-                    motivoExplicito: motivo
+                    motivoExplicito: motivo,
+                    costoSnapshot: parseFloat(prod.costo) || 0,
+                    precioSnapshot: parseFloat(prod.precio) || 0
                 };
 
                 lastLogId = await logMovimientoInternal(

@@ -119,7 +119,6 @@ const applySchema = (dbInstance) => {
 // 🏭 DATABASE INSTANCE CREATION
 const createDB = () => {
   const dbName = isGhostMode ? 'ListoGhostDB' : 'ListoPosDB';
-  console.log(`[DB Factory] Initializing database: ${dbName} (Ghost Mode: ${isGhostMode})`);
   const db = new Dexie(dbName);
   applySchema(db);
   return db;
@@ -142,7 +141,6 @@ const migrarProductos = async () => {
 
   // Bulk add para mejor rendimiento
   await db.productos.bulkPut(cleanProds);
-  console.log(`📦 Productos migrados: ${cleanProds.length}`);
 };
 
 // ✅ HELPER: Migración de Clientes
@@ -152,7 +150,6 @@ const migrarClientes = async () => {
 
   const clientes = JSON.parse(cliRaw);
   await db.clientes.bulkPut(clientes);
-  console.log(`👥 Clientes migrados: ${clientes.length}`);
 };
 
 // ✅ HELPER: Migración de Configuración
@@ -162,7 +159,6 @@ const migrarConfiguracion = async () => {
 
   const config = JSON.parse(configRaw);
   await db.config.put({ key: 'general', ...config });
-  console.log("⚙️ Configuración migrada.");
 };
 
 // ✅ HELPER: Migración de Caja (Sesión Activa)
@@ -172,7 +168,6 @@ const migrarCaja = async () => {
 
   const caja = JSON.parse(cajaRaw);
   await db.caja_sesion.put({ key: 'actual', ...caja });
-  console.log("🏦 Estado de Caja migrado.");
 };
 
 // 🧹 V. 15: SANITIZACIÓN DE DEUDAS (Dust Sweeper)
@@ -226,24 +221,19 @@ export const migrarDatosLocales = async () => {
   const yaMigrado = localStorage.getItem(MIG_ID);
 
   if (yaMigrado) return;
-
-  console.log("🔄 FÉNIX V6: Iniciando migración crítica a IndexedDB...");
-
   try {
     // Ejecutar migraciones en paralelo para mejorar velocidad de arranque
     await Promise.all([
       migrarProductos(),
       migrarClientes(),
       migrarConfiguracion(),
-      migrarConfiguracion(),
       migrarCaja(),
-      migrarSaneamientoDeudas() // 🆕 Include Sanitization
+      migrarSaneamientoDeudas()
     ]);
 
     localStorage.setItem(MIG_ID, 'true');
-    console.log("✅ FÉNIX V6: Migración Completada. Integridad Asegurada.");
-
   } catch (error) {
+    console.error('❌ FÉNIX V6: Error en migración crítica:', error);
     // No marcamos como migrado para reintentar luego en caso de fallo real
   }
 };

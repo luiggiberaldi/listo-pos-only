@@ -80,7 +80,13 @@ export const math = {
     },
 
     // Retorna instancia de Decimal para operaciones manuales si es necesario
-    d: (val) => d(val)
+    d: (val) => d(val),
+
+    // Valor absoluto (precision-safe)
+    abs: (val) => d(val).abs().toNumber(),
+
+    // Negación
+    neg: (val) => d(val).neg().toNumber()
 };
 
 export default math;

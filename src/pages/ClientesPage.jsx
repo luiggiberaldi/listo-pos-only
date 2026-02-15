@@ -7,7 +7,12 @@ import {
   ChevronLeft, ChevronRight, Filter // Iconos nuevos para paginación
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
+// ⚡ PERFORMANCE: Swal lazy-loaded
+let _swal = null;
+const getSwal = async () => {
+  if (!_swal) _swal = (await import('sweetalert2')).default;
+  return _swal;
+};
 
 // Módulos de Crédito
 import ModalAbono from '../components/clientes/ModalAbono';
@@ -53,10 +58,11 @@ export default function ClientesPage() {
   const [clienteHistorial, setClienteHistorial] = useState(null);
 
   // Manejadores CRUD
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const datos = Object.fromEntries(formData);
+    const Swal = await getSwal();
 
     try {
       if (clienteEditando) {
@@ -71,7 +77,8 @@ export default function ClientesPage() {
     } catch (err) { Swal.fire('Error', err.message, 'error'); }
   };
 
-  const handleEliminar = (id) => {
+  const handleEliminar = async (id) => {
+    const Swal = await getSwal();
     Swal.fire({
       title: '¿Eliminar?', text: "Se borrará permanentemente.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', confirmButtonText: 'Sí, eliminar'
     }).then(r => {

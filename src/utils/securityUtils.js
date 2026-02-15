@@ -42,10 +42,10 @@ export const verifySecurityCode = async (input, hashKeyOrValue) => {
   // If it's a known env var key, look it up, otherwise treat as direct hash
   let targetHash = import.meta.env[hashKeyOrValue] || hashKeyOrValue;
 
-  // Hardcoded Fallback for Development/Demo if env is missing
+  // Fallback: deny access if env hash is not configured
   if (hashKeyOrValue === 'VITE_GOD_MODE_HASH' && !targetHash) {
-    // Fallback Hash for '000000' (Example) or just fail safe
-    return input === '000000'; // ⚠️ TEMPORARY FALLBACK to allow access if not configured
+    console.warn('⚠️ SECURITY: VITE_GOD_MODE_HASH not configured. God Mode disabled.');
+    return false;
   }
 
   const inputHash = await hashPin(input);

@@ -26,7 +26,7 @@ export const FinanceService = {
             const currentSession = await db.caja_sesion.get('actual');
             if (!currentSession || !currentSession.isAbierta) {
                 // TODO: Permitir configuración para gastos con caja cerrada? Por ahora STRICT.
-                throw new Error("Caja cerrada. No se pueden registrar salidas.");
+                throw new Error("La caja está cerrada. Abre un turno desde Ventas para registrar movimientos.");
             }
 
             // 2. Actualizar Balances (Salida)
@@ -136,9 +136,10 @@ export const FinanceService = {
             const currentSession = await db.caja_sesion.get('actual');
             if (!currentSession || !currentSession.isAbierta) throw new Error("Caja cerrada");
 
-            // ... Lógica espejo de SalesService ...
-            // Por ahora FinanceService se enfoca en Gastos.
-            // SalesService maneja Ingresos por Ventas.
+            // ⚠️ STUB INTENCIONAL: FinanceService solo maneja Gastos (salidas de caja).
+            // Los ingresos por ventas se procesan en SalesService.actualizarBalances.
+            // NO implementar lógica de ingresos aquí para evitar doble conteo.
+            console.warn('FinanceService.actualizarBalances: NO-OP by design. Use SalesService for sales.');
             return true;
         });
     },
@@ -153,11 +154,11 @@ export const FinanceService = {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
-        // Query Logs: 'GASTO_CAJA' y 'GASTO_REVERTIDO'
+        // Query Logs: 'GASTO_CAJA', 'GASTO_REVERTIDO' y 'CONSUMO_INTERNO'
         const logs = await db.logs
             .where('fecha')
             .between(start.toISOString(), end.toISOString(), true, true)
-            .and(log => log.tipo === 'GASTO_CAJA' || log.tipo === 'GASTO_REVERTIDO')
+            .and(log => log.tipo === 'GASTO_CAJA' || log.tipo === 'GASTO_REVERTIDO' || log.tipo === 'CONSUMO_INTERNO')
             .toArray();
 
         return logs;

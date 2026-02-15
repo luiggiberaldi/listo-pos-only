@@ -1,7 +1,7 @@
 // ✅ SYSTEM IMPLEMENTATION - V. 1.8 (ZUSTAND MIGRATION)
 // Archivo: src/layout/MainLayout.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, ShoppingCart, Package, Settings, LogOut, PieChart,
@@ -24,15 +24,12 @@ import { useListoGoSync } from '../hooks/sync/useListoGoSync';
 import { useRemoteTasa } from '../hooks/sync/useRemoteTasa';
 import UserProfileModal from '../components/user/UserProfileModal'; // 🆕 Zona de Usuario
 
-const SidebarItem = ({ to, icon: Icon, label, collapsed }) => {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-  const playSound = useUIStore(s => s.playSound);
-
+// ⚡ PERFORMANCE: Memoized — recibe isActive como prop para evitar N×useLocation()
+const SidebarItem = memo(({ to, icon: Icon, label, collapsed, isActive, onNavigate }) => {
   return (
     <Link
       to={to}
-      onClick={() => playSound && playSound('CLICK')}
+      onClick={onNavigate}
       title={collapsed ? label : ''}
       className={`
               flex items-center py-3 rounded-lg transition-all duration-200 mb-1 flex-shrink-0
@@ -48,7 +45,27 @@ const SidebarItem = ({ to, icon: Icon, label, collapsed }) => {
       </span>
     </Link>
   );
-};
+});
+
+// ⚡ PERFORMANCE: Reloj aislado para que sus ticks cada 1s no propaguen re-renders al sidebar
+const SystemClock = memo(({ isCollapsed }) => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className={`flex flex-col items-center justify-center mb-2 select-none group cursor-default transition-all duration-300 ${isCollapsed ? 'opacity-100 scale-90' : 'opacity-100'}`}>
+      <p className="text-sm font-black text-content-main dark:text-content-inverse leading-none group-hover:text-primary transition-colors">
+        {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace(/AM|PM/, '').trim()}
+      </p>
+      <p className="text-[8px] font-bold text-content-secondary uppercase tracking-wider">
+        {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).match(/AM|PM/)?.[0] || ''}
+      </p>
+    </div>
+  );
+});
 
 export default function MainLayout() {
   // ⚡ ZUSTAND ATOMIC STORES
@@ -62,9 +79,9 @@ export default function MainLayout() {
 
   const { tienePermiso } = useRBAC(usuario);
   const navigate = useNavigate();
+  const location = useLocation(); // ⚡ Una sola llamada, no N por SidebarItem
 
-  // 🔄 BACKGROUND SERVICES
-  useListoGoSync();
+  // 🔄 BACKGROUND SERVICES (useListoGoSync ya se ejecuta en App.jsx — NO duplicar)
   useRemoteTasa();
 
   const canSell = tienePermiso(PERMISOS.POS_ACCESO);
@@ -78,12 +95,10 @@ export default function MainLayout() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   // const [isCollapsed, setIsCollapsed] = useState(false); // ⚡ REPLACED BY ZUSTAND UISTORE
 
-  // 🕒 SYSTEM CLOCK
-  const [time, setTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // ⚡ PERFORMANCE: Handler memoizado para SidebarItem click sound
+  const handleNavClick = React.useCallback(() => {
+    if (playSound) playSound('CLICK');
+  }, [playSound]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -219,32 +234,25 @@ export default function MainLayout() {
 
         <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar">
           {isCollapsed ? <div className="h-px bg-border-subtle mx-2 my-4"></div> : <p className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-2 px-2 mt-2">Operaciones</p>}
-          <SidebarItem to="/" icon={Home} label="Inicio" collapsed={isCollapsed} />
-          {canSell && <SidebarItem to="/vender" icon={ShoppingCart} label="Caja (Ventas)" collapsed={isCollapsed} />}
-          {canCloseBox && <SidebarItem to="/cierre" icon={PieChart} label="Cierre de Caja" collapsed={isCollapsed} />}
-          {canViewHistory && <SidebarItem to="/historial-ventas" icon={History} label="Historial Global" collapsed={isCollapsed} />}
+          <SidebarItem to="/" icon={Home} label="Inicio" collapsed={isCollapsed} isActive={location.pathname === '/'} onNavigate={handleNavClick} />
+          {canSell && <SidebarItem to="/vender" icon={ShoppingCart} label="Caja (Ventas)" collapsed={isCollapsed} isActive={location.pathname === '/vender'} onNavigate={handleNavClick} />}
+          {canCloseBox && <SidebarItem to="/cierre" icon={PieChart} label="Cierre de Caja" collapsed={isCollapsed} isActive={location.pathname === '/cierre'} onNavigate={handleNavClick} />}
+          {canViewHistory && <SidebarItem to="/historial-ventas" icon={History} label="Historial Global" collapsed={isCollapsed} isActive={location.pathname === '/historial-ventas'} onNavigate={handleNavClick} />}
 
-          {canManageClients && <SidebarItem to="/clientes" icon={Users} label="Gestión de Clientes" collapsed={isCollapsed} />}
+          {canManageClients && <SidebarItem to="/clientes" icon={Users} label="Gestión de Clientes" collapsed={isCollapsed} isActive={location.pathname === '/clientes'} onNavigate={handleNavClick} />}
 
           {isCollapsed ? <div className="h-px bg-border-subtle mx-2 my-4"></div> : <div className="my-2 border-t border-border-subtle pt-2"><p className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-2 px-2">Control</p></div>}
-          {canViewReports && <SidebarItem to="/reportes" icon={BarChart3} label="Estadísticas" collapsed={isCollapsed} />}
-          {canViewInventory && <SidebarItem to="/inventario" icon={Package} label="Inventario Maestro" collapsed={isCollapsed} />}
+          {canViewReports && <SidebarItem to="/reportes" icon={BarChart3} label="Estadísticas" collapsed={isCollapsed} isActive={location.pathname === '/reportes'} onNavigate={handleNavClick} />}
+          {canViewInventory && <SidebarItem to="/inventario" icon={Package} label="Inventario Maestro" collapsed={isCollapsed} isActive={location.pathname === '/inventario'} onNavigate={handleNavClick} />}
         </nav>
 
         <div className="p-3 border-t border-border-subtle flex-shrink-0 bg-surface-light dark:bg-surface-dark z-10 flex flex-col gap-1">
 
-          {/* 🕒 SYSTEM CLOCK (Option 2) */}
-          <div className={`flex flex-col items-center justify-center mb-2 select-none group cursor-default transition-all duration-300 ${isCollapsed ? 'opacity-100 scale-90' : 'opacity-100'}`}>
-            <p className="text-sm font-black text-content-main dark:text-content-inverse leading-none group-hover:text-primary transition-colors">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).replace(/AM|PM/, '').trim()}
-            </p>
-            <p className="text-[8px] font-bold text-content-secondary uppercase tracking-wider">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).match(/AM|PM/)?.[0] || ''}
-            </p>
-          </div>
+          {/* 🕒 SYSTEM CLOCK — Componente aislado para no propagar re-renders */}
+          <SystemClock isCollapsed={isCollapsed} />
 
           {/* {usuario && canConfigure && <SidebarItem to="/ia" icon={Brain} label="IA" collapsed={isCollapsed} />} */}
-          {usuario && canConfigure && <SidebarItem to="/configuracion" icon={Settings} label="Configuración" collapsed={isCollapsed} />}
+          {usuario && canConfigure && <SidebarItem to="/configuracion" icon={Settings} label="Configuración" collapsed={isCollapsed} isActive={location.pathname === '/configuracion'} onNavigate={handleNavClick} />}
           <button
             onClick={() => { if (playSound) playSound('CLICK'); logout(); }}
             className={`w-full flex items-center py-3 text-status-danger hover:bg-status-dangerBg/20 rounded-lg transition-colors ${isCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}

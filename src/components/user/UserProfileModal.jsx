@@ -172,24 +172,7 @@ export default function UserProfileModal({ onClose }) {
                                 })()}
                             </div>
 
-                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-4">
-                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                                    <User size={20} />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-blue-900 text-sm">Información de Cuenta</h4>
-                                    <p className="text-xs text-blue-700 mt-1">
-                                        ID de Sistema: <span className="font-mono font-bold">{usuario.id}</span>
-                                    </p>
-                                    <p className="text-xs text-blue-700">
-                                        Fecha Registro: <span className="font-mono">
-                                            {usuario.fechaRegistro && !isNaN(new Date(usuario.fechaRegistro).getTime())
-                                                ? new Date(usuario.fechaRegistro).toLocaleDateString()
-                                                : 'No disponible'}
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
+
                         </div>
                     )}
 

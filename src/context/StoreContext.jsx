@@ -48,7 +48,6 @@ export const StoreProvider = ({ children }) => {
   useEffect(() => {
     const arrancarBaseDeDatos = async () => {
       try {
-        console.log("🚀 [SYSTEM] Iniciando protocolos de persistencia...");
         await migrarDatosLocales();
       } catch (e) {
         console.error("🔥 [CRITICAL] Fallo al inicializar DB:", e);

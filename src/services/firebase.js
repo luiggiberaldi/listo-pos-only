@@ -54,7 +54,6 @@ try {
         dbClient = getFirestore(clientApp); // 🟢 CACHE DISABLED FOR DEBUG (Persistent Cache Disabled)
 
         authClient = getAuth(clientApp);
-        // console.log("📡 [ANTENA A] Cliente conectado.");
     } else {
         console.warn("📡 [ANTENA A] Sin credenciales. Modo Offline Puro.");
     }
@@ -67,7 +66,6 @@ try {
         dbMaster = getFirestore(masterApp);
         authMaster = getAuth(masterApp);
         storageMaster = getStorage(masterApp); // 📦 STORAGE ACTIVADO
-        // console.log("📡 [ANTENA B] Enlace Master listo.");
     }
 
     // --- 3. PROTOCOLO IRON DOME (DOBLE AUTENTICACIÓN) ---

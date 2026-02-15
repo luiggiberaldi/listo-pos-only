@@ -37,8 +37,20 @@ class GhostAIService {
         });
 
         console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Gemini`);
-        this.detectOpenRouterAvailability();
-        this.detectGroqAvailability();
+        // 🚀 PERF: Provider checks deferred to first generateResponse() call
+        this._providersChecked = false;
+    }
+
+    /**
+     * Lazy-check provider availability on first use.
+     */
+    async _ensureProviders() {
+        if (this._providersChecked) return;
+        this._providersChecked = true;
+        await Promise.allSettled([
+            this.detectOpenRouterAvailability(),
+            this.detectGroqAvailability()
+        ]);
     }
 
     // --- PROXY METHODS (Memory) ---
@@ -89,6 +101,7 @@ class GhostAIService {
 
     // --- MAIN GENERATION FLOW ---
     async generateResponse(userQuery) {
+        await this._ensureProviders(); // 🚀 Lazy provider init
         const queryLower = userQuery.trim().toLowerCase();
 
         // 0. MEMORY STORAGE (User)

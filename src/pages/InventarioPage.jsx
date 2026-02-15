@@ -1,6 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import Swal from 'sweetalert2';
+
+// ⚡ PERFORMANCE: Swal lazy-loaded — solo se carga al abrir un diálogo
+let _swal = null;
+const getSwal = async () => {
+    if (!_swal) _swal = (await import('sweetalert2')).default;
+    return _swal;
+};
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 // Modales
@@ -65,7 +71,7 @@ export default function InventarioPage() {
         orden, setOrden,
         irAPagina, anteriorPagina, siguientePagina,
         totalItems
-    } = useInventoryPagination(safeProductos, 50);
+    } = useInventoryPagination(safeProductos, 20);
 
     const kpis = useMemo(() => {
         const lista = safeProductos;
@@ -163,7 +169,8 @@ export default function InventarioPage() {
             setProductoAEditar(copia);
             setMostrarModal(true);
         },
-        onDelete: (producto) => {
+        onDelete: async (producto) => {
+            const Swal = await getSwal();
             Swal.fire({
                 title: '¿Eliminar?',
                 text: `Se borrará: ${producto.nombre}`,
@@ -200,7 +207,8 @@ export default function InventarioPage() {
         setMostrarModal(false);
     };
 
-    const handleBorrarTodo = () => {
+    const handleBorrarTodo = async () => {
+        const Swal = await getSwal();
         Swal.fire({
             title: '¿VACIAR TODO EL INVENTARIO?',
             text: 'Esta acción borrará TODOS los productos y movimientos permanentemente. No se puede deshacer.',
@@ -238,6 +246,7 @@ export default function InventarioPage() {
     };
 
     const handleCrearCategoria = async () => {
+        const Swal = await getSwal();
         const { value: nombre } = await Swal.fire({
             title: 'Nueva Categoría',
             input: 'text',
@@ -259,6 +268,7 @@ export default function InventarioPage() {
     };
 
     const handleEliminarCategoria = async (nombre, e) => {
+        const Swal = await getSwal();
         Swal.fire({
             title: `¿Eliminar ${nombre}?`,
             text: "Los productos en esta categoría pasarán a 'General'.",
@@ -293,9 +303,10 @@ export default function InventarioPage() {
                 />}
                 {mostrarLabelStudio && <LabelStudioModal isOpen={mostrarLabelStudio} onClose={() => setMostrarLabelStudio(false)} selectedProducts={productosParaEtiquetas} tasa={configuracion.tasa || 1} />}
                 {mostrarModal && <ModalProducto productoEditar={productoAEditar} onClose={() => setMostrarModal(false)} onGuardar={guardarDesdeModal} configuracion={configuracion} />}
-                {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={() => Swal.fire("Listo", "Inventario actualizado", "success")} />}
+                {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={async () => { const Swal = await getSwal(); Swal.fire("Listo", "Inventario actualizado", "success"); }} />}
+
                 {mostrarKardex && canManageAudit && <ModalKardex movimientos={movimientos} productos={productos} onClose={() => setMostrarKardex(false)} />}
-                {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={(d) => { actualizarProducto(d.id, d); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
+                {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { actualizarProducto(d.id, d); const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
 
                 {/* KPIS */}
                 {canSeeStats && <InventarioStats kpis={kpis} />}
@@ -368,7 +379,7 @@ export default function InventarioPage() {
                     {totalItems > 0 && (
                         <div className="px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
                             <span className="text-xs text-slate-400 font-medium">
-                                Mostrando <b className="text-slate-700 dark:text-white">{(paginaActual - 1) * 50 + 1}-{Math.min(paginaActual * 50, totalItems)}</b> de <b className="text-slate-700 dark:text-white">{totalItems}</b> items
+                                Mostrando <b className="text-slate-700 dark:text-white">{(paginaActual - 1) * 20 + 1}-{Math.min(paginaActual * 20, totalItems)}</b> de <b className="text-slate-700 dark:text-white">{totalItems}</b> items
                             </span>
 
                             <div className="flex items-center gap-2">

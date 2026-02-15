@@ -4,8 +4,6 @@ import { useRBAC } from '../hooks/store/useRBAC';
 import { useConfigContext } from './ConfigContext';
 
 const MODULE_ID = Math.random().toString(36).substring(7);
-// console.log(`🔍 [AUTH-MOD] Module Loaded ID: ${MODULE_ID}`);
-
 // 🛡️ PATRÓN SINGLETON ROBUSTO (Resistente a Split-Brain)
 // Si ya existe un Contexto Global definido por una carga previa, LO USAMOS.
 // Esto evita que 'useAuthContext' falle si este archivo se carga dos veces.

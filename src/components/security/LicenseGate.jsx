@@ -206,7 +206,8 @@ export default function LicenseGate({ children }) {
     // 🆕 2.5 DEMO SHIELD LOCK (CUOTAS AGOTADAS) 🧪
     // Logic moved up to top, only check remains here
 
-    if (license.isDemo && license.isQuotaBlocked) {
+    // 🔧 TEMPORALMENTE DESHABILITADO — se retoma después
+    if (false && license.isDemo && license.isQuotaBlocked) {
         return (
             <div className="h-screen w-screen bg-[#0f172a] flex items-center justify-center p-8 z-[60] fixed inset-0 font-sans overflow-hidden">
                 {/* Decoration */}

@@ -1,10 +1,14 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// 🚀 jsPDF and autoTable are now dynamically imported for lazy loading
+// V2.2 - Lazy Loading (Sprint 4)
 
 const fmtMoney = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 const fmtBs = (val) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
-export const generateAccountStatementPDF = (cliente, transactions, stats, configuracion) => {
+export const generateAccountStatementPDF = async (cliente, transactions, stats, configuracion) => {
+    // 🚀 Dynamic imports for lazy loading
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     return new Promise(async (resolve, reject) => {
         try {
             const doc = new jsPDF();

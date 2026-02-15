@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, Suspense, lazy } from 'react';
 import {
     Trash2, Plus, Minus, Search, ShoppingCart,
     Package, LayoutGrid, CheckCircle2, ChevronRight, Clock, HelpCircle
@@ -7,7 +7,8 @@ import {
 import Swal from 'sweetalert2';
 
 // --- SUBCOMPONENTES ---
-import ModalPago from '../ModalPago';
+// 🚀 Lazy load heavy modals
+const ModalPago = lazy(() => import('../ModalPago'));
 import ModalPesaje from '../ModalPesaje';
 import ModalJerarquia from '../ModalJerarquia';
 import ModalEspera from './ModalEspera'; // Ajustar ruta si es necesario
@@ -242,12 +243,12 @@ export default function TouchLayout({
             {/* --- MODALES --- */}
             {/* --- MODALES --- */}
             {cajaAbierta && (
-                <>
+                <Suspense fallback={<div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
                     {modales.pesaje && <ModalPesaje producto={modales.pesaje} tasa={calculos.tasa} onConfirm={(d) => { agregarAlCarrito(modales.pesaje, d.peso, 'peso', d.precioTotal / d.peso); cerrarPesaje(); }} onClose={cerrarPesaje} />}
                     {modales.jerarquia && <ModalJerarquia producto={modales.jerarquia} onSelect={(f) => { agregarAlCarrito(modales.jerarquia, 1, f, modales.jerarquia.jerarquia[f].precio); cerrarJerarquia(); }} onClose={cerrarJerarquia} />}
                     {modales.pago && <ModalPago totalUSD={calculos.totalUSD} totalBS={calculos.totalBS} tasa={calculos.tasa} onPagar={finalizarVenta} initialClient={clientePreseleccionado} isTouch={true} onClose={cerrarPago} />}
                     {modales.espera && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={cerrarEspera} />}
-                </>
+                </Suspense>
             )}
 
             {/* === COLUMNA IZQUIERDA: TICKET (40%) === */}

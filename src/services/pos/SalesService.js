@@ -360,6 +360,11 @@ export const SalesService = {
                 };
             });
 
+            // ⛔ CHAOS_GUARD: Validar ANTES de mutar estado
+            if (metodosPago.some(m => m.metodo === 'CREDITO' || m.medium === 'CREDIT')) {
+                throw new Error("CHAOS_GUARD: No se puede abonar a una deuda usando Crédito.");
+            }
+
             // 2. Update Cash
             const pagosReales = pagosProcesados.filter(p => p.medium !== 'INTERNAL');
             if (pagosReales.length > 0) {
@@ -383,10 +388,9 @@ export const SalesService = {
                 favor: cliente.favor
             });
 
-            if (metodosPago.some(m => m.metodo === 'CREDITO' || m.medium === 'CREDIT')) {
-                throw new Error("CHAOS_GUARD: No se puede abonar a una deuda usando Crédito.");
-            }
+            // (Validación movida antes de actualizarBalances)
 
+            const idTransaccion = timeProvider.timestamp();
             const transaccion = {
                 id: idTransaccion,
                 idVenta: await generarCorrelativo('factura'),
