@@ -1,7 +1,7 @@
 {
   "name": "listo-pos",
   "private": true,
-  "version": "1.4.15",
+  "version": "1.4.16",
   "type": "module",
   "main": "electron/main.js",
   "description": "Sistema de Punto de Venta Profesional",
@@ -11,7 +11,9 @@
     "build": "vite build",
     "preview": "vite build && vite preview",
     "preview:no-build": "vite preview",
-    "dist": "vite build && electron-builder"
+    "dist": "vite build && electron-builder",
+    "safe-push": "node scripts/verify-repo.js && git push origin main",
+    "release": "node scripts/verify-repo.js && npm run dist && git push origin main"
   },
   "build": {
     "appId": "com.listo.pos",
