@@ -1,5 +1,7 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 2.1 (CLEAN & SECURE)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.0 (PERFORMANCE OPTIMIZED)
 // Archivo: electron/main.js
+// Cambios: Removido Firebase, devTools deshabilitado en producción,
+// flags Chromium para reducir procesos y memoria.
 
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
@@ -8,15 +10,12 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import nodeMachineId from 'node-machine-id';
 const { machineIdSync } = nodeMachineId;
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import checkDiskSpace from 'check-disk-space';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
 // --- CONFIGURACIÓN DE ACTUALIZACIONES ---
-autoUpdater.autoDownload = false; // 🛑 NO descargar automáticamente para evitar lag
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 // --- CONFIGURACIÓN & ENTORNO ---
@@ -24,30 +23,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🚀 PERF: Memory optimization for low-end PCs (2-4GB RAM)
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
-app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
-
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID
-};
-
-let db = null;
-try {
-  if (firebaseConfig.apiKey) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    db = getFirestore(firebaseApp);
-    console.log("☁️ [ELECTRON] Firebase inicializado.");
-  }
-} catch (e) {
-  console.error("🔥 [ELECTRON] Firebase Error:", e);
+// ═══════════════════════════════════════════════════════════
+// 🚀 PERFORMANCE: Chromium flags para reducir procesos y RAM
+// ═══════════════════════════════════════════════════════════
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=384');       // Limitar heap JS a 384MB (era 512)
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');              // Evitar cache de shaders en disco
+app.commandLine.appendSwitch('disable-software-rasterizer');                // Desactivar rasterizador software
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess'); // No pre-crear renderers extras
+app.commandLine.appendSwitch('renderer-process-limit', '4');                // Máximo 4 procesos renderer
+app.commandLine.appendSwitch('disable-background-timer-throttling');        // No throttle timers en fondo
+if (!isDev) {
+  app.commandLine.appendSwitch('disable-dev-tools');                        // Sin devtools en producción
 }
-
 
 
 // --- VENTANA PRINCIPAL ---
@@ -61,28 +48,32 @@ function createWindow() {
     minHeight: 768,
     title: "Listo POS",
     icon: path.join(__dirname, '../build/icon.ico'),
-    frame: true, // Ensure window has frame
-    show: false, // Don't show until ready
-    backgroundColor: '#ffffff', // Prevent white flash
-    skipTaskbar: false, // Ensure it appears in taskbar
+    frame: true,
+    show: false,
+    backgroundColor: '#ffffff',
+    skipTaskbar: false,
     alwaysOnTop: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
-      devTools: true // 🛠️ Habilitado para depuración en producción
+      devTools: isDev,                    // ✅ Solo en dev
+      backgroundThrottling: true,         // ✅ Throttle cuando minimizado
+      spellcheck: false,                  // ✅ No necesitamos spellcheck
+      enableWebSQL: false,                // ✅ No usamos WebSQL
     }
   });
 
-  // 🔧 FIX: Explicitly ensure taskbar visibility
   mainWindow.setSkipTaskbar(false);
 
-  // 🔧 FIX: Show window only when ready to prevent blank screen
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.maximize();
-    mainWindow.focus(); // Force focus on Windows
-    mainWindow.moveTop(); // Bring to front
+    mainWindow.focus();
+    mainWindow.moveTop();
+
+    // 🚀 PERF: Unregister PWA service workers (innecesarios en Electron)
+    mainWindow.webContents.session.clearStorageData({ storages: ['serviceworkers'] });
   });
 
   if (isDev) {
@@ -104,16 +95,20 @@ function createWindow() {
       filters: [{ name: 'Todos los archivos', extensions: ['*'] }]
     });
   });
+
+  // 🚀 PERF: Liberar memoria agresivamente cuando la ventana está oculta
+  mainWindow.on('hide', () => {
+    if (mainWindow?.webContents) mainWindow.webContents.backgroundThrottling = true;
+  });
 }
 
-// 🔧 FIX: Prevent multiple instances and restore window when clicking icon
+// 🔧 FIX: Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window
+  app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
@@ -124,12 +119,14 @@ if (!gotTheLock) {
 
 // --- CICLO DE VIDA ---
 app.whenReady().then(() => {
-  // 🛠️ Atajo de Depuración (F12)
-  import('electron').then(({ globalShortcut }) => {
-    globalShortcut.register('F12', () => {
-      if (mainWindow) mainWindow.webContents.toggleDevTools();
+  // 🛠️ F12 solo en dev
+  if (isDev) {
+    import('electron').then(({ globalShortcut }) => {
+      globalShortcut.register('F12', () => {
+        if (mainWindow) mainWindow.webContents.toggleDevTools();
+      });
     });
-  });
+  }
 
   createWindow();
 
@@ -137,30 +134,25 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // Iniciar AutoUpdater después de un breve retraso
+  // AutoUpdater con retraso (no saturar al inicio)
   setTimeout(() => {
     setupAutoUpdater();
-  }, 3000);
+  }, 5000); // Aumentado de 3s a 5s para dar más tiempo al renderer
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('will-quit', () => {
-});
+app.on('will-quit', () => { });
 
-// --- ACTUALIZACIONES AUTOMÁTICAS ---
 // --- ACTUALIZACIONES AUTOMÁTICAS ---
 function setupAutoUpdater() {
-  console.log('🔄 [AutoUpdater] Iniciando verificación de actualizaciones...');
+  console.log('🔄 [AutoUpdater] Iniciando verificación...');
 
-  // 1. Check inicial (Silencioso, sin notificación nativa)
   autoUpdater.checkForUpdates();
 
-  // 2. Eventos
   autoUpdater.on('checking-for-update', () => {
-    console.log('🔄 [AutoUpdater] Buscando actualizaciones...');
     if (mainWindow) mainWindow.webContents.send('checking_for_update');
   });
 
@@ -170,7 +162,6 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-not-available', () => {
-    console.log('✅ [AutoUpdater] No hay actualizaciones pendientes.');
     if (mainWindow) mainWindow.webContents.send('update_not_available');
   });
 
@@ -180,8 +171,6 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
-    let log_message = "Descargando: " + Math.round(progressObj.percent) + '%';
-    console.log(log_message);
     if (mainWindow) mainWindow.webContents.send('update_download_progress', progressObj);
   });
 
@@ -191,22 +180,18 @@ function setupAutoUpdater() {
   });
 }
 
-// 3. Listener Manual (desde UI)
+// --- IPC: Manual Update ---
 ipcMain.on('check_for_updates', () => {
-  console.log('👆 [AutoUpdater] Verificación manual solicitada per usuario.');
   autoUpdater.checkForUpdates();
 });
 
-// 4. Configuración Persistente (Runtime Environment)
+// --- IPC: Configuración Persistente ---
 ipcMain.handle('get-custom-env', () => {
   try {
-    const fs = require('fs');
     const envPath = path.join(app.getPath('userData'), 'custom-env.json');
     if (fs.existsSync(envPath)) {
       const raw = fs.readFileSync(envPath, 'utf-8');
-      const customEnv = JSON.parse(raw);
-      console.log('🔑 [Main] Cargada configuración personalizada desde disk.');
-      return customEnv;
+      return JSON.parse(raw);
     }
   } catch (e) {
     console.error('❌ [Main] Error leyendo custom-env.json:', e);
@@ -214,13 +199,10 @@ ipcMain.handle('get-custom-env', () => {
   return {};
 });
 
-// 5. Guardar Configuración (Para UI de "Recuperar Conexión")
 ipcMain.handle('save-custom-env', (event, envData) => {
   try {
-    const fs = require('fs');
     const envPath = path.join(app.getPath('userData'), 'custom-env.json');
     fs.writeFileSync(envPath, JSON.stringify(envData, null, 2));
-    console.log('💾 [Main] Guardada configuración personalizada.');
     return true;
   } catch (e) {
     console.error('❌ [Main] Error guardando custom-env.json:', e);
@@ -228,10 +210,7 @@ ipcMain.handle('save-custom-env', (event, envData) => {
   }
 });
 
-// --- COMUNICACIÓN (IPC) ---
-
-
-
+// --- IPC: COMUNICACIÓN ---
 ipcMain.on('test-print', () => {
   mainWindow.webContents.print({ silent: false, printBackground: true });
 });
@@ -275,17 +254,12 @@ ipcMain.handle('get-disk-info', async () => {
   }
 });
 
-ipcMain.handle('firebase-sync', async (event, { collection: colName, data }) => {
-  if (!db) return { success: false, error: "Firebase no configurado" };
-  try {
-    const payload = { ...data, _sync_source: 'ELECTRON_MAIN', _sync_createdAt: serverTimestamp() };
-    await addDoc(collection(db, colName), payload);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+// --- IPC: Firebase Sync (ahora solo devuelve error, Firebase removido) ---
+ipcMain.handle('firebase-sync', async () => {
+  return { success: false, error: "Firebase deshabilitado — use sincronización LAN" };
 });
 
+// --- IPC: PDF Save ---
 ipcMain.handle('pdf-save', async (event, { buffer, filename }) => {
   try {
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
@@ -303,12 +277,12 @@ ipcMain.handle('pdf-save', async (event, { buffer, filename }) => {
   }
 });
 
-ipcMain.handle('open-file-location', (event, path) => {
-  if (path) shell.showItemInFolder(path);
+ipcMain.handle('open-file-location', (event, filePath) => {
+  if (filePath) shell.showItemInFolder(filePath);
 });
 
-ipcMain.handle('open-file-default', (event, path) => {
-  if (path) shell.openPath(path);
+ipcMain.handle('open-file-default', (event, filePath) => {
+  if (filePath) shell.openPath(filePath);
 });
 
 ipcMain.on('download_update', () => {
