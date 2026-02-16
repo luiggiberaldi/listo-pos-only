@@ -27,6 +27,8 @@ import ConfigConexionLAN from './config/ConfigConexionLAN';
 import { useSecureAction } from '../hooks/security/useSecureAction';
 // 🔴 LIMPIEZA: Solo importamos el hook V2.5
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
+import { useConfigStore } from '../stores/useConfigStore'; // 🆕 Store de Licencia
+import { FEATURES, hasFeature } from '../config/planTiers'; // 🆕 Feature Logic
 
 export default function ConfigPage() {
   const {
@@ -36,6 +38,9 @@ export default function ConfigPage() {
 
   const { ejecutarAccionSegura } = useSecureAction();
   const { tienePermiso } = useRBAC(usuario);
+  const { license } = useConfigStore(); // 🆕 Get Plan Info
+  const currentPlan = license?.plan || 'bodega';
+
   const location = useLocation(); // 👈 Hook para recibir params
 
   const [form, setForm] = useState(configuracion);
@@ -76,7 +81,7 @@ export default function ConfigPage() {
       label: 'Seguridad y Sistema',
       items: [
         { id: 'seguridad', label: 'Mi Perfil/Equipo', icon: ShieldCheck, perm: PERMISOS.CONF_USUARIOS_VER },
-        { id: 'multicaja', label: 'Multi-Caja', icon: Cable, perm: PERMISOS.CONF_SISTEMA_VER },
+        { id: 'multicaja', label: 'Multi-Caja', icon: Cable, perm: PERMISOS.CONF_NEGOCIO_VER, feature: FEATURES.MULTI_CAJA }, // 🟢 ONLY ABASTO+
         { id: 'salud', label: 'Salud de Datos', icon: Database, perm: PERMISOS.CONF_SISTEMA_VER },
         { id: 'actualizaciones', label: 'Actualizaciones', icon: RefreshCw, perm: PERMISOS.CONF_SISTEMA_VER },
       ]
@@ -93,6 +98,7 @@ export default function ConfigPage() {
       'finanzas': PERMISOS.CONF_FINANZAS_EDITAR,
       'inventario': PERMISOS.INV_EDITAR,
       'seguridad': PERMISOS.CONF_USUARIOS_EDITAR,
+      'multicaja': PERMISOS.CONF_NEGOCIO_EDITAR, // 🟢 Agregado mapping
       'salud': PERMISOS.CONF_SISTEMA_EDITAR,
       'ghost': PERMISOS.CONF_SISTEMA_EDITAR
     };
@@ -164,6 +170,7 @@ export default function ConfigPage() {
               <div className="space-y-1">
                 {group.items.map(item => {
                   if (item.perm && !tienePermiso(item.perm)) return null;
+                  if (item.feature && !hasFeature(currentPlan, item.feature)) return null; // 🆕 Feature Check
                   return (
                     <button
                       key={item.id}

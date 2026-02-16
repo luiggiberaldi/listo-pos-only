@@ -54,18 +54,25 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
   const cambiarTipoTasa = (tipo) => {
     if (readOnly) return;
     setForm(prev => ({ ...prev, tipoTasa: tipo }));
+    // 🆕 Auto-sync al cambiar moneda para evitar confusión (Tasa anterior con Moneda nueva)
+    // Usamos timeout para permitir que el estado local se actualice o pasamos el tipo directo
+    setTimeout(() => ejecutarSincronizacion(tipo), 100);
   };
 
   // ✅ FUNCIÓN DE SINCRONIZACIÓN (Bypass intacto)
-  const ejecutarSincronizacion = async () => {
+  const ejecutarSincronizacion = async (tipoOverride = null) => {
     setLocalLoading(true);
     try {
-      const nuevaTasa = await obtenerTasaBCV(true, form.modoRedondeo, form.tipoTasa);
+      // FIX: Si viene de onClick, tipoOverride es un Evento (Objeto). Ignorarlo.
+      const tipo = (typeof tipoOverride === 'string') ? tipoOverride : form.tipoTasa;
+
+      // FIX: obtenerTasaBCV solo recibe (forzar, monedaOverride, redondeoOverride)
+      const nuevaTasa = await obtenerTasaBCV(true, tipo, form.modoRedondeo);
       if (nuevaTasa) {
         setForm(prev => ({
           ...prev,
           tasa: nuevaTasa,
-          tipoTasa: form.tipoTasa
+          tipoTasa: tipo
         }));
       }
     } catch (error) {
@@ -103,6 +110,119 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
 
       {/* === SECCIÓN ÚNICA: MÉTODOS DE PAGO (FULL WIDTH) === */}
       <div className="lg:col-span-12 flex flex-col h-full">
+
+        {/* ===================================== */}
+        {/* 💵 ZONA: TASA DE CAMBIO (RESTORED) */}
+        {/* ===================================== */}
+        {!readOnly && (
+          <div className="mb-6 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shadow-sm">
+                  {monedaIcono}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                    Tasa de Cambio
+                    {localLoading && <RefreshCw className="animate-spin text-slate-400" size={14} />}
+                  </h3>
+                  <p className="text-sm text-slate-500">Valor de referencia para conversiones</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                <button
+                  onClick={() => cambiarTipoTasa('USD')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${form.tipoTasa === 'USD' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                >
+                  USD ($)
+                </button>
+                <button
+                  onClick={() => cambiarTipoTasa('EUR')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${form.tipoTasa === 'EUR' ? 'bg-white dark:bg-slate-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+                >
+                  EUR (€)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6 items-end">
+              <div className="flex-1 w-full relative group">
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block group-focus-within:text-emerald-500 transition-colors">
+                  Valor Actual (Bs por {monedaTexto})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.tasa || ''}
+                  onChange={e => setForm(prev => ({ ...prev, tasa: parseFloat(e.target.value) || 0 }))}
+                  className="w-full text-2xl font-black bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-0 outline-none transition-all text-slate-800 dark:text-white"
+                  placeholder="0.00"
+                />
+                <div className="absolute right-4 top-10 text-emerald-500 opacity-50 font-bold text-sm pointer-events-none">Bs.</div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <button
+                  onClick={ejecutarSincronizacion}
+                  disabled={localLoading}
+                  className="flex-1 sm:flex-none h-[52px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                  title="Sincronizar con BCV/Paralelo"
+                >
+                  <RefreshCw size={18} className={localLoading ? 'animate-spin' : ''} />
+                  {localLoading ? 'Sincronizando...' : 'Sincronizar'}
+                </button>
+              </div>
+            </div>
+
+            {/* 🆕 MODO DE REDONDEO */}
+            <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
+              <span className="text-xs font-bold text-slate-500 uppercase">Modo Redondeo</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setForm(prev => ({ ...prev, modoRedondeo: 'exacto' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'exacto' ? 'bg-white shadow text-emerald-600 border border-emerald-200' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Exacto
+                </button>
+                <button
+                  onClick={() => setForm(prev => ({ ...prev, modoRedondeo: 'entero' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'entero' ? 'bg-white shadow text-blue-600 border border-blue-200' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Entero (0)
+                </button>
+                <button
+                  onClick={() => setForm(prev => ({ ...prev, modoRedondeo: 'multiplo5' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'multiplo5' ? 'bg-white shadow text-purple-600 border border-purple-200' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Múltiplo 5
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={form.autoUpdateTasa}
+                    onChange={e => setForm(prev => ({ ...prev, autoUpdateTasa: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                </div>
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">
+                  Actualización Automática (Diaria)
+                </span>
+              </label>
+
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                Última: {form.fechaTasa ? new Date(form.fechaTasa).toLocaleDateString() : 'N/A'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* 🆕 ZONA DE IMPUESTOS GENERALES (IVA) */}
         {!readOnly && (

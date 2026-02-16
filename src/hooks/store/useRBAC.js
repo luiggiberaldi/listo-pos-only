@@ -3,6 +3,7 @@
 // Evolución: Ahora consume la configuración centralizada src/config/permissions.js
 
 import { ROLES, ROLE_PERMISSIONS, ROLE_META } from '../../config/permissions';
+import { PLAN_REQUIREMENTS, hasFeature } from '../../config/planTiers';
 
 export const useRBAC = (usuarioActivo) => {
 
@@ -15,6 +16,26 @@ export const useRBAC = (usuarioActivo) => {
     if (!usuarioActivo) return false;
 
     const userRole = usuarioActivo.roleId;
+
+    // 0. 🛑 PLAN LIMITS (HARD CEILING)
+    // Primero validamos si el PLAN ACTIVO permite esta funcionalidad.
+    // Esto sobreescribe cualquier rol (incluso Admin), porque si no pagas, no lo tienes.
+    const requiredFeature = PLAN_REQUIREMENTS[permission];
+    if (requiredFeature) {
+      const currentPlanId = localStorage.getItem('listo_plan') || 'bodega'; // Fallback a lo más básico
+      const planAllows = hasFeature(currentPlanId, requiredFeature);
+
+      if (!planAllows) {
+        // 🔓 EXCEPCIÓN: GOD MODE (Developer/Owner real debugging)
+        // Si es usuario ID 1 Y está en modo DEV, permitimos bypass.
+        // Pero para uso normal, se bloquea.
+        if (usuarioActivo.id === 1 && localStorage.getItem('dev_mode') === 'true') {
+          // Pass through to Role check
+        } else {
+          return false;
+        }
+      }
+    }
 
     // 1. 👑 SUPERUSER OVERRIDE
     // Si es el Dueño o Admin global, siempre True (God Mode)

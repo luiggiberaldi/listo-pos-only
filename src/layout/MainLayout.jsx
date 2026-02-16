@@ -22,6 +22,7 @@ import SecurityReportPanel from '../components/security/SecurityReportPanel';
 import SecurityCriticalGate from '../components/security/SecurityCriticalGate';
 import { useListoGoSync } from '../hooks/sync/useListoGoSync';
 import { useRemoteTasa } from '../hooks/sync/useRemoteTasa';
+import { useLanSync } from '../hooks/sync/useLanSync'; // 🆕 Multi-Caja Hook
 import UserProfileModal from '../components/user/UserProfileModal'; // 🆕 Zona de Usuario
 
 // ⚡ PERFORMANCE: Memoized — recibe isActive como prop para evitar N×useLocation()
@@ -83,6 +84,9 @@ export default function MainLayout() {
 
   // 🔄 BACKGROUND SERVICES (useListoGoSync ya se ejecuta en App.jsx — NO duplicar)
   useRemoteTasa();
+
+  // 📡 LAN SYNC STATUS
+  const { role: lanRole, synced: lanSynced, error: lanError } = useLanSync();
 
   const canSell = tienePermiso(PERMISOS.POS_ACCESO);
   const canCloseBox = tienePermiso(PERMISOS.CAJA_CERRAR);
@@ -217,14 +221,28 @@ export default function MainLayout() {
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-[9px] font-bold text-primary uppercase tracking-wider">{usuario?.rol || 'Invitado'}</span>
 
-                  {/* Status Badge */}
-                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${isOnline
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
-                    <span className="text-[9px] font-bold leading-none pb-[1px]">
-                      {isOnline ? 'En Línea' : 'Offline'}
-                    </span>
+                  {/* Status Badges Row */}
+                  <div className="flex items-center gap-1">
+                    {/* 1. Internet Status OLD */}
+                    {/* <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border ${isOnline
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'}`}>
+                        <div className={`w-1 h-1 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                      </div> */}
+
+                    {/* 2. LAN Status Badge */}
+                    {lanRole === 'principal' && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full border bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400">
+                        <Wifi size={8} />
+                        <span className="text-[8px] font-bold leading-none pb-[1px]">SERVER</span>
+                      </div>
+                    )}
+                    {lanRole === 'secundaria' && (
+                      <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border ${lanError ? 'bg-red-500/10 border-red-500/20 text-red-600' : (lanSynced ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-orange-500/10 border-orange-500/20 text-orange-600')}`}>
+                        {lanError ? <WifiOff size={8} /> : (lanSynced ? <Wifi size={8} /> : <Loader2 size={8} className="animate-spin" />)}
+                        <span className="text-[8px] font-bold leading-none pb-[1px]">{lanError ? 'ERROR' : (lanSynced ? 'SYNC' : 'CONNECTING')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

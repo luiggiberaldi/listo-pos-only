@@ -213,7 +213,7 @@ function App() {
                   <Route
                     path="reportes"
                     element={
-                      <PlanGate requiredFeature={FEATURES.REPORTES}>
+                      <PlanGate requiredFeature={FEATURES.REPORTES_AVANZADOS}>
                         <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_DASHBOARD}>
                           <ReportesPage />
                         </RouteGuard>
@@ -237,7 +237,7 @@ function App() {
                   <Route
                     path="historial-ventas"
                     element={
-                      <PlanGate requiredFeature={FEATURES.HISTORIAL}>
+                      <PlanGate requiredFeature={FEATURES.HISTORIAL_BASICO}>
                         <RouteGuard requiredPermiso={PERMISSIONS.REP_VER_VENTAS}>
                           <SalesHistoryPage />
                         </RouteGuard>

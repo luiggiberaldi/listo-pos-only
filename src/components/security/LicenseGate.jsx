@@ -356,46 +356,68 @@ export default function LicenseGate({ children }) {
 
     // 3. UNAUTHORIZED (LOCAL CHECKS - Hardware Mismatch)
     // Pantalla Azul/Profesional (EL PORTERO BUENO 👮‍♂️)
+    // 3. UNAUTHORIZED (LOCAL CHECKS - Hardware Mismatch)
+    // Pantalla Azul/Profesional (EL PORTERO BUENO 👮‍♂️)
     const handleUnlock = async () => {
         if (!inputCode.trim()) return;
         setIsUnlocking(true);
         setActivationError(null);
 
         try {
-            // 🛑 CRITICAL FIX: VALIDACIÓN REAL SIN RELOAD
-            // Calcular el hash esperado del código ingresado para ver si coincide
-            // PERO la lógica de useLicenseGuard compara ID+SALT.
-            // Aquí el usuario ingresa el HASH resultante (la licencia).
-            // Lo que debemos hacer es guardar lo que el usuario escribió y RELOAD
-            // para que useLicenseGuard haga su chequeo.
-
-            // ESPERA: Si ya probamos y falló, es un bucle.
-            // Vamos a verificar AQUI MISMOS si el código es válido antes de guardar y recargar.
-
-            const currentId = machineId; // Ya lo tenemos del hook
+            const currentId = machineId;
             if (!currentId) throw new Error("No Hardware ID found");
 
-            const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+            // Normalizar entrada (JWT debe ser exacto, sin espacios)
+            const userKey = inputCode.trim();
 
-            // Normalizar entrada
-            const userKey = inputCode.trim().toUpperCase();
+            // 🛡️ FÉNIX V2: Verificar Firma (Pre-Validación UI)
+            // Importamos dinámicamente para no cargar librerías si no se usan
+            const { FENIX_PUBLIC_KEY } = await import('../../config/fenix_public_key');
+            const { KJUR } = await import('jsrsasign');
 
-            if (userKey === expectedLicense) {
-                // ✅ ÉXITO: Guardamos y recargamos
-                localStorage.setItem('listo_license_key', inputCode.trim().toUpperCase());
-                window.location.reload();
-            } else {
-                // ❌ FALLO: Mostrar error sin recargar
+            try {
+                // Intento 1: Es un JWT (V2)
+                if (userKey.includes('.')) {
+                    const isValid = KJUR.jws.JWS.verify(userKey, FENIX_PUBLIC_KEY, ['RS256']);
+                    if (isValid) {
+                        const payload = KJUR.jws.JWS.readSafeJSONString(userKey.split('.')[1]);
+                        if (payload.id === currentId) {
+                            // ✅ ÉXITO V2
+                            localStorage.setItem('listo_license_key', userKey);
+                            window.location.reload();
+                            return;
+                        } else {
+                            throw new Error("Esta licencia pertenece a OTRO equipo (ID Mismatch).");
+                        }
+                    } else {
+                        throw new Error("Firma digital corrupta o inválida.");
+                    }
+                } else {
+                    // Intento 2: Legacy (V1 - Hash)
+                    // TODO: Eliminar en Q4-2026
+                    const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+                    if (userKey.toUpperCase() === expectedLicense) {
+                        localStorage.setItem('listo_license_key', userKey.toUpperCase());
+                        window.location.reload();
+                        return;
+                    } else {
+                        throw new Error("Código de activación incorrecto.");
+                    }
+                }
+
+            } catch (validationError) {
+                console.error("Validation failed:", validationError);
+                setActivationError(validationError.message || "Licencia inválida.");
                 setIsUnlocking(false);
-                setActivationError("La llave de activación es incorrecta para este Hardware ID.");
             }
 
         } catch (error) {
-            console.error("Lock error", error);
-            setActivationError("Error validando licencia.");
+            console.error("Lock system error", error);
+            setActivationError("Error del sistema de seguridad.");
             setIsUnlocking(false);
         }
     };

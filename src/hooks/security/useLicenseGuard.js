@@ -25,7 +25,7 @@ export const useLicenseGuard = () => {
         return () => { mounted = false; };
     }, []);
 
-    // 1. VERIFICACIÓN DE INTEGRIDAD LOCAL (HARDWARE BINDING)
+    // 1. VERIFICACIÓN DE INTEGRIDAD LOCAL (HARDWARE BINDING - FÉNIX v2)
     useEffect(() => {
         // 👻 GHOST BYPASS: Permitir acceso total si estamos en simulación
         if (localStorage.getItem('ghost_bypass') === 'true') {
@@ -38,7 +38,6 @@ export const useLicenseGuard = () => {
         const verifyLicense = async () => {
             try {
                 // Fail-Safe: Revisar bloqueo persistente (System Lock Only)
-                // ⚠️ Solo bloqueos ADMNISTRATIVOS (Master) activan la pantalla roja
                 if (localStorage.getItem('listo_lock_down') === 'true') {
                     setIsSuspended(true);
                 }
@@ -50,7 +49,7 @@ export const useLicenseGuard = () => {
                 if (isElectron) {
                     currentId = await window.electronAPI.getMachineId();
                 } else {
-                    // MODO WEB (FALLBACK): Usamos el System ID (el mismo que usa Telemetría)
+                    // MODO WEB (FALLBACK): Usamos el System ID
                     currentId = localStorage.getItem('sys_installation_id');
                     if (!currentId) {
                         currentId = crypto.randomUUID();
@@ -60,27 +59,61 @@ export const useLicenseGuard = () => {
 
                 setMachineId(currentId);
 
-                // LÓGICA DE VALIDACIÓN (LAYER 1)
-                // 🚨 SECURITY FIX: Ya no confiamos ciegamente en WEB.
-                // Todo terminal debe tener licencia válida o estar en proceso de activación.
+                // LÓGICA DE VALIDACIÓN (LAYER 1 - ASIMÉTRICA)
+                const storedLicense = localStorage.getItem('listo_license_key');
 
-                // Generar Hash Esperado (ID + SALT)
-                const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+                if (!storedLicense) {
+                    console.warn("⚠️ [FÉNIX] Licencia local no encontrada.");
+                    setStatus('unauthorized');
+                    return;
+                }
 
-                // Comparar con Licencia Almacenada
-                const storedLicense = localStorage.getItem('listo_license_key')?.toUpperCase();
+                // 🛡️ FÉNIX V2: Verificar Firma RSA
+                try {
+                    const { FENIX_PUBLIC_KEY } = await import('../../config/fenix_public_key');
+                    const { KJUR } = await import('jsrsasign');
 
-                if (storedLicense === expectedLicense) {
-                    setStatus('authorized');
-                } else {
-                    // Si no tiene licencia local, tal vez es nuevo.
-                    // NO bloqueamos inmediatamente si es Web start-up, pero
-                    // el Cloud Lock (Layer 2) decidirá si lo deja pasar o no.
-                    // Por defecto: Unauthorized hasta que se demuestre lo contrario.
-                    console.warn("⚠️ [FÉNIX] Licencia local no encontrada o inválida.");
+                    // 1. Verificar firma (RS256)
+                    const isValid = KJUR.jws.JWS.verify(storedLicense, FENIX_PUBLIC_KEY, ['RS256']);
+
+                    if (isValid) {
+                        // 2. Leer Payload
+                        const payload = KJUR.jws.JWS.readSafeJSONString(storedLicense.split('.')[1]);
+
+                        // 3. Verificar ID (Anti-Clonación)
+                        if (payload.id === currentId) {
+                            console.log("✅ [FÉNIX] Licencia OFFLINE verificada y válida.");
+                            setStatus('authorized');
+                            // Aplicar Plan Localmente (Offline Capability)
+                            if (payload.plan) {
+                                setPlan(payload.plan);
+                                localStorage.setItem('listo_plan', payload.plan);
+                            }
+                        } else {
+                            console.error("⛔ [FÉNIX] CLON DETECTADO. ID Licencia:", payload.id, "vs Hardware:", currentId);
+                            setStatus('unauthorized'); // Mismatch
+                        }
+                    } else {
+                        // Fallback V1 (Hash Legacy) - Solo por transición, eventualmente eliminar.
+                        // SI la licencia NO es un JWT (no tiene puntos), probamos el hash antiguo.
+                        if (!storedLicense.includes('.')) {
+                            const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
+                            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                            const hashArray = Array.from(new Uint8Array(hashBuffer));
+                            const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+                            if (storedLicense === expectedLicense) {
+                                console.warn("⚠️ [FÉNIX] Usando Licencia LEGACY (V1). Se recomienda actualizar.");
+                                setStatus('authorized');
+                                return;
+                            }
+                        }
+
+                        console.error("❌ [FÉNIX] Firma digital inválida.");
+                        setStatus('unauthorized');
+                    }
+                } catch (cryptoError) {
+                    console.error("❌ [FÉNIX] Error criptográfico:", cryptoError);
                     setStatus('unauthorized');
                 }
 

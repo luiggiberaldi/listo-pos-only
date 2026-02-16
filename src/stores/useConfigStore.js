@@ -122,7 +122,7 @@ export const useConfigStore = create(
             },
 
             // TASA LOGIC
-            obtenerTasaBCV: async (forzar = false, monedaOverride = null) => {
+            obtenerTasaBCV: async (forzar = false, monedaOverride = null, redondeoOverride = null) => {
                 const { configuracion, setConfiguracion } = get();
                 if (!forzar && !configuracion.autoUpdateTasa) return false;
 
@@ -137,6 +137,7 @@ export const useConfigStore = create(
                         background: '#1e293b', color: '#fff'
                     });
                 }
+
 
                 // Providers List (Hardcoded here for store simplicity)
                 const proveedores = [
@@ -175,7 +176,19 @@ export const useConfigStore = create(
                 if (valFinal) {
                     // Update Logic
                     const rawTasa = parseMoney(valFinal);
-                    const tasaFinal = configuracion.modoRedondeo === 'exacto' ? rawTasa : parseFloat(rawTasa.toFixed(2));
+                    const modoRedondeo = redondeoOverride || configuracion.modoRedondeo;
+
+                    // Lógica del Dashboard ("Inicio"): Múltiplos de 5 enteros (HACIA ARRIBA)
+                    let tasaFinal;
+
+                    if (modoRedondeo === 'entero') {
+                        tasaFinal = Math.ceil(rawTasa);
+                    } else if (modoRedondeo === 'multiplo5') {
+                        tasaFinal = Math.ceil(rawTasa / 5) * 5;
+                    } else {
+                        // 'exacto' (default)
+                        tasaFinal = rawTasa;
+                    }
 
                     setConfiguracion({
                         tasa: tasaFinal,

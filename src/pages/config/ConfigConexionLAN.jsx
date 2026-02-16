@@ -3,7 +3,7 @@
 // UI para configurar Multi-Caja (LAN Sync)
 
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Monitor, MonitorSmartphone, CheckCircle, XCircle, Loader2, Cable } from 'lucide-react';
+import { Wifi, WifiOff, Monitor, MonitorSmartphone, CheckCircle, XCircle, Loader2, Cable, RefreshCw } from 'lucide-react';
 import { pingServer } from '../../services/lanSyncService';
 
 export default function ConfigConexionLAN({ onConfigChange }) {
@@ -199,17 +199,59 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                 placeholder="Ej: 192.168.1.100"
                                 className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-center text-lg focus:ring-2 focus:ring-orange-300 outline-none"
                             />
+
+                            {/* BOTON PROBAR */}
                             <button
                                 onClick={handleTestConnection}
                                 disabled={!targetIP || testStatus === 'testing'}
                                 className="px-5 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-bold rounded-xl transition-all flex items-center gap-2"
                             >
-                                {testStatus === 'testing' ? (
-                                    <Loader2 size={18} className="animate-spin" />
-                                ) : (
-                                    <Wifi size={18} />
-                                )}
+                                {testStatus === 'testing' ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                                 Probar
+                            </button>
+                        </div>
+
+                        {/* 🔍 AUTO ESCANEO */}
+                        <div className="mt-2 flex justify-end">
+                            <button
+                                onClick={async () => {
+                                    setTestStatus('testing');
+                                    // Lógica simple de escaneo (misma que useLanSync pero inline para evitar props drilling complejo hoy)
+                                    const baseIP = localIP.split('.').slice(0, 3).join('.');
+                                    let found = null;
+
+                                    // Barrido rápido .1 a .20
+                                    const scan = async (ip) => {
+                                        try {
+                                            const c = new AbortController();
+                                            setTimeout(() => c.abort(), 500);
+                                            const r = await fetch(`http://${ip}:3847/api/ping`, { signal: c.signal });
+                                            if (r.ok) return ip;
+                                        } catch { }
+                                        return null;
+                                    };
+
+                                    const promises = [];
+                                    for (let i = 1; i < 255; i++) promises.push(scan(`${baseIP}.${i}`));
+
+                                    const results = await Promise.all(promises);
+                                    found = results.find(ip => ip);
+
+                                    if (found) {
+                                        setTargetIP(found);
+                                        setTestStatus('success');
+                                        // Auto-fetch info
+                                        const r = await fetch(`http://${found}:3847/api/ping`);
+                                        const info = await r.json();
+                                        setServerInfo(info);
+                                    } else {
+                                        setTestStatus('error');
+                                        alert("No se encontró ninguna Caja Principal en la red.");
+                                    }
+                                }}
+                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                                <RefreshCw size={14} /> Auto-detectar servidor
                             </button>
                         </div>
                     </div>
@@ -233,7 +275,7 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                             <div>
                                 <p className="font-bold text-red-700 dark:text-red-300">No se pudo conectar</p>
                                 <p className="text-sm text-red-600">
-                                    Verifica que el cable esté conectado y la IP sea correcta
+                                    Verifica estar en la misma red WiFi/Cable.
                                 </p>
                             </div>
                         </div>

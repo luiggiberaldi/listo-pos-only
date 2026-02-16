@@ -12,7 +12,7 @@ import { ghostMemory } from "./ghost/GhostMemory";
 import { ghostContext } from "./ghost/GhostContext";
 import { ghostPrompt } from "./ghost/GhostPrompt";
 
-import { secretsService } from "../config/SecretsService";
+import { secretsService } from "./config/SecretsService";
 
 class GhostAIService {
     constructor() {
