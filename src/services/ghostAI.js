@@ -37,26 +37,18 @@ class GhostAIService {
     }
 
     loadKeys() {
-        this.keys = [
-            secretsService.get('VITE_GEMINI_API_KEY'),      // KEY A
-            secretsService.get('VITE_GEMINI_API_KEY_2')     // KEY B
-        ].filter(k => !!k);
+        // Enforce Groq/OpenRouter only. Gemini is disabled.
+        this.keys = [];
     }
 
     initModels() {
-        this.models = this.keys.map(key => {
-            const genAI = new GoogleGenerativeAI(key);
-            return genAI.getGenerativeModel({
-                model: import.meta.env.VITE_GEMINI_MODEL || "gemini-2.5-flash"
-            });
-        });
+        // No Gemini models to init.
+        this.models = [];
     }
 
     reloadKeys() {
-        console.log("🔄 GhostAI: Reloading Keys from SecretsService...");
-        this.loadKeys();
-        this.initModels();
-        console.log(`✅ GhostAI: Keys reloaded. Available Keys: ${this.keys.length}`);
+        console.log("🔄 GhostAI: Reloading Keys (Groq/OpenRouter Only)...");
+        // No local keys to reload for Gemini. Providers like Groq handle their own keys via SecretsService.
     }
 
     /**
@@ -96,25 +88,9 @@ class GhostAIService {
     }
 
     // --- FAILOVER LOGIC ---
+    // Deprecated for Gemini-less mode, kept for interface compatibility if needed
     async withFailover(operation) {
-        let attempts = 0;
-        while (attempts < this.keys.length) {
-            try {
-                return await operation(this.models[this.currentKeyIndex], this.currentKeyIndex);
-            } catch (error) {
-                const isThrottled = error.message.includes('429') || error.message.includes('quota');
-                const isOverloaded = error.message.includes('503') || error.message.includes('overloaded');
-
-                if (isThrottled || isOverloaded) {
-                    console.warn(`🔥 Gemini Node ${this.currentKeyIndex} Busy. Switching...`);
-                    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.keys.length;
-                    attempts++;
-                } else {
-                    throw error;
-                }
-            }
-        }
-        throw new Error("ALL_NODES_EXHAUSTED_OR_ERROR");
+        throw new Error("GEMINI_DISABLED");
     }
 
     // --- MAIN GENERATION FLOW ---
@@ -221,19 +197,8 @@ class GhostAIService {
                 }
             }
 
-            // Priority 3: Gemini Cloud
-            if (!responseText) {
-                try {
-                    const response = await this.withFailover(async (model) => {
-                        return await model.generateContent(systemPrompt);
-                    });
-                    responseText = response.response.text();
-                    provider = "GEMINI";
-                    modelName = "gemini-2.5-flash";
-                } catch (e) {
-                    console.warn(`⚠️ Gemini failed: ${e.message}`);
-                }
-            }
+            // Priority 3: Gemini Cloud (DISABLED)
+            // if (!responseText) { ... }
 
             // Priority 4: Local RAG Fallback
             if (!responseText) {

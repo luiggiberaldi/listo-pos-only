@@ -48,10 +48,9 @@ import { auditFiscalLogic } from './utils/fiscal_lock';
 function PlanGatedHome() {
   const { license } = useConfigStore();
   const plan = license?.plan || 'bodega';
-  if (hasFeature(plan, FEATURES.DASHBOARD)) {
-    return <Dashboard />;
-  }
-  return <PosPage />;
+  // 🏪 DASHBOARD LITE FOR ALL PLANS
+  // El Dashboard ahora es "Smart" y oculta widgets según el Plan.
+  return <Dashboard />;
 }
 
 function App() {
