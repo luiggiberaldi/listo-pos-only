@@ -32,7 +32,19 @@ export const SalesService = {
         // 🛡️ DEMO SHIELD: QUOTA CHECK
         // (Simplified for Service: Logic should be in Guard, but we keep critical check)
         const { getLifetimeSales } = await import('../../db');
-        const { license } = await import('../../stores/useConfigStore').then(m => m.useConfigStore.getState());
+        let license = { isDemo: false, quotaLimit: 9999 };
+
+        try {
+            const mod = await import('../../stores/useConfigStore');
+            if (mod && mod.useConfigStore && typeof mod.useConfigStore.getState === 'function') {
+                const state = mod.useConfigStore.getState();
+                if (state && state.license) {
+                    license = state.license;
+                }
+            }
+        } catch (error) {
+            console.warn("⚠️ SalesService: Could not load ConfigStore (Quota check skipped).", error);
+        }
 
         if (license && license.isDemo) {
             const currentCount = await getLifetimeSales();

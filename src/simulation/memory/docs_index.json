@@ -3493,5 +3493,25 @@
     "title": "Solución de Problemas Listo GO",
     "text": "# Solución de Problemas Listo GO\n\n## No se actualizan los datos\n1. Verifica que \"Sincronización Nube\" esté **ACTIVO** en **Configuración > Sistema > Salud de Datos**.\n2. Revisa tu conexión a internet.\n\n## Pausar Sincronización\nSi tienes internet muy lento y el sistema se siente pesado, puedes pausar el envío de datos:\n1. Ve a **Configuración > Salud de Datos**.\n2. Apaga el switch \"Sincronización Nube\".\n3. Recuerda activarlo luego para actualizar tu App.",
     "source": "11-configuracion-sistema-seguridad.md"
+  },
+  {
+    "title": "🏪 Plan BODEGA (Básico)",
+    "text": "### 🏪 Plan BODEGA (Básico)\r\nDiseñado para pequeños comercios, kioscos y emprendimientos iniciales.\r\n- **Cajas:** 1 Caja máxima.\r\n- **Ideal para:** Negocios que facturan rápido y necesitan control de inventario simple.\r\n- **Identidad:** Color Ámbar (Naranja).\r\n\r\n**Funcionalidades Incluidas:**\r\n- ✅ **POS (Punto de Venta):** Facturación rápida, escáner, tickets.\r\n- ✅ **Inventario Básico:** Control de stock, alertas de agotados.\r\n- ✅ **Corte Z:** Cierre de caja y reporte diario simple.\r\n- ✅ **Historial de Ventas:** Consulta de transacciones pasadas.\r\n- ✅ **Configuración Básica:** Datos del negocio e impuestos.",
+    "source": "15-planes-listo.md"
+  },
+  {
+    "title": "🛒 Plan ABASTO (Intermedio)",
+    "text": "### 🛒 Plan ABASTO (Intermedio)\r\nPara abastos medianos, charcuterías y tiendas de conveniencia que requieren más control y gestión de clientes.\r\n- **Cajas:** 2 Cajas simultáneas.\r\n- **Ideal para:** Negocios con flujo moderado y necesidad de crédito o pesaje.\r\n- **Identidad:** Color Azul.\r\n\r\n**Todo lo de Bodega MÁS:**\r\n- ✅ **Gestión de Clientes:** Base de datos, historial de compras.\r\n- ✅ **Fiado/Crédito:** Cuentas por cobrar y abonos.\r\n- ✅ **Control de Gastos:** Registro de egresos de caja.\r\n- ✅ **Reportes Financieros:** Total diario detallado, ganancias netas.\r\n- ✅ **Categorías:** Organización de productos por grupos.\r\n- ✅ **Kardex:** Auditoría de movimientos de inventario.\r\n- ✅ **Pesaje:** Integración con balanzas (códigos de peso variable).\r\n- ✅ **Multi-Caja:** Soporte para una segunda caja (Antena B).",
+    "source": "15-planes-listo.md"
+  },
+  {
+    "title": "🏬 Plan MINIMARKET (Avanzado)",
+    "text": "### 🏬 Plan MINIMARKET (Avanzado)\r\nLa experiencia completa para supermercados, cadenas y negocios de alto volumen.\r\n- **Cajas:** Ilimitadas (hasta 99).\r\n- **Ideal para:** Supermercados con múltiples pasillos y personal administrativo.\r\n- **Identidad:** Color Esmeralda (Verde).\r\n\r\n**Todo lo de Abasto MÁS:**\r\n- ✅ **Dashboard Analytics:** Gráficos en tiempo real, KPIs avanzados.\r\n- ✅ **Reportes Avanzados:** Exportación, filtros profundos.\r\n- ✅ **Auditoría de Seguridad:** Logs de acciones sensibles.\r\n- ✅ **Ghost AI:** Asistente inteligente para consultas operativas.\r\n- ✅ **Ghost Analytics:** IA analizando tus ventas y tendencias.\r\n- ✅ **Knowledge Base:** Acceso a documentación integrada.\r\n- ✅ **Simulador:** Entorno de pruebas seguro.\r\n- ✅ **Roles y Permisos:** Gestión granular de usuarios (Gerente, Admin).\r\n- ✅ **Configuración Avanzada:** Personalización profunda del sistema.\r\n- ✅ **Diseñador de Etiquetas:** Creación de etiquetas de góndola.",
+    "source": "15-planes-listo.md"
+  },
+  {
+    "title": "Comparativa de Planes Listo POS",
+    "text": "## Comparativa Rápida\r\n\r\n| Feature | 🏪 Bodega | 🛒 Abasto | 🏬 Minimarket |\r\n| :--- | :---: | :---: | :---: |\r\n| Máx. Cajas | 1 | 2 | 99 |\r\n| Inventario | ✅ | ✅ | ✅ |\r\n| Clientes/Fiado | ❌ | ✅ | ✅ |\r\n| Gastos | ❌ | ✅ | ✅ |\r\n| Balanza | ❌ | ✅ | ✅ |\r\n| Dashboard | ❌ | ❌ | ✅ |\r\n| Ghost AI | ❌ | ❌ | ✅ |\r\n| Roles | ❌ | ❌ | ✅ |\r\n\r\n*Nota: Los planes son acumulativos. Minimarket incluye TODO lo anterior.*",
+    "source": "15-planes-listo.md"
   }
 ]
