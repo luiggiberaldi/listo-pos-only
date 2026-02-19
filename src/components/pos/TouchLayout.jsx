@@ -164,8 +164,10 @@ export default function TouchLayout({
     multiplicadorPendiente, // 🆕
     handlePrintSaldo, // 🆕
     onCloseSuccess, // 🆕
-    tasaInvalida, // 🚫 NEW
-    handlers, // ✅ NEW: Atomic Handlers
+    tasaInvalida,
+    tasaStale,
+    onRefreshTasa,
+    handlers,
     children
 }) {
     const {
@@ -303,6 +305,14 @@ export default function TouchLayout({
                             </p>
                         </div>
                     </div>
+
+                    {/* ⚠️ P3: STALE RATE WARNING BANNER */}
+                    {tasaStale && !tasaInvalida && (
+                        <div className="mb-3 bg-amber-50 text-amber-700 px-4 py-2 rounded-2xl border border-amber-200 flex items-center justify-between text-xs font-bold">
+                            <span>⚠️ Tasa &gt; 24h sin actualizar</span>
+                            <button onClick={onRefreshTasa} className="underline">Actualizar</button>
+                        </div>
+                    )}
 
                     {/* 🚫 WARNING BANNER */}
                     {tasaInvalida && (

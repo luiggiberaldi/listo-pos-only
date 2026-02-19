@@ -1,4 +1,4 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 2.0 (LAN SYNC SERVICE — HARDENED)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.0 (LAN SYNC SERVICE — HARDENED + AUTH)
 // Archivo: src/services/lanSyncService.js
 // Protecciones implementadas:
 //   1. Retry con exponential backoff
@@ -6,6 +6,8 @@
 //   3. Stock-aware sync (no sobrescribir stock si hay decrementos locales pendientes)
 //   4. Deduplicación de updates
 //   5. Heartbeat con auto-reconnect
+//   6. [FIX C1] Auth token en todas las requests al servidor Master
+//   7. [FIX M6] Normalización de nombres (tildes/acentos)
 
 import { db } from '../db';
 
@@ -13,6 +15,7 @@ const LAN_PORT = 3847;
 const POLL_INTERVAL = 5000;
 const MAX_BACKOFF = 30000; // 30s máximo entre reintentos
 const QUEUE_KEY = 'listo-lan-pending-queue'; // localStorage key
+const TOKEN_KEY = 'listo-lan-auth-token'; // [FIX C1] Token de autenticación
 
 let _serverIP = null;
 let _polling = false;
@@ -24,6 +27,7 @@ let _onStatusChange = null;
 let _status = 'disconnected';
 let _consecutiveFailures = 0;
 let _lastFullSyncSuccess = 0;
+let _lanToken = null; // [FIX C1] Token recibido del Master
 
 // ═══════════════════════════════════════════════════════════
 // 🔧 HELPERS
@@ -56,6 +60,17 @@ function restoreQueue() {
     } catch { /* corrupto — ignorar */ }
 }
 
+/** Restaurar token de auth desde localStorage */
+function restoreToken() {
+    try {
+        const saved = localStorage.getItem(TOKEN_KEY);
+        if (saved) {
+            _lanToken = saved;
+            console.log(`🔑 [LAN SYNC] Token de auth restaurado`);
+        }
+    } catch { /* ignore */ }
+}
+
 /** Calcular delay con exponential backoff */
 function getBackoffDelay() {
     const base = Math.min(1000 * Math.pow(2, _consecutiveFailures), MAX_BACKOFF);
@@ -63,11 +78,18 @@ function getBackoffDelay() {
     return base + Math.random() * base * 0.5;
 }
 
+// [FIX M6] Normalizar nombre (tildes, espacios, case)
+function normalizeName(name) {
+    if (!name || typeof name !== 'string') return '';
+    return name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /** Deduplicar updates: sumar deltas del mismo producto */
 function deduplicateUpdates(updates) {
     const map = new Map();
     for (const u of updates) {
-        const key = u.nombre?.trim().toLowerCase();
+        // [FIX M6] Usar nombre normalizado como key
+        const key = normalizeName(u.nombre);
         if (!key) continue;
         if (map.has(key)) {
             const existing = map.get(key);
@@ -80,6 +102,15 @@ function deduplicateUpdates(updates) {
     return Array.from(map.values());
 }
 
+// [FIX C1] 🔑 Construir headers con auth token
+function getAuthHeaders(extraHeaders = {}) {
+    const headers = { ...extraHeaders };
+    if (_lanToken) {
+        headers['Authorization'] = `Bearer ${_lanToken}`;
+    }
+    return headers;
+}
+
 // ═══════════════════════════════════════════════════════════
 // 🌐 CONEXIÓN
 // ═══════════════════════════════════════════════════════════
@@ -88,6 +119,7 @@ export function configureLanSync(serverIP, onStatusChange) {
     _serverIP = serverIP;
     _onStatusChange = onStatusChange;
     restoreQueue(); // Restaurar updates pendientes del reinicio anterior
+    restoreToken(); // [FIX C1] Restaurar auth token
 }
 
 export async function pingServer(ip) {
@@ -98,7 +130,16 @@ export async function pingServer(ip) {
             signal: controller.signal,
         });
         clearTimeout(timeout);
-        if (res.ok) return await res.json();
+        if (res.ok) {
+            const data = await res.json();
+            // [FIX C1] Capturar token del Master durante el handshake
+            if (data.lanToken) {
+                _lanToken = data.lanToken;
+                try { localStorage.setItem(TOKEN_KEY, data.lanToken); } catch { /* ignore */ }
+                console.log(`🔑 [LAN SYNC] Token de auth recibido del Master`);
+            }
+            return data;
+        }
         return null;
     } catch {
         return null;
@@ -106,7 +147,7 @@ export async function pingServer(ip) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🔄 FULL SYNC (con protección de stock)
+// 🔄 FULL SYNC (con protección de stock + auth)
 // ═══════════════════════════════════════════════════════════
 
 export async function fullSync() {
@@ -116,7 +157,21 @@ export async function fullSync() {
         setStatus('connecting');
         const res = await fetch(`http://${_serverIP}:${LAN_PORT}/api/products`, {
             signal: AbortSignal.timeout(10000),
+            headers: getAuthHeaders(), // [FIX C1]
         });
+
+        // [FIX C1] Si el servidor nos rechaza por auth, reintentar handshake
+        if (res.status === 401) {
+            console.warn('🔑 [LAN SYNC] Token inválido. Reintentando handshake...');
+            const pingResult = await pingServer(_serverIP);
+            if (pingResult) {
+                // Reintentar con nuevo token
+                return fullSync();
+            }
+            setStatus('error');
+            return false;
+        }
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
@@ -126,7 +181,8 @@ export async function fullSync() {
             // 🛡️ PROTECCIÓN: Calcular decrementos locales pendientes ANTES de sobrescribir
             const pendingByName = new Map();
             for (const u of _pendingStockUpdates) {
-                const key = u.nombre?.trim().toLowerCase();
+                // [FIX M6] Usar nombre normalizado
+                const key = normalizeName(u.nombre);
                 if (key) {
                     pendingByName.set(key, (pendingByName.get(key) || 0) + u.delta);
                 }
@@ -134,10 +190,10 @@ export async function fullSync() {
 
             await db.transaction('rw', db.productos, async () => {
                 const existentes = await db.productos.toArray();
-                const mapExistentes = new Map(existentes.map(p => [p.nombre?.trim().toLowerCase(), p]));
+                const mapExistentes = new Map(existentes.map(p => [normalizeName(p.nombre), p]));
 
                 for (const prod of data.productos) {
-                    const key = prod.nombre?.trim().toLowerCase();
+                    const key = normalizeName(prod.nombre);
                     if (!key) continue;
 
                     const existing = mapExistentes.get(key);
@@ -183,7 +239,7 @@ export async function fullSync() {
                 }
 
                 // Eliminar productos que ya no existen en el servidor
-                const serverNames = new Set(data.productos.map(p => p.nombre?.trim().toLowerCase()));
+                const serverNames = new Set(data.productos.map(p => normalizeName(p.nombre)));
                 for (const [name, prod] of mapExistentes) {
                     if (!serverNames.has(name)) {
                         await db.productos.delete(prod.id);
@@ -211,7 +267,7 @@ export async function fullSync() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 📊 DELTA SYNC (con backoff)
+// 📊 DELTA SYNC (con backoff + auth)
 // ═══════════════════════════════════════════════════════════
 
 async function deltaSync() {
@@ -220,8 +276,19 @@ async function deltaSync() {
     try {
         const res = await fetch(
             `http://${_serverIP}:${LAN_PORT}/api/products/since?t=${_lastTimestamp}`,
-            { signal: AbortSignal.timeout(5000) }
+            {
+                signal: AbortSignal.timeout(5000),
+                headers: getAuthHeaders(), // [FIX C1]
+            }
         );
+
+        // [FIX C1] Manejar 401 gracefully
+        if (res.status === 401) {
+            console.warn('🔑 [LAN SYNC] Token rechazado en delta. Reintentando handshake...');
+            await pingServer(_serverIP);
+            return; // Próximo poll usará el nuevo token
+        }
+
         if (!res.ok) return;
 
         const data = await res.json();
@@ -279,7 +346,7 @@ export function stopPolling() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 📦 STOCK UPDATES (con persistencia y dedup)
+// 📦 STOCK UPDATES (con persistencia, dedup y auth)
 // ═══════════════════════════════════════════════════════════
 
 export function sendStockUpdate(nombre, delta) {
@@ -298,10 +365,17 @@ async function flushPendingUpdates() {
     try {
         const res = await fetch(`http://${_serverIP}:${LAN_PORT}/api/stock-update`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }), // [FIX C1]
             body: JSON.stringify({ updates: deduped, cajaId: 'secundaria' }),
             signal: AbortSignal.timeout(5000),
         });
+
+        // [FIX C1] Si auth falla, reintentar handshake pero no perder datos
+        if (res.status === 401) {
+            console.warn('🔑 [LAN SYNC] Token rechazado en stock-update. Reintentando handshake...');
+            await pingServer(_serverIP);
+            return; // La cola persiste, se reintentará
+        }
 
         if (res.ok) {
             const result = await res.json();
@@ -329,5 +403,6 @@ export function getSyncStatus() {
         lastFullSync: _lastFullSyncSuccess,
         pendingUpdates: _pendingStockUpdates.length,
         consecutiveFailures: _consecutiveFailures,
+        hasToken: !!_lanToken, // [FIX C1] Para debug
     };
 }

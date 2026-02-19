@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../../context/StoreContext';
 import {
   RefreshCw, Download, BarChart4, Save,
@@ -173,6 +173,31 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
                   <RefreshCw size={18} className={localLoading ? 'animate-spin' : ''} />
                   {localLoading ? 'Sincronizando...' : 'Sincronizar'}
                 </button>
+
+                {/* ✏️ P2: Botón Manual */}
+                <button
+                  onClick={async () => {
+                    const { value: nuevaTasa } = await Swal.fire({
+                      title: 'Tasa Manual',
+                      text: 'Introduce el valor en Bs',
+                      input: 'number',
+                      inputValue: form.tasa || '',
+                      inputAttributes: { step: 'any', min: '0' },
+                      showCancelButton: true,
+                      confirmButtonText: 'Guardar',
+                      confirmButtonColor: '#10b981',
+                      background: '#1e293b', color: '#fff'
+                    });
+                    if (nuevaTasa) {
+                      setForm(prev => ({ ...prev, tasa: parseFloat(nuevaTasa), fuenteTasa: 'Manual', fechaTasa: new Date().toISOString() }));
+                      Swal.fire({ icon: 'success', title: `Bs ${nuevaTasa}`, timer: 1000, showConfirmButton: false });
+                    }
+                  }}
+                  className="flex-1 sm:flex-none h-[52px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-slate-200 transition-all active:scale-95"
+                  title="Establecer tasa manualmente"
+                >
+                  ✏️ Manual
+                </button>
               </div>
             </div>
 
@@ -201,25 +226,41 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={form.autoUpdateTasa}
-                    onChange={e => setForm(prev => ({ ...prev, autoUpdateTasa: e.target.checked }))}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
-                </div>
-                <span className="text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">
-                  Actualización Automática (Diaria)
-                </span>
-              </label>
+            {/* 💱 P2: Freshness Indicator + Source */}
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={form.autoUpdateTasa}
+                      onChange={e => setForm(prev => ({ ...prev, autoUpdateTasa: e.target.checked }))}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                  </div>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">
+                    Actualización Automática (Al abrir la app)
+                  </span>
+                </label>
+              </div>
 
-              <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                Última: {form.fechaTasa ? new Date(form.fechaTasa).toLocaleDateString() : 'N/A'}
-              </span>
+              {/* Freshness + Source row */}
+              {form.fechaTasa && (() => {
+                const hoursAgo = (Date.now() - new Date(form.fechaTasa).getTime()) / (1000 * 60 * 60);
+                const freshIcon = hoursAgo < 4 ? '🟢' : hoursAgo < 12 ? '🟡' : '🔴';
+                const freshLabel = hoursAgo < 4 ? 'Vigente' : hoursAgo < 12 ? 'Desactualizada' : 'Vencida';
+                const timeLabel = hoursAgo < 1 ? `hace ${Math.round(hoursAgo * 60)} min` : hoursAgo < 24 ? `hace ${Math.round(hoursAgo)}h` : new Date(form.fechaTasa).toLocaleDateString();
+                return (
+                  <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
+                    <span>{freshIcon} {freshLabel}</span>
+                    <span className="text-slate-300">•</span>
+                    <span>{timeLabel}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="font-semibold">Fuente: {form.fuenteTasa || 'N/A'}</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

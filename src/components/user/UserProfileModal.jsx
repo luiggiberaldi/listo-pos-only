@@ -1,17 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, Save, Shield, History, Key, User, X, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { DollarSign, Save, Shield, History, Key, User, X, LogOut, Store, Package, TrendingUp, Clock, Pencil } from 'lucide-react';
 import { useEmployeeFinance } from '../../hooks/store/useEmployeeFinance';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useConfigStore } from '../../stores/useConfigStore';
+import { useInventoryStore } from '../../stores/useInventoryStore';
 import Swal from 'sweetalert2';
+import { hashPin } from '../../utils/securityUtils';
 
-export default function UserProfileModal({ onClose }) {
+export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
     const { usuario, actualizarUsuario, logout } = useAuthStore();
     const { obtenerFinanzas, obtenerHistorial } = useEmployeeFinance();
 
-    const [activeTab, setActiveTab] = useState('resumen'); // resumen, seguridad, finanzas
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [finanzas, setFinanzas] = useState(null);
     const [historial, setHistorial] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // 🏪 Owner/Admin detection (Mi Negocio tab for ALL plans)
+    const license = useConfigStore(state => state.license);
+    const configuracion = useConfigStore(state => state.configuracion);
+    const productos = useInventoryStore(state => state.productos);
+    const esDueño = usuario?.roleId === 'ROL_DUENO' || usuario?.tipo === 'ADMIN' || usuario?.rol === 'admin' || usuario?.id === 1;
+
+    const planNames = { bodega: '🏪 Bodega', abasto: '🛒 Abasto', minimarket: '🏪 Minimarket', listo: '🚀 Listo' };
+    const planLabel = planNames[license?.plan] || '🏪 ' + (license?.plan || 'Bodega');
+    const esPlanBodega = license?.plan === 'bodega';
 
     // Estado Cambio de PIN
     const [pinData, setPinData] = useState({
@@ -51,18 +64,35 @@ export default function UserProfileModal({ onClose }) {
                 return Swal.fire('Error', 'El nuevo PIN no coincide con la confirmación', 'error');
             }
 
-            if (pinData.newPin.length < 4) {
-                return Swal.fire('Seguridad', 'El PIN debe tener al menos 4 dígitos', 'warning');
+            if (pinData.newPin.length !== 6 || !/^\d{6}$/.test(pinData.newPin)) {
+                return Swal.fire('Seguridad', 'El PIN debe tener exactamente 6 dígitos numéricos', 'warning');
             }
 
-            // 2. Validar PIN Actual (Comparando con usuario en sesión)
-            // NOTA: En un entorno real esto debería ser via API hash, aqui comparamos directo con store local
-            if (String(usuario.pin) !== String(pinData.currentPin)) {
-                return Swal.fire('Error', 'El PIN actual es incorrecto', 'error');
+            // 2. Validar PIN Actual
+            if (esDueño) {
+                // Para dueños/admin: el PIN está en configuración (pinAdmin)
+                const pinActual = String(configuracion?.pinAdmin || '123456');
+                if (pinActual !== String(pinData.currentPin)) {
+                    return Swal.fire('Error', 'El PIN actual es incorrecto', 'error');
+                }
+                // 3. Guardar en configuración
+                const setConfiguracion = useConfigStore.getState().setConfiguracion;
+                setConfiguracion({ pinAdmin: pinData.newPin });
+            } else {
+                // Para empleados: el PIN está en usuario (pinHash)
+                const currentHash = await hashPin(pinData.currentPin);
+                if (String(usuario.pinHash) !== String(currentHash)) {
+                    return Swal.fire('Error', 'El PIN actual es incorrecto', 'error');
+                }
             }
 
-            // 3. Ejecutar Cambio
-            await actualizarUsuario(usuario.id, { pin: pinData.newPin });
+            // 4. Hash del nuevo PIN y guardar en usuario (login lee pinHash)
+            const newHash = await hashPin(pinData.newPin);
+            const factoryHash = await hashPin('123456');
+            await actualizarUsuario(usuario.id, {
+                pinHash: newHash,
+                isFactoryAuth: newHash === factoryHash
+            });
 
             Swal.fire({
                 title: 'PIN Actualizado',
@@ -112,14 +142,16 @@ export default function UserProfileModal({ onClose }) {
                             onClick={() => setActiveTab('resumen')}
                             className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'resumen' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
                         >
-                            Resumen
+                            {esDueño ? 'Mi Negocio' : 'Resumen'}
                         </button>
-                        <button
-                            onClick={() => setActiveTab('finanzas')}
-                            className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'finanzas' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
-                        >
-                            Mis Finanzas
-                        </button>
+                        {!esPlanBodega && (
+                            <button
+                                onClick={() => setActiveTab('finanzas')}
+                                className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'finanzas' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
+                            >
+                                Mis Finanzas
+                            </button>
+                        )}
                         <button
                             onClick={() => setActiveTab('seguridad')}
                             className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'seguridad' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
@@ -136,41 +168,164 @@ export default function UserProfileModal({ onClose }) {
                     {activeTab === 'resumen' && (
                         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
 
-                            {/* FINANCE CARDS */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Sueldo Base</span>
-                                    <span className="text-2xl font-black text-slate-700 block">${(finanzas?.sueldoBase || 0).toFixed(2)}</span>
-                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full uppercase font-bold inline-block mt-2">{finanzas?.frecuenciaPago || 'Semanal'}</span>
-                                </div>
-
-                                <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 shadow-sm">
-                                    <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block mb-2">Deuda Actual</span>
-                                    <span className="text-2xl font-black text-rose-600 block">${(finanzas?.deudaAcumulada || 0).toFixed(2)}</span>
-                                    <span className="text-[10px] text-rose-400 mt-2 block">Descuentos pendientes</span>
-                                </div>
-
-                                {(() => {
-                                    const sb = finanzas?.sueldoBase || 0;
-                                    const da = finanzas?.deudaAcumulada || 0;
-                                    const restante = sb - da;
-                                    const esNegativo = restante < 0;
-
-                                    return (
-                                        <div className={`p-4 rounded-2xl border shadow-sm ${esNegativo ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                                            <span className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${esNegativo ? 'text-orange-400' : 'text-emerald-500'}`}>
-                                                {esNegativo ? 'Saldo en Contra' : 'Neto a Cobrar'}
-                                            </span>
-                                            <span className={`text-2xl font-black block ${esNegativo ? 'text-orange-600' : 'text-emerald-600'}`}>
-                                                ${restante.toFixed(2)}
-                                            </span>
-                                            <span className={`text-[10px] mt-2 block ${esNegativo ? 'text-orange-400' : 'text-emerald-500'}`}>
-                                                {esNegativo ? 'Debes a caja' : 'Disponible estimado'}
+                            {esDueño ? (
+                                /* =============================== */
+                                /* 🏪 TAB MI NEGOCIO (PLAN BODEGA) */
+                                /* =============================== */
+                                <>
+                                    {/* Business Identity Card */}
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                                <Store size={24} className="text-emerald-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-lg font-black text-slate-800 truncate">{configuracion.nombre || 'Mi Bodega'}</h3>
+                                                <p className="text-xs text-slate-400 truncate">{configuracion.rif || 'RIF no configurado'} • {configuracion.telefono || 'Sin teléfono'}</p>
+                                            </div>
+                                            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider border border-emerald-200 whitespace-nowrap">
+                                                {planLabel}
                                             </span>
                                         </div>
-                                    );
-                                })()}
-                            </div>
+                                    </div>
+
+                                    {/* Tasa + Stats Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {/* TASA Card */}
+                                        {(() => {
+                                            const tasa = configuracion.tasa || 0;
+                                            const hoursAgo = configuracion.fechaTasa
+                                                ? (Date.now() - new Date(configuracion.fechaTasa).getTime()) / (1000 * 60 * 60)
+                                                : 999;
+                                            const freshColor = hoursAgo < 4 ? 'emerald' : hoursAgo < 12 ? 'amber' : 'red';
+                                            const freshIcon = hoursAgo < 4 ? '🟢' : hoursAgo < 12 ? '🟡' : '🔴';
+                                            const freshLabel = hoursAgo < 4 ? 'Vigente' : hoursAgo < 12 ? 'Desactualizada' : 'Vencida';
+                                            return (
+                                                <div className={`bg-${freshColor}-50 p-4 rounded-2xl border border-${freshColor}-100 shadow-sm`}>
+                                                    <span className={`text-[10px] font-bold text-${freshColor}-500 uppercase tracking-widest block mb-2`}>Tasa de Cambio</span>
+                                                    <span className="text-2xl font-black text-slate-700 block">
+                                                        Bs {tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <span className="text-[10px] text-slate-500">{freshIcon} {freshLabel}</span>
+                                                        {configuracion.fuenteTasa && (
+                                                            <span className="text-[10px] bg-white px-2 py-0.5 rounded-full text-slate-400 border border-slate-100">{configuracion.fuenteTasa}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Products Count */}
+                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                                            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block mb-2">Productos Activos</span>
+                                            <span className="text-2xl font-black text-blue-700 block">{(productos || []).length}</span>
+                                            <span className="text-[10px] text-blue-400 mt-2 block">En inventario</span>
+                                        </div>
+
+                                        {/* Session / Editable Name */}
+                                        {esPlanBodega ? (
+                                            /* 🏪 BODEGA: Card editable para nombre del dueño */
+                                            <div
+                                                onClick={async () => {
+                                                    const { value } = await Swal.fire({
+                                                        title: 'Tu Nombre',
+                                                        input: 'text',
+                                                        inputValue: usuario.nombre || '',
+                                                        inputPlaceholder: 'Ej: José Pérez',
+                                                        showCancelButton: true,
+                                                        confirmButtonText: 'Guardar',
+                                                        cancelButtonText: 'Cancelar',
+                                                        inputValidator: (v) => !v?.trim() && 'Escribe un nombre',
+                                                        customClass: { confirmButton: 'swal2-confirm-green' }
+                                                    });
+                                                    if (value) actualizarUsuario(usuario.id, { nombre: value.trim() });
+                                                }}
+                                                className="bg-violet-50 p-4 rounded-2xl border border-violet-100 shadow-sm cursor-pointer hover:border-violet-300 transition-all group"
+                                            >
+                                                <span className="text-[10px] font-bold text-violet-500 uppercase tracking-widest block mb-2">Tu Nombre</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg font-black text-violet-700 block truncate">{usuario.nombre}</span>
+                                                    <Pencil size={14} className="text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                </div>
+                                                <span className="text-[10px] text-violet-400 mt-2 block">Toca para editar</span>
+                                            </div>
+                                        ) : (
+                                            /* 📊 OTROS PLANES: Sesión Activa read-only */
+                                            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm">
+                                                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-2">Sesión Activa</span>
+                                                <span className="text-lg font-black text-indigo-700 block">{usuario.nombre}</span>
+                                                <span className="text-[10px] bg-indigo-100 text-indigo-500 px-2 py-1 rounded-full uppercase font-bold inline-block mt-2">{usuario.rol}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Quick Info */}
+                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Información del Sistema</h4>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                                <span className="text-slate-500">Moneda Base</span>
+                                                <span className="font-bold text-slate-700">{configuracion.tipoTasa || 'USD'}</span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                                <span className="text-slate-500">Redondeo</span>
+                                                <span className="font-bold text-slate-700">
+                                                    {configuracion.modoRedondeo === 'exacto' ? 'Exacto' : configuracion.modoRedondeo === 'entero' ? 'Entero' : 'Múltiplo 5'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
+                                                <span className="text-slate-500">IVA</span>
+                                                <span className="font-bold text-slate-700">{configuracion.porcentajeIva || 16}%</span>
+                                            </div>
+                                            <div className="flex justify-between py-1.5">
+                                                <span className="text-slate-500">Auto-actualizar tasa</span>
+                                                <span className={`font-bold ${configuracion.autoUpdateTasa ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                    {configuracion.autoUpdateTasa ? 'Activo' : 'Desactivado'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                /* =============================== */
+                                /* 💰 TAB RESUMEN ORIGINAL (LISTO) */
+                                /* =============================== */
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Sueldo Base</span>
+                                        <span className="text-2xl font-black text-slate-700 block">${(finanzas?.sueldoBase || 0).toFixed(2)}</span>
+                                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full uppercase font-bold inline-block mt-2">{finanzas?.frecuenciaPago || 'Semanal'}</span>
+                                    </div>
+
+                                    <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 shadow-sm">
+                                        <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block mb-2">Deuda Actual</span>
+                                        <span className="text-2xl font-black text-rose-600 block">${(finanzas?.deudaAcumulada || 0).toFixed(2)}</span>
+                                        <span className="text-[10px] text-rose-400 mt-2 block">Descuentos pendientes</span>
+                                    </div>
+
+                                    {(() => {
+                                        const sb = finanzas?.sueldoBase || 0;
+                                        const da = finanzas?.deudaAcumulada || 0;
+                                        const restante = sb - da;
+                                        const esNegativo = restante < 0;
+
+                                        return (
+                                            <div className={`p-4 rounded-2xl border shadow-sm ${esNegativo ? 'bg-orange-50 border-orange-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest block mb-2 ${esNegativo ? 'text-orange-400' : 'text-emerald-500'}`}>
+                                                    {esNegativo ? 'Saldo en Contra' : 'Neto a Cobrar'}
+                                                </span>
+                                                <span className={`text-2xl font-black block ${esNegativo ? 'text-orange-600' : 'text-emerald-600'}`}>
+                                                    ${restante.toFixed(2)}
+                                                </span>
+                                                <span className={`text-[10px] mt-2 block ${esNegativo ? 'text-orange-400' : 'text-emerald-500'}`}>
+                                                    {esNegativo ? 'Debes a caja' : 'Disponible estimado'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
 
 
                         </div>

@@ -23,9 +23,10 @@ export default function PayrollPage() {
     // Estado Modal Detalles
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+    // [FIX M6] Removido selectedEmployee de deps para evitar recargas innecesarias
     useEffect(() => {
         cargarDatosGlobales();
-    }, [usuarios, selectedEmployee]); // Recargar si cerramos modal (para ver updates)
+    }, [usuarios]); // Solo recargar cuando la lista de usuarios cambia
 
     const cargarDatosGlobales = async () => {
         // setLoading(true); // Evitar parpadeo excesivo
@@ -188,7 +189,7 @@ export default function PayrollPage() {
                             ) : filteredEmployees.map((emp) => {
                                 const deuda = emp.finanzas.deudaAcumulada || 0;
                                 const sueldo = emp.finanzas.sueldoBase || 0;
-                                const neto = Math.max(0, sueldo - deuda);
+                                const neto = sueldo - deuda;
 
                                 return (
                                     <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
@@ -204,8 +205,9 @@ export default function PayrollPage() {
                                         <td className="p-5 text-right font-mono font-bold text-rose-500">
                                             {deuda > 0 ? `-$${deuda.toFixed(2)}` : '$0.00'}
                                         </td>
-                                        <td className="p-5 text-right font-mono font-bold text-emerald-600">
-                                            ${neto.toFixed(2)}
+                                        {/* [FIX M2] Mostrar neto negativo consistentemente */}
+                                        <td className={`p-5 text-right font-mono font-bold ${neto < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                            {neto < 0 ? `-$${Math.abs(neto).toFixed(2)} (Debe)` : `$${neto.toFixed(2)}`}
                                         </td>
                                         <td className="p-5 flex justify-center gap-2">
                                             <button

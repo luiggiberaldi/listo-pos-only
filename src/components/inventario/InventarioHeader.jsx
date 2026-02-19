@@ -3,6 +3,8 @@ import { Search, Plus, History, ShieldAlert, Filter, ChevronDown, ChevronUp, X, 
 import { ActionGuard } from '../../components/security/ActionGuard';
 import { PERMISSIONS } from '../../config/permissions';
 
+import ToolsMenu from './ToolsMenu';
+
 export default function InventarioHeader({
   busqueda, setBusqueda,
   filtroCategoria, setFiltroCategoria,
@@ -65,74 +67,16 @@ export default function InventarioHeader({
         {/* BOTONES DE ACCIÓN (Derecha) */}
         <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
 
-          {tieneProductos && (
-            <>
-              {/* 🆕 IMPRIMIR ETIQUETAS */}
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-1">
-                {/* STUDIO CONFIG */}
-                <button
-                  onClick={onOpenLabelStudio}
-                  className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
-                  title="Configurar Etiquetas (Label Studio)"
-                >
-                  <Settings size={20} />
-                </button>
-
-                <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
-
-                {/* ACTION PRINT (LISTS) */}
-                <button
-                  onClick={onPrintAllClick} // Ahora abre el modal de listas
-                  className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${selectedCount > 0 ? 'text-indigo-600 font-bold bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600'}`}
-                  title={selectedCount > 0 ? `Gestor de Impresión (${selectedCount})` : "Listas de Impresión"}
-                >
-                  {selectedCount > 0 ? <Plus size={20} /> : <List size={20} />}
-                  <span className="text-xs font-bold">{selectedCount > 0 ? 'Crear Lista' : 'Listas'}</span>
-                </button>
-              </div>
-
-              <ActionGuard permission={PERMISSIONS.SETTINGS_DB_RESET} onClick={handleBorrarTodo} actionName="Vaciado de Emergencia">
-                <button
-                  className="p-3.5 bg-white dark:bg-slate-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-red-200 transition-all shadow-sm"
-                  title="Vaciado de Emergencia"
-                >
-                  <ShieldAlert size={20} />
-                </button>
-              </ActionGuard>
-            </>
-          )}
-
-          {/* 🆕 IMPORTAR EXCEL */}
-          <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={onImportClick} actionName="Importar Masivo">
-            <button
-              className="p-3.5 bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-200 transition-all shadow-sm flex items-center gap-2"
-              title="Cargar productos desde Excel"
-            >
-              <FileSpreadsheet size={20} />
-              <span className="hidden sm:inline text-sm font-bold">Importar Excel</span>
-            </button>
-          </ActionGuard>
-
-          {/* 📦 CATÁLOGO: EXPORTAR / IMPORTAR */}
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-1">
-            <button
-              onClick={onExportCatalog}
-              className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all flex items-center gap-1.5"
-              title="Crear Respaldo (Guardar JSON)"
-            >
-              <Download size={18} />
-              <span className="hidden lg:inline text-xs font-bold">Respaldar</span>
-            </button>
-            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
-            <button
-              onClick={onImportCatalog}
-              className="p-2.5 text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-all flex items-center gap-1.5"
-              title="Restaurar Respaldo (Cargar JSON)"
-            >
-              <Upload size={18} />
-              <span className="hidden lg:inline text-xs font-bold">Restaurar</span>
-            </button>
-          </div>
+          {/* 🛠️ MENÚ DE HERRAMIENTAS (Consolidado) */}
+          <ToolsMenu
+            onImportClick={onImportClick}
+            onExportCatalog={onExportCatalog}
+            onImportCatalog={onImportCatalog}
+            onOpenLabelStudio={onOpenLabelStudio}
+            onPrintAllClick={onPrintAllClick}
+            onResetDatabase={handleBorrarTodo}
+            selectedCount={selectedCount}
+          />
 
           <button
             onClick={() => typeof setMostrarKardex === 'function' && setMostrarKardex(true)}

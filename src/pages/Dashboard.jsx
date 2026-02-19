@@ -2,7 +2,7 @@
 // Archivo: src/pages/Dashboard.jsx
 // Auditoría: Inyección de Monto Inicial para corrección de Arqueo.
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import {
@@ -16,6 +16,7 @@ import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 // ✅ NUEVO: Importamos el estado de caja para obtener la apertura
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 import { useConfigStore } from '../stores/useConfigStore'; // [NEW]
+import { useUIStore } from '../stores/useUIStore'; // [NEW]
 import { hasFeature, FEATURES } from '../config/planTiers'; // [NEW]
 
 import DashboardStats from '../components/dashboard/DashboardStats';
@@ -48,33 +49,41 @@ export default function Dashboard() {
   const [rango, setRango] = useState('hoy');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [showRateConfig, setShowRateConfig] = useState(false);
-  const [showGastoModal, setShowGastoModal] = useState(false); // [NEW]
-  const handleManualTasa = async () => {
-    const { value: nuevaTasa } = await Swal.fire({
-      title: 'Tasa Personalizada',
-      text: 'Introduce el valor manual',
-      input: 'number',
-      inputValue: configuracion.tasa,
-      inputAttributes: { step: 'any', min: '0' },
-      showCancelButton: true,
-      confirmButtonText: 'Guardar',
-      confirmButtonColor: '#10b981'
-    });
+  const [showGastoModal, setShowGastoModal] = useState(false);
 
-    if (nuevaTasa) {
-      guardarConfiguracion({ ...configuracion, tasa: parseFloat(nuevaTasa) });
-      Swal.fire({ icon: 'success', title: `Tasa Manual: Bs ${nuevaTasa}`, timer: 1000, showConfirmButton: false });
+  // 💱 P1: Freshness color for tasa badge
+  const tasaFreshness = useMemo(() => {
+    if (!configuracion.fechaTasa) return { color: 'border-red-300 text-red-600 bg-red-50 dark:bg-red-900/20', label: 'Sin fecha' };
+    const hoursAgo = (Date.now() - new Date(configuracion.fechaTasa).getTime()) / (1000 * 60 * 60);
+    if (hoursAgo < 4) return { color: 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20', label: 'Vigente' };
+    if (hoursAgo < 12) return { color: 'border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-900/20', label: 'Desactualizada' };
+    return { color: 'border-red-300 text-red-600 bg-red-50 dark:bg-red-900/20', label: 'Vencida' };
+  }, [configuracion.fechaTasa]);
+
+  // 💱 P6: Onboarding wizard for tasa=0 (one-time)
+  useEffect(() => {
+    if (configuracion.tasa === 0 && !configuracion._tasaOnboardingDone) {
+      Swal.fire({
+        title: '💱 Configura tu Tasa',
+        html: '<p style="margin-bottom:8px">Para vender necesitas configurar la tasa de cambio.</p><p style="font-size:12px;opacity:0.7">Selecciona tu moneda de referencia:</p>',
+        showCancelButton: true,
+        confirmButtonText: '🇺🇸 Obtener Dólar BCV',
+        cancelButtonText: '🇪🇺 Obtener Euro BCV',
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#3b82f6',
+        background: '#0f172a',
+        color: '#fff',
+        allowOutsideClick: false
+      }).then(result => {
+        if (result.isConfirmed) {
+          obtenerTasaBCV(true, 'USD');
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          obtenerTasaBCV(true, 'EUR');
+        }
+        guardarConfiguracion({ ...configuracion, _tasaOnboardingDone: true });
+      });
     }
-  };
-
-  const handleDolar = async () => {
-    await obtenerTasaBCV(true, 'USD');
-  };
-
-  const handleEuro = async () => {
-    await obtenerTasaBCV(true, 'EUR');
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ventasFiltradas = useMemo(() => {
     let inicio = timeProvider.now();
@@ -170,13 +179,22 @@ export default function Dashboard() {
               <p className="text-sm text-white font-medium">Usando PIN de fábrica <strong>(123456)</strong>. Cámbiala en Configuración.</p>
             </div>
           </div>
-          <Link
-            to="/configuracion"
-            state={{ tab: 'seguridad', autoOpenPin: true }}
-            className="bg-white text-status-danger px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-status-dangerBg transition-all shadow-md"
-          >
-            CAMBIAR PIN
-          </Link>
+          {license?.plan === 'bodega' ? (
+            <button
+              onClick={() => useUIStore.getState().openModal('userProfile', { tab: 'seguridad' })}
+              className="bg-white text-status-danger px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-status-dangerBg transition-all shadow-md"
+            >
+              CAMBIAR PIN
+            </button>
+          ) : (
+            <Link
+              to="/configuracion"
+              state={{ tab: 'seguridad', autoOpenPin: true }}
+              className="bg-white text-status-danger px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-status-dangerBg transition-all shadow-md"
+            >
+              CAMBIAR PIN
+            </Link>
+          )}
         </div>
       )}
 
@@ -186,44 +204,27 @@ export default function Dashboard() {
           <h1 className="text-3xl font-black text-content-main flex items-center gap-3 tracking-tight uppercase">
             <Activity className="text-primary" size={32} /> INICIO
           </h1>
+          {/* 💱 P1: BADGE TASA COMPACTO */}
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs font-bold text-content-secondary">Tasa:</span>
-
             <button
-              onClick={handleDolar}
-              className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-black border border-green-200 transition-colors flex items-center gap-1"
-              title="Obtener Dólar BCV"
-            >
-              🇺🇸 USD
-            </button>
-
-            <button
-              onClick={handleEuro}
-              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-black border border-blue-200 transition-colors flex items-center gap-1"
-              title="Obtener Euro BCV"
-            >
-              🇪🇺 EUR
-            </button>
-
-            <button
-              onClick={handleManualTasa}
-              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 transition-colors"
-              title="Editar tasa manualmente"
-            >
-              ✏️ Manual
-            </button>
-
-            <button
-              onClick={() => setShowRateConfig(!showRateConfig)}
-              className={`p-1.5 rounded-lg transition-colors border ${showRateConfig ? 'bg-primary text-white border-primary' : 'bg-white text-slate-400 border-slate-200 hover:text-primary hover:border-primary'}`}
-              title="Configuración de Tasa"
+              onClick={() => navigate('/configuracion', { state: { tab: 'finanzas' } })}
+              className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-primary hover:border-primary transition-colors"
+              title="Configurar Tasa de Cambio"
             >
               <Settings size={16} />
             </button>
 
-            <span className="ml-2 px-3 py-1 bg-surface-light dark:bg-surface-dark border border-border-subtle rounded-lg text-sm font-black text-content-main shadow-sm">
+            <span className={`px-3 py-1 rounded-lg text-sm font-black shadow-sm border ${tasaFreshness.color}`}>
               Bs {parseFloat(configuracion.tasa || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
+
+            <button
+              onClick={() => obtenerTasaBCV(true)}
+              className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-primary hover:border-primary transition-colors"
+              title="Actualizar Tasa"
+            >
+              <RefreshCw size={14} />
+            </button>
 
             {/* BOTÓN GASTOS [RESTRICTED] */}
             {hasFeature(license?.plan || 'bodega', FEATURES.GASTOS) && (
@@ -237,57 +238,6 @@ export default function Dashboard() {
               </button>
             )}
           </div>
-
-          {/* ⚙️ PANEL DE CONFIGURACIÓN DE TASA */}
-          {showRateConfig && (
-            <div className="mt-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl max-w-md animate-in slide-in-from-top-2 fade-in relative z-20">
-              <div className="flex flex-col gap-4">
-
-                {/* ROUNDING */}
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Modo de Redondeo</label>
-                  <div className="flex gap-2">
-                    {['exacto', 'entero', 'm5'].map(mode => (
-                      <button
-                        key={mode}
-                        onClick={() => guardarConfiguracion({ ...configuracion, modoRedondeo: mode })}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all 
-                             ${configuracion.modoRedondeo === mode
-                            ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
-                            : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100'
-                          }`}
-                      >
-                        {mode === 'exacto' ? 'Exacto' : mode === 'entero' ? 'Sin Decimal' : 'Múltiplo 5'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* AUTO UPDATE */}
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                  <div>
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Actualización Automática</p>
-                    <p className="text-[10px] text-slate-500">Se actualiza cada 5 minutos si hay internet.</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const newValue = !configuracion.autoUpdateTasa;
-                      guardarConfiguracion({
-                        ...configuracion,
-                        autoUpdateTasa: newValue,
-                        autoUpdateFrecuencia: newValue ? 300000 : 0 // 5 minutos o apagado
-                      });
-                      if (newValue && navigator.onLine) obtenerTasaBCV(false);
-                    }}
-                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${configuracion.autoUpdateTasa ? 'bg-green-500' : 'bg-slate-300'}`}
-                  >
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${configuracion.autoUpdateTasa ? 'translate-x-6' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          )}
 
         </div>
 

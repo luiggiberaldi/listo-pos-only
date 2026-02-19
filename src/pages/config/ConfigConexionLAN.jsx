@@ -231,22 +231,31 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                         return null;
                                     };
 
-                                    const promises = [];
-                                    for (let i = 1; i < 255; i++) promises.push(scan(`${baseIP}.${i}`));
-
-                                    const results = await Promise.all(promises);
-                                    found = results.find(ip => ip);
+                                    // [FIX M2] Escanear en lotes de 20 (evita saturar la red)
+                                    for (let i = 1; i < 255 && !found; i += 20) {
+                                        const batch = [];
+                                        for (let j = 0; j < 20 && (i + j) < 255; j++) {
+                                            batch.push(scan(`${baseIP}.${i + j}`));
+                                        }
+                                        const results = await Promise.all(batch);
+                                        found = results.find(ip => ip) || null;
+                                    }
 
                                     if (found) {
                                         setTargetIP(found);
                                         setTestStatus('success');
-                                        // Auto-fetch info
+                                        // Auto-fetch info + capturar token
                                         const r = await fetch(`http://${found}:3847/api/ping`);
                                         const info = await r.json();
                                         setServerInfo(info);
+                                        // [FIX C1] Guardar token del handshake
+                                        if (info.lanToken) {
+                                            try { localStorage.setItem('listo-lan-auth-token', info.lanToken); } catch { /**/ }
+                                        }
                                     } else {
                                         setTestStatus('error');
-                                        alert("No se encontró ninguna Caja Principal en la red.");
+                                        // [FIX m1] No usar alert() bloqueante
+                                        console.warn("No se encontró ninguna Caja Principal en la red.");
                                     }
                                 }}
                                 className="text-sm text-blue-600 hover:underline flex items-center gap-1"

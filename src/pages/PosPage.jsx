@@ -103,6 +103,14 @@ export default function PosPage() {
   // 🚫 VALIDACIÓN: Prohibir ventas si la tasa es 0
   const tasaInvalida = configuracion?.tasa === 0;
 
+  // ⚠️ P3: Detectar tasa vieja (>24h sin actualizar)
+  const tasaStale = useMemo(() => {
+    if (!configuracion?.fechaTasa) return false;
+    return (Date.now() - new Date(configuracion.fechaTasa).getTime()) > 24 * 60 * 60 * 1000;
+  }, [configuracion?.fechaTasa]);
+  const obtenerTasaBCV = useConfigStore(state => state.obtenerTasaBCV);
+  const onRefreshTasa = useCallback(() => obtenerTasaBCV(true), [obtenerTasaBCV]);
+
   const {
     modales, setModales, abrirPago, cerrarPago, abrirEspera, cerrarEspera,
     abrirPesaje, cerrarPesaje, abrirJerarquia, cerrarJerarquia, toggleAyuda
@@ -229,7 +237,9 @@ export default function PosPage() {
         categorias={categorias}
         tasa={calculos.tasa}
         tasaCaida={tasaCaida}
-        tasaInvalida={tasaInvalida} // 🚫 NEW: Exchange Rate Validation
+        tasaInvalida={tasaInvalida}
+        tasaStale={tasaStale}
+        onRefreshTasa={onRefreshTasa}
         tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
         handleSearchInputKeyDown={handleSearchInputKeyDown}
         multiplicadorPendiente={multiplicadorPendiente}
@@ -282,7 +292,9 @@ export default function PosPage() {
       categorias={categorias}
       tasa={calculos.tasa}
       tasaCaida={tasaCaida}
-      tasaInvalida={tasaInvalida} // 🚫 NEW: Exchange Rate Validation
+      tasaInvalida={tasaInvalida}
+      tasaStale={tasaStale}
+      onRefreshTasa={onRefreshTasa}
       tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
       handleSearchInputKeyDown={handleSearchInputKeyDown}
       multiplicadorPendiente={multiplicadorPendiente}

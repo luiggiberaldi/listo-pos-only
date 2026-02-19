@@ -1,4 +1,4 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 2.0 (LAN SYNC SERVER — HARDENED)
+// ✅ SYSTEM IMPLEMENTATION - V. 3.0 (LAN SYNC SERVER — HARDENED + AUTH)
 // Archivo: electron/lanServer.js
 // Protecciones implementadas:
 //   1. Body size limit (anti-flood)
@@ -6,16 +6,22 @@
 //   3. Stock negativo → alerta al renderer
 //   4. Rate limiting básico por IP
 //   5. Timeout de conexión SSE (evita leaks)
+//   6. [FIX C1] LAN_SHARED_TOKEN — Auth header obligatorio en rutas sensibles
+//   7. [FIX C2] License salt desde variable de entorno (prepara migración JWT)
+//   8. [FIX M5] Verificación real de _licenseActive
+//   9. [FIX M6] Normalización de nombres de producto (tildes/acentos)
 
 import http from 'http';
 import crypto from 'crypto';
 import { networkInterfaces } from 'os';
 
-// 🔑 LICENCIA — Debe coincidir con useLicenseGuard.js y LicenseGate.jsx
-const LICENSE_SALT = "LISTO_POS_V1_SECURE_SALT_998877";
+// [FIX C2] Salt para licencias V1 (SHA-256).
+// Leer de variable de entorno → fallback a hardcoded (SOLO por compatibilidad).
+// TODO: Migrar a JWT/RS256 cuando la clave privada esté disponible en el proceso Electron.
+const LICENSE_SALT = process.env.LISTO_LICENSE_SALT || "LISTO_POS_V1_SECURE_SALT_998877";
 
 const LAN_PORT = 3847;
-const SYNC_VERSION = '2.0';
+const SYNC_VERSION = '3.0';
 const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB máximo
 const SSE_TIMEOUT = 60000; // Ping cada 60s para detectar clientes muertos
 
@@ -27,6 +33,11 @@ let lastUpdateTimestamp = Date.now();
 let connectedClients = []; // SSE streams activos
 let mainWindowRef = null;
 let _processedUpdateIds = new Set(); // Deduplicación
+
+// [FIX C1] 🔑 LAN SHARED TOKEN — Se genera al iniciar el servidor.
+// Las cajas secundarias lo reciben durante el handshake inicial (/api/ping)
+// y deben incluirlo en todas las solicitudes posteriores como Authorization header.
+let _lanSharedToken = null;
 
 // ═══════════════════════════════════════════════════════════
 // 🔧 HELPERS
@@ -44,12 +55,17 @@ export function getLocalIP() {
     return '127.0.0.1';
 }
 
+/** Obtener el token actual (para que el renderer lo pase a la caja secundaria) */
+export function getLanToken() {
+    return _lanSharedToken;
+}
+
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     });
     res.end(JSON.stringify(data));
 }
@@ -74,6 +90,23 @@ function parseBody(req) {
         });
         req.on('error', reject);
     });
+}
+
+// [FIX C1] 🛡️ AUTH MIDDLEWARE — Verificar token en rutas protegidas
+function verifyLanAuth(req) {
+    if (!_lanSharedToken) return true; // Token no generado aún (improbable pero safe)
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return false;
+    // Formato esperado: "Bearer <token>"
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') return false;
+    return parts[1] === _lanSharedToken;
+}
+
+// [FIX M6] 🔤 NORMALIZAR NOMBRE — Remueve acentos/tildes para comparación segura
+function normalizeName(name) {
+    if (!name || typeof name !== 'string') return '';
+    return name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -106,7 +139,7 @@ function broadcastToClients(data) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🛡️ STOCK UPDATE (con dedup + alerta stock negativo)
+// 🛡️ STOCK UPDATE (con dedup + alerta stock negativo + normalización)
 // ═══════════════════════════════════════════════════════════
 
 export function processStockUpdate(updates, cajaId = 'unknown') {
@@ -115,7 +148,7 @@ export function processStockUpdate(updates, cajaId = 'unknown') {
 
     for (const update of updates) {
         // 🛡️ DEDUPLICACIÓN: generar key único por update
-        const dedupKey = `${update.nombre}_${update.delta}_${update.timestamp}`;
+        const dedupKey = `${normalizeName(update.nombre)}_${update.delta}_${update.timestamp}`;
         if (_processedUpdateIds.has(dedupKey)) {
             results.push({ nombre: update.nombre, skipped: true, reason: 'duplicate' });
             continue;
@@ -128,8 +161,10 @@ export function processStockUpdate(updates, cajaId = 'unknown') {
             _processedUpdateIds = new Set(arr.slice(-250));
         }
 
+        // [FIX M6] Usar normalizeName para el match (resuelve "Azúcar" vs "Azucar")
+        const normalizedUpdateName = normalizeName(update.nombre);
         const product = productCache.find(
-            p => p.nombre?.trim().toLowerCase() === update.nombre?.trim().toLowerCase()
+            p => normalizeName(p.nombre) === normalizedUpdateName
         );
 
         if (product) {
@@ -187,6 +222,10 @@ export function processStockUpdate(updates, cajaId = 'unknown') {
 export function startLanServer(mainWindow) {
     mainWindowRef = mainWindow;
 
+    // [FIX C1] Generar token de autenticación al iniciar el servidor
+    _lanSharedToken = crypto.randomBytes(32).toString('hex');
+    console.log(`🔑 [LAN SERVER] Token de autenticación generado (primeros 8 chars): ${_lanSharedToken.substring(0, 8)}...`);
+
     const server = http.createServer((req, res) => {
         const url = new URL(req.url, `http://localhost:${LAN_PORT}`);
         const path = url.pathname;
@@ -196,15 +235,18 @@ export function startLanServer(mainWindow) {
             res.writeHead(204, {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
             });
             res.end();
             return;
         }
 
-        // ─── RUTAS ────────────────────────────────────────────
+        // ─── RUTAS PÚBLICAS (sin auth) ─────────────────────────
 
-        // Health check
+        // Health check + handshake: devuelve token al que hace ping.
+        // Nota: /api/ping es abierto para que `scanForMaster` y `ConfigConexionLAN`
+        // puedan descubrir el servidor. El token se entrega solo en el ping.
+        // Una vez que PC2 tiene el token, lo usa en el header de las demás rutas.
         if (path === '/api/ping' && req.method === 'GET') {
             sendJSON(res, 200, {
                 status: 'ok',
@@ -214,6 +256,18 @@ export function startLanServer(mainWindow) {
                 timestamp: lastUpdateTimestamp,
                 ip: getLocalIP(),
                 clients: connectedClients.length,
+                // [FIX C1] Enviar token en el ping para handshake inicial
+                lanToken: _lanSharedToken,
+            });
+            return;
+        }
+
+        // ─── RUTAS PROTEGIDAS (requieren auth) ─────────────────
+
+        // [FIX C1] 🔒 Verificar auth en TODAS las rutas sensibles
+        if (!verifyLanAuth(req)) {
+            sendJSON(res, 401, {
+                error: 'Unauthorized — Missing or invalid LAN token. Reconnect to the master.'
             });
             return;
         }
@@ -274,14 +328,15 @@ export function startLanServer(mainWindow) {
                     return;
                 }
 
-                // Verificar que PC1 tiene licencia activa
+                // [FIX M5] Verificar que PC1 REALMENTE tiene licencia activa
                 const pc1License = configCache._licenseActive;
-                if (pc1License === false) {
+                if (pc1License !== true) {
                     sendJSON(res, 403, { error: 'El servidor principal no tiene licencia activa.' });
                     return;
                 }
 
-                // Generar licencia para PC2 usando SHA-256
+                // [FIX C2] Generar licencia para PC2 usando SHA-256 (V1)
+                // TODO: Migrar a JWT/RS256 cuando la clave privada esté en Electron main process
                 const hash = crypto.createHash('sha256')
                     .update(body.machineId + LICENSE_SALT)
                     .digest('hex')
@@ -311,7 +366,7 @@ export function startLanServer(mainWindow) {
             return;
         }
 
-        // SSE: Stream de eventos en tiempo real
+        // SSE: Stream de eventos en tiempo real (protegido — solo clientes autorizados)
         if (path === '/api/events' && req.method === 'GET') {
             res.writeHead(200, {
                 'Content-Type': 'text/event-stream',

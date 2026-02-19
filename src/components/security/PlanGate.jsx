@@ -4,22 +4,32 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/useConfigStore';
-import { hasFeature, getPlan } from '../../config/planTiers';
+import { hasFeature, getPlan, getRequiredFeature } from '../../config/planTiers';
 import { Lock, ArrowUp } from 'lucide-react';
 
 /**
  * PlanGate — Envuelve una ruta y verifica que el plan activo tenga acceso.
  * Si no tiene acceso, muestra un mensaje de upgrade o redirige.
- * 
- * @param {string} requiredFeature - Feature key de planTiers.js
- * @param {React.ReactNode} children - Componente a renderizar si tiene acceso
- * @param {boolean} redirect - Si true, redirige silenciosamente a /vender
+ *
+ * Soporta dos formas de uso:
+ *   1. Por feature:    <PlanGate requiredFeature="kardex">
+ *   2. Por permiso:    <PlanGate requiredPermission={PERMISOS.CLI_VER}>
+ *      (La feature se resuelve automáticamente desde PLAN_REQUIREMENTS via getRequiredFeature)
+ *
+ * @param {string}           [requiredFeature]    - Feature key de planTiers.js (prioridad)
+ * @param {string}           [requiredPermission] - Permiso RBAC cuya feature se resuelve
+ * @param {React.ReactNode}  children             - Componente a renderizar si tiene acceso
+ * @param {boolean}          [redirect=false]     - Si true, redirige silenciosamente a /vender
  */
-export default function PlanGate({ requiredFeature, children, redirect = false }) {
+export default function PlanGate({ requiredFeature, requiredPermission, children, redirect = false }) {
     const { license } = useConfigStore();
     const currentPlan = license?.plan || 'bodega';
 
-    if (hasFeature(currentPlan, requiredFeature)) {
+    // [FIX M5] Resolver feature: primero la explícita, luego la derivada del permiso RBAC
+    const featureKey = requiredFeature || getRequiredFeature(requiredPermission);
+
+    // Si no hay feature que verificar, permitir paso (no bloquear sin motivo)
+    if (!featureKey || hasFeature(currentPlan, featureKey)) {
         return children;
     }
 

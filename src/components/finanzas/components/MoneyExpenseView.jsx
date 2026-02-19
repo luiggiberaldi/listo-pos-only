@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DollarSign, AlertCircle, Banknote, User, Clock, FileText, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -90,7 +90,12 @@ export default function MoneyExpenseView({ onClose }) {
             }
 
             // 🛡️ VERIFICAR LIMITE DE SUELDO
-            const montoAdv = parseFloat(moneyData.monto);
+            // [FIX M3] Convertir VES->USD ANTES de validar capacidad
+            let montoAdv = parseFloat(moneyData.monto);
+            if (moneyData.moneda === 'VES' || moneyData.moneda === 'BS') {
+                const tasa = parseFloat(configuracion?.tasa) || 1;
+                montoAdv = tasa > 0 ? montoAdv / tasa : montoAdv;
+            }
             const validacion = await validarCapacidadEndeudamiento(targetEmployeeId, montoAdv);
 
             if (!validacion.puede) {
@@ -114,9 +119,11 @@ export default function MoneyExpenseView({ onClose }) {
                 return;
             }
 
-            if (moneyData.motivo.length < 5) moneyData.motivo = "Adelanto de Nómina";
+            // [FIX m1] Usar setter en vez de mutación directa del state
+            let motivoFinal = moneyData.motivo;
+            if (motivoFinal.length < 5) motivoFinal = "Adelanto de Nómina";
             setIsSubmitting(true);
-            result = await registrarAdelantoSueldo(targetEmployeeId, parseFloat(moneyData.monto), moneyData.motivo, moneyData.moneda);
+            result = await registrarAdelantoSueldo(targetEmployeeId, parseFloat(moneyData.monto), motivoFinal, moneyData.moneda);
         } else {
             if (moneyData.motivo.length < 5) {
                 Swal.fire('Error', 'El motivo debe ser más detallado', 'warning');
@@ -146,8 +153,8 @@ export default function MoneyExpenseView({ onClose }) {
         }
     };
 
-    // --- SIDE PANEL CONTENT ---
-    const SidePanel = () => (
+    // [FIX m3] Memoizar SidePanel para evitar re-mount en cada render
+    const sidePanel = useMemo(() => (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* 1. EMPLOYEE SELECTOR (If Adelanto) OR RECENT ACTIVITY */}
             {moneyData.esAdelanto ? (
@@ -255,7 +262,7 @@ export default function MoneyExpenseView({ onClose }) {
                 <p className="text-center text-[10px] text-slate-400 mt-3 font-medium">Esta acción afectará la caja inmediatamente</p>
             </div>
         </div>
-    );
+    ), [moneyData, targetEmployeeId, gastosRecientes, usuarios, CHIPS, isSubmitting]);
 
     return (
         <FinancialLayout
@@ -263,7 +270,7 @@ export default function MoneyExpenseView({ onClose }) {
             title={moneyData.esAdelanto ? "Adelanto de Nómina" : "Salida de Efectivo"}
             subtitle={moneyData.esAdelanto ? "Préstamo personal descontable" : "Pagos a proveedores o servicios"}
             color="indigo"
-            sidePanel={<SidePanel />}
+            sidePanel={sidePanel}
         >
             <div className="space-y-8 max-w-xl mx-auto">
                 {/* 1. INPUT GIGANTE */}

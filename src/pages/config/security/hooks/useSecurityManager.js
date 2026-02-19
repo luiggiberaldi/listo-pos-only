@@ -5,6 +5,7 @@ import { useSecureAction } from '../../../../hooks/security/useSecureAction';
 import { PERMISOS } from '../../../../hooks/store/useRBAC';
 import { ROLE_PERMISSIONS, ROLE_PRESETS, PERMISSION_META, PERMISSION_GROUPS } from '../../../../config/permissions';
 import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance'; // 🆕
+import { db } from '../../../../db'; // [FIX C2] DB access for fallback
 
 export const useSecurityManager = (readOnly) => {
   const {
@@ -137,8 +138,9 @@ export const useSecurityManager = (readOnly) => {
     const formato = validarRequisitosPin(nuevoEmpleado.pin);
     if (!formato.valid) return Swal.fire('Formato Inválido', formato.msg, 'warning');
 
-    // const disponible = await verificarPinDisponible(nuevoEmpleado.pin);
-    // if (!disponible) return Swal.fire('Duplicado', 'Ese PIN ya está en uso.', 'error');
+    // [FIX C1] Verificación de PIN único reactivada
+    const disponible = await verificarPinDisponible(nuevoEmpleado.pin);
+    if (!disponible) return Swal.fire('Duplicado', 'Ese PIN ya está en uso. Cada empleado debe tener un PIN único.', 'error');
 
     ejecutarAccionSegura({
       permiso: PERMISOS.CONF_USUARIOS_EDITAR,
@@ -156,17 +158,22 @@ export const useSecurityManager = (readOnly) => {
           // Intento 1: Usar ID devuelto por el hook (Ideal)
           let targetUserId = res.user?.id;
 
-          // Intento 2: Búsqueda manual (Fallback "Blindado")
+          // [FIX C2] Fallback robusto: buscar en DB directamente si no se devolvió ID
           if (!targetUserId) {
-            // Si useAuth no devolvió el usuario (versión antigua en caché?), lo buscamos en la lista.
-            // Dado que el PIN es único (verificado arriba), podemos re-hashearlo y buscar,
-            // o simplemente confiar en que es el último (riesgoso).
-            // Mejor estrategia: Esperar un ms o asumir fallo silencioso pero loguear.
-            console.warn("⚠️ [SECURITY] 'agregarUsuario' no devolvió ID. Intentando recuperación...");
-
-            // Nota: 'usuarios' aquí es el snapshot del render anterior. Puede no tener al nuevo todavía.
-            // No podemos garantizar encontrarlo sin recargar state.
-            // Sin embargo, mostraremos una alerta al usuario para que verifique.
+            console.warn("⚠️ [SECURITY] 'agregarUsuario' no devolvió ID. Buscando en DB...");
+            try {
+              // Buscar por nombre exacto (recién creado, debe ser único o el más reciente)
+              const allUsers = await db.usuarios.toArray();
+              const found = allUsers
+                .filter(u => u.nombre === nuevoEmpleado.nombre.trim())
+                .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+              if (found) {
+                targetUserId = found.id;
+                console.log("✅ [SECURITY] Usuario encontrado por fallback:", targetUserId);
+              }
+            } catch (dbErr) {
+              console.error("❌ [SECURITY] Fallback DB falló:", dbErr);
+            }
           }
 
           if (nuevoEmpleado.sueldoBase && parseFloat(nuevoEmpleado.sueldoBase) > 0) {

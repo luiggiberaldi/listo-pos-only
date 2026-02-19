@@ -37,7 +37,9 @@ export default function DesktopLayout({
     categorias,
     tasa,
     tasaCaida,
-    tasaInvalida, // 🚫 NEW: Sales block if rate = 0
+    tasaInvalida,
+    tasaStale,
+    onRefreshTasa,
     tasaReferencia, // 🆕
     handleSearchInputKeyDown,
     multiplicadorPendiente,
@@ -172,6 +174,14 @@ export default function DesktopLayout({
                                 <Trash2 size={14} /> VACIAR CESTA (F4)
                             </button>
                         </div>
+
+                        {/* ⚠️ P3: STALE RATE WARNING BANNER */}
+                        {tasaStale && !tasaInvalida && (
+                            <div className="mx-4 mb-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs font-bold animate-in fade-in">
+                                <span>⚠️ La tasa tiene más de 24h sin actualizarse</span>
+                                <button onClick={onRefreshTasa} className="underline hover:text-amber-900 dark:hover:text-amber-300 transition-colors">Actualizar Ahora</button>
+                            </div>
+                        )}
 
                         {/* 🚫 EXCHANGE RATE WARNING BANNER */}
                         {tasaInvalida && (

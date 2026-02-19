@@ -116,38 +116,59 @@ export const useFinanceIntegrator = () => {
 
 
     // 3️⃣ CIERRE DE NOMINA (Periodo -> Gasto Automático)
+    // [FIX M1] Ahora registra gasto de caja automáticamente al cerrar semana
     const cerrarSemanaConPago = useCallback(async () => {
         try {
-            // A. Ejecutar Cierre en DB (Snapshot de deudas, reset contadores)
+            // A. Calcular neto a pagar ANTES de cerrar
+            const empleadosActivos = usuarios.filter(u => u.activo && u.rol !== 'admin');
+            let totalSueldos = 0;
+            let totalDeudas = 0;
+            const detalleEmpleados = [];
+
+            for (const emp of empleadosActivos) {
+                const finanzas = await db.empleados_finanzas.get(emp.id);
+                if (finanzas) {
+                    const sueldo = finanzas.sueldoBase || 0;
+                    const deuda = finanzas.deudaAcumulada || 0;
+                    const neto = Math.max(0, sueldo - deuda);
+                    totalSueldos += sueldo;
+                    totalDeudas += deuda;
+                    if (neto > 0) {
+                        detalleEmpleados.push(`${emp.nombre}: $${neto.toFixed(2)}`);
+                    }
+                }
+            }
+
+            const netoAPagar = Math.max(0, totalSueldos - totalDeudas);
+
+            // B. Ejecutar Cierre en DB (Snapshot de deudas, reset contadores)
             const resCierre = await cerrarPeriodoGlobal();
             if (!resCierre.success) throw new Error(resCierre.message);
 
-            // B. Calcular Saldo a Pagar
-            // El cierre retorna info o consultamos el periodo recién cerrado.
-            const totalDeudaSemana = resCierre.totalDeuda || 0;
-            // ⚠️ OJO: 'totalDeuda' es lo que se DESCONTÓ. Necesitamos saber cuánto se PAGÓ en sueldos netos.
-            // Por simplicidad en V1, asumimos que se registra el "NETO A PAGAR" estimado de la nómina fija.
-            // Para V2 necesitaremos sumar todos los sueldos base activos y restar la deuda global.
-
-            // FIXME: Hardcoded simulation for safety until we implement total_salary logic.
-            // Usaremos un Gasto Genérico para que el usuario ponga el monto real si varía, 
-            // O mejor: Registramos el alivio de deuda como un "Ingreso por Cobro Interno" (virtual) 
-            // y la salida de nómina real se hace manual.
-
-            // DECISIÓN: Por seguridad, en esta V1 el cierre SOLO cierra el periodo lógico.
-            // La salida de dinero "Pago Nómina" se debe confirmar manualmente para validar montos exactos en efectivo.
-            // Pero ayudamos retornando los datos para pre-llenar ese gasto.
+            // C. Registrar Gasto de Nómina en Caja (si hay monto)
+            if (netoAPagar > 0) {
+                const resGasto = await registrarGasto({
+                    monto: netoAPagar,
+                    moneda: 'USD',
+                    medio: 'CASH',
+                    motivo: `Pago Nómina Semanal: ${detalleEmpleados.join(' | ')}`,
+                    categoria: 'NOMINA'
+                });
+                if (!resGasto.success) {
+                    console.warn('⚠️ Periodo cerrado pero gasto de nómina no registrado:', resGasto.message);
+                }
+            }
 
             return {
                 success: true,
-                message: 'Semana cerrada.',
-                data: resCierre
+                message: `Semana cerrada. Neto pagado: $${netoAPagar.toFixed(2)}`,
+                data: { ...resCierre, netoAPagar, totalSueldos, totalDeudas, detalleEmpleados }
             };
 
         } catch (error) {
             return { success: false, message: error.message };
         }
-    }, [cerrarPeriodoGlobal]);
+    }, [cerrarPeriodoGlobal, registrarGasto, usuarios]);
 
     // 4️⃣ COMPRA DE INSUMOS (Caja -> Stock)
     const registrarCompraInsumo = useCallback(async (productoId, cantidad, costoTotal, metodoPago, motivo) => {

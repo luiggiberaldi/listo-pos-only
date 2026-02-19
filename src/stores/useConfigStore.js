@@ -12,7 +12,7 @@ const DEFAULTS = {
     nombre: 'LISTO POS',
     direccion: '...', rif: '...', telefono: '...',
     mensaje: 'Gracias por preferir LISTO POS. Tu negocio, resuelto.',
-    tasa: 0, tipoTasa: 'USD', fechaTasa: null, autoUpdateTasa: false,
+    tasa: 0, tipoTasa: 'USD', fechaTasa: null, fuenteTasa: null, autoUpdateTasa: false,
     tasaReferencia: 0,
     autoUpdateFrecuencia: 0,
     modoRedondeo: 'exacto', modoCaja: 'global',
@@ -156,6 +156,7 @@ export const useConfigStore = create(
                 ];
 
                 let valFinal = null;
+                let fuenteExitosa = null;
                 for (const prov of proveedores) {
                     try {
                         const controller = new AbortController();
@@ -168,6 +169,7 @@ export const useConfigStore = create(
 
                         if (val > 0) {
                             valFinal = val;
+                            fuenteExitosa = prov.nombre;
                             break;
                         }
                     } catch (e) { console.warn("Provider fail", prov.nombre); }
@@ -183,7 +185,7 @@ export const useConfigStore = create(
 
                     if (modoRedondeo === 'entero') {
                         tasaFinal = Math.ceil(rawTasa);
-                    } else if (modoRedondeo === 'multiplo5') {
+                    } else if (modoRedondeo === 'multiplo5' || modoRedondeo === 'm5') {
                         tasaFinal = Math.ceil(rawTasa / 5) * 5;
                     } else {
                         // 'exacto' (default)
@@ -192,8 +194,9 @@ export const useConfigStore = create(
 
                     setConfiguracion({
                         tasa: tasaFinal,
-                        tipoTasa: tipoMoneda, // 🟢 Ensured consistency
-                        fechaTasa: new Date().toISOString()
+                        tipoTasa: tipoMoneda,
+                        fechaTasa: new Date().toISOString(),
+                        fuenteTasa: fuenteExitosa || 'BCV'
                     });
 
                     if (forzar) Swal.fire({ icon: 'success', title: 'Sincronizado', text: `${tasaFinal} Bs`, timer: 2000, showConfirmButton: false });
@@ -201,7 +204,6 @@ export const useConfigStore = create(
                 } else if (forzar) {
                     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo obtener la tasa.' });
                 }
-                return null;
                 return null;
             },
 

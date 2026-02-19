@@ -6,8 +6,9 @@ import { dbMaster, initFirebase } from '../../services/firebase'; // 🚀 Init I
 import { doc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_PLAN } from '../../config/planTiers';
 
-// SALT SECRETO (En producción esto debería estar ofuscado o venir de env cifrado)
-const LICENSE_SALT = import.meta.env.VITE_LICENSE_SALT || "LISTO_POS_V1_SECURE_SALT_998877";
+// [FIX M1] Salt centralizado — solo se usa para validación LEGACY (V1 SHA-256).
+// Una vez que todos los terminales migren a JWT (V2), este import puede eliminarse.
+import { LICENSE_SALT_LEGACY } from '../../config/licenseLegacy';
 
 export const useLicenseGuard = () => {
     const [status, setStatus] = useState('checking'); // checking | authorized | unauthorized | connecting
@@ -27,8 +28,9 @@ export const useLicenseGuard = () => {
 
     // 1. VERIFICACIÓN DE INTEGRIDAD LOCAL (HARDWARE BINDING - FÉNIX v2)
     useEffect(() => {
-        // 👻 GHOST BYPASS: Permitir acceso total si estamos en simulación
-        if (localStorage.getItem('ghost_bypass') === 'true') {
+        // [FIX C1] GHOST BYPASS: Solo disponible en entorno DEV de Vite.
+        // En producción (npm run build) import.meta.env.DEV es false → bypass NUNCA activo.
+        if (import.meta.env.DEV && localStorage.getItem('ghost_bypass') === 'true') {
             setStatus('authorized');
             setMachineId('GHOST_AGENT');
             setIsSuspended(false);
@@ -37,11 +39,6 @@ export const useLicenseGuard = () => {
 
         const verifyLicense = async () => {
             try {
-                // Fail-Safe: Revisar bloqueo persistente (System Lock Only)
-                if (localStorage.getItem('listo_lock_down') === 'true') {
-                    setIsSuspended(true);
-                }
-
                 // Detectar entorno
                 const isElectron = window.electronAPI && window.electronAPI.getMachineId;
                 let currentId = null;
@@ -80,7 +77,17 @@ export const useLicenseGuard = () => {
                         // 2. Leer Payload
                         const payload = KJUR.jws.JWS.readSafeJSONString(storedLicense.split('.')[1]);
 
-                        // 3. Verificar ID (Anti-Clonación)
+                        // [FIX M3] 3. Verificar Expiración (offline) — NUEVO
+                        if (payload.exp) {
+                            const nowSecs = Math.floor(Date.now() / 1000);
+                            if (nowSecs > payload.exp) {
+                                console.warn("⏰ [FÉNIX] Licencia expirada. exp:", new Date(payload.exp * 1000).toLocaleDateString());
+                                setStatus('unauthorized');
+                                return;
+                            }
+                        }
+
+                        // 4. Verificar ID (Anti-Clonación)
                         if (payload.id === currentId) {
                             console.log("✅ [FÉNIX] Licencia OFFLINE verificada y válida.");
                             setStatus('authorized');
@@ -97,7 +104,7 @@ export const useLicenseGuard = () => {
                         // Fallback V1 (Hash Legacy) - Solo por transición, eventualmente eliminar.
                         // SI la licencia NO es un JWT (no tiene puntos), probamos el hash antiguo.
                         if (!storedLicense.includes('.')) {
-                            const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
+                            const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT_LEGACY);
                             const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
                             const hashArray = Array.from(new Uint8Array(hashBuffer));
                             const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -127,9 +134,13 @@ export const useLicenseGuard = () => {
     }, []);
 
     // 2. FÉNIX CLOUD LOCK (REAL-TIME LISTENER)
+    // [FIX C2] El estado 'isSuspended' es ahora PURAMENTE REACTIVO desde Firestore.
+    // Se eliminó el uso de localStorage 'listo_lock_down' como fuente de verdad
+    // porque era trivialmente bypasseable (localStorage.clear()) y causaba falsos
+    // positivos permanentes ante errores transitorios de Firebase.
     useEffect(() => {
-        // 👻 GHOST BYPASS
-        if (localStorage.getItem('ghost_bypass') === 'true') return;
+        // [FIX C1] Solo el entorno DEV activa ghost bypass
+        if (import.meta.env.DEV && localStorage.getItem('ghost_bypass') === 'true') return;
 
         // 🛑 WAIT FOR FIREBASE & MACHINE ID
         if (!firebaseReady || !machineId || !dbMaster) return;
@@ -144,22 +155,15 @@ export const useLicenseGuard = () => {
                 const data = docSnap.data();
 
                 // 🔒 STRICT ACTIVE-ONLY POLICY
-                // Solo el estado explícito 'ACTIVE' permite operar
+                // Solo el estado explícito 'ACTIVE' permite operar.
+                // El estado vive en React (isSuspended), NO en localStorage.
                 if (data.status !== 'ACTIVE') {
                     console.error("⛔ [FÉNIX] ACCESO DENEGADO REMOTAMENTE. Estado:", data.status || 'UNDEFINED');
-                    localStorage.setItem('listo_lock_down', 'true');
                     setIsSuspended(true);
                 } else {
                     // Estado es explícitamente ACTIVE
-                    // Si teníamos un bloqueo local, lo liberamos
-                    if (localStorage.getItem('listo_lock_down') === 'true') {
-                        console.log("🟢 [FÉNIX] ORDEN DE REACTIVACIÓN RECIBIDA.");
-                        localStorage.removeItem('listo_lock_down');
-                        setIsSuspended(false);
-                    }
-                    // Si la licencia local fallaba pero el remoto dice ACTIVE,
-                    // podríamos considerar auto-reparar la licencia (future feature).
-                    // Por ahora, solo mantenemos el bloqueo de suspensión sync.
+                    setIsSuspended(false);
+                    console.log("🟢 [FÉNIX] Terminal ACTIVO confirmado por nube.");
                 }
 
                 // 🏪 PLAN TIER: Leer plan del terminal
@@ -181,7 +185,7 @@ export const useLicenseGuard = () => {
             }
         }, (error) => {
             console.warn("⚠️ [FÉNIX] Conexión inestable con Master:", error.code);
-            // FAIL-SAFE OFFLINE: Mantenemos estado actual.
+            // FAIL-SAFE OFFLINE: Mantenemos estado actual (no bloqueamos por error de red).
         });
 
         return () => unsubscribe();
@@ -189,4 +193,3 @@ export const useLicenseGuard = () => {
 
     return { status, machineId, isSuspended, plan };
 };
-

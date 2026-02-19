@@ -72,7 +72,7 @@ export default function MainLayout() {
   // ⚡ ZUSTAND ATOMIC STORES
   const { usuario, logout } = useAuthStore();
   const { configuracion, setDevMode } = useConfigStore(); // Note: setDevMode might need checks if it exists in store
-  const { playSound, isSidebarOpen, toggleSidebar } = useUIStore();
+  const { playSound, isSidebarOpen, toggleSidebar, activeModal, modalData, closeModal } = useUIStore();
 
   // Adapter: UI Store 'isSidebarOpen' maps to 'isCollapsed' logic inversely
   // Or we change the layout logic. Let's keep variable name 'isCollapsed' derived from store.
@@ -293,7 +293,12 @@ export default function MainLayout() {
         </div>
 
         {/* 🆕 MODAL ZONA DE USUARIO */}
-        {showUserProfile && <UserProfileModal onClose={() => setShowUserProfile(false)} />}
+        {(showUserProfile || activeModal === 'userProfile') && (
+          <UserProfileModal
+            initialTab={modalData?.tab || 'resumen'}
+            onClose={() => { setShowUserProfile(false); if (activeModal === 'userProfile') closeModal(); }}
+          />
+        )}
       </main>
     </div>
   );

@@ -7,8 +7,12 @@ import { useConfigStore } from '../../stores/useConfigStore';
 import { dbMaster } from '../../services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// SALT must match useLicenseGuard.js
-const LICENSE_SALT = "LISTO_POS_V1_SECURE_SALT_998877";
+// [FIX M1] Salt centralizado desde módulo compartido (eliminado el hardcode duplicado)
+import { LICENSE_SALT_LEGACY } from '../../config/licenseLegacy';
+
+// [FIX M4] Importar guard de maxCajas para aplicar en activación de Caja Secundaria
+import { canAddCaja } from '../../config/planTiers';
+
 const LAN_PORT = 3847;
 
 export default function LicenseGate({ children }) {
@@ -60,6 +64,18 @@ export default function LicenseGate({ children }) {
     // 🔑 MULTI-CAJA: Activar como Caja Secundaria
     const handleMultiCajaActivation = async () => {
         if (!serverIP.trim() || !machineId) return;
+
+        // [FIX M4] Verificar si el plan activo permite más cajas antes de intentar conectar
+        // El plan se resuelve desde el store o localStorage como segundo fallback
+        const activePlan = license?.plan || localStorage.getItem('listo_plan') || 'bodega';
+        // Nota: aquí la caja principal ya cuenta como 1, estamos añadiendo la #2 (o más)
+        // canAddCaja(plan, 1) → ¿puede añadir a partir de 1 caja existente?
+        if (!canAddCaja(activePlan, 1)) {
+            setMultiCajaStatus('error');
+            setMultiCajaError(`El plan ${activePlan} no permite más de 1 caja. Actualiza a Abasto o Minimarket.`);
+            return;
+        }
+
         setMultiCajaStatus('connecting');
         setMultiCajaError(null);
 
@@ -144,8 +160,10 @@ export default function LicenseGate({ children }) {
 
         if (result === 'MASTER') {
             // ✅ Desbloqueo Maestro Exitoso
+            // [FIX C2] listo_lock_down ya no se usa como fuente de verdad.
+            // El estado reactivo de isSuspended en useLicenseGuard lo gestiona Firestore.
+            // Limpiamos por retrocompatibilidad con terminales que aún tengan el key viejo.
             localStorage.removeItem('listo_lock_down');
-            // Removemos también el lock del owner por si acaso
             localStorage.removeItem('listo_owner_lock');
             window.location.reload();
         } else {
@@ -395,7 +413,8 @@ export default function LicenseGate({ children }) {
                 } else {
                     // Intento 2: Legacy (V1 - Hash)
                     // TODO: Eliminar en Q4-2026
-                    const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT);
+                    // [FIX M1] Salt desde módulo compartido
+                    const msgBuffer = new TextEncoder().encode(currentId + LICENSE_SALT_LEGACY);
                     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
                     const hashArray = Array.from(new Uint8Array(hashBuffer));
                     const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -494,7 +513,7 @@ export default function LicenseGate({ children }) {
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
-                                        Llave de Activación (SHA-256)
+                                        Llave de Activación (JWT)
                                     </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

@@ -141,6 +141,17 @@ export default function GoodsConsumptionView({ onClose }) {
             return;
         }
 
+        // [FIX M4] Pre-validar stock de TODO el carrito antes de procesar
+        const sinStock = cart.filter(item => {
+            const prod = productos?.find(p => p.id === item.product.id);
+            return !prod || (prod.stock || 0) < item.cantidad;
+        });
+        if (sinStock.length > 0) {
+            const nombres = sinStock.map(i => `${i.product.nombre} (pide ${i.cantidad}, hay ${productos?.find(p => p.id === i.product.id)?.stock || 0})`).join('\n');
+            Swal.fire('Stock Insuficiente', `Los siguientes productos no tienen stock suficiente:\n${nombres}`, 'warning');
+            return;
+        }
+
         // 🛡️ SECURITY CHECK: SELF CLAIM
         if (consumidorType === 'EMPLOYEE' && targetEmployeeId === usuario?.id) {
             if (!usuario.allowSelfConsume) {
@@ -224,8 +235,8 @@ export default function GoodsConsumptionView({ onClose }) {
         }
     };
 
-    // --- SIDE PANEL (CART & ACTIONS) ---
-    const SidePanel = () => (
+    // [FIX m3] Memoizar SidePanel para evitar re-mount en cada render
+    const sidePanel = useMemo(() => (
         <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
             {/* 1. Header & Consumer Selector */}
             <div className="shrink-0 space-y-4 mb-4">
@@ -263,7 +274,8 @@ export default function GoodsConsumptionView({ onClose }) {
                             className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
                         >
                             <option value="">-- Seleccionar Empleado --</option>
-                            {usuarios.filter(u => u.rol !== 'admin').map((u) => (
+                            {/* [FIX M5] Agregar filtro .activo para excluir empleados desactivados */}
+                            {usuarios.filter(u => u.activo && u.rol !== 'admin').map((u) => (
                                 <option key={u.id} value={u.id}>
                                     {u.nombre}
                                 </option>
@@ -380,7 +392,7 @@ export default function GoodsConsumptionView({ onClose }) {
                 />
             </div>
         </div >
-    );
+    ), [consumidorType, targetEmployeeId, consumosRecientes, cart, cartCount, cartTotal, globalMotivo, isSubmitting, usuarios, CHIPS]);
 
     return (
         <FinancialLayout
@@ -388,7 +400,7 @@ export default function GoodsConsumptionView({ onClose }) {
             title="Consumo de Inventario"
             subtitle="Registra mermas, uso interno o consumo de empleados."
             color="emerald"
-            sidePanel={<SidePanel />}
+            sidePanel={sidePanel}
         >
             <div className="h-full flex flex-col">
                 {/* Search Bar */}
