@@ -41,11 +41,6 @@ export default function Dashboard() {
 
   const { tienePermiso } = useRBAC(usuario);
   const navigate = useNavigate();
-
-  const canSeeFinance = tienePermiso(PERMISOS.REP_VER_DASHBOARD);
-
-
-
   const [rango, setRango] = useState('hoy');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -164,9 +159,9 @@ export default function Dashboard() {
     };
   }, [productos]);
 
-  // 🚀 DASHBOARD OPERATIVO (VISTA UNIFICADA)
-  // Si no tiene finanzas, mostramos accesos directos.
-  const isLiteMode = !canSeeFinance;
+  // 🏪 DASHBOARD TIERED: Bodega → Abasto → Minimarket
+  const planId = license?.plan || 'bodega';
+  const dashTier = planId === 'minimarket' ? 'full' : planId === 'abasto' ? 'mid' : 'lite';
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto animate-in fade-in zoom-in duration-300 pb-24">
@@ -241,7 +236,7 @@ export default function Dashboard() {
 
         </div>
 
-        {!isLiteMode && (
+        {dashTier === 'full' && (
           <div className="flex flex-col items-end gap-2">
             <div className="bg-app-light dark:bg-app-dark p-1.5 rounded-xl flex shadow-inner">
               {['hoy', 'semana', 'mes', 'custom'].map((r) => (
@@ -262,39 +257,164 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 📊 CONTENIDO PRINCIPAL: LITE vs FULL */}
-      {isLiteMode ? (
-        // 🔹 MODO OPERATIVO (BODEGA/SENCILLO)
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {/* ACCESO RÁPIDO: CAJA */}
-          <button onClick={() => navigate('/vender')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-primary/5 hover:border-primary/30 transition-all group text-left">
-            <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <ShoppingCart className="text-primary" size={24} />
-            </div>
-            <h3 className="text-lg font-black text-content-main mb-1">Punto de Venta</h3>
-            <p className="text-xs text-content-secondary">Facturar y procesar clientes</p>
-          </button>
+      {/* ═══════════════════════════════════════ */}
+      {/* 📊 CONTENIDO PRINCIPAL: LITE / MID / FULL */}
+      {/* ═══════════════════════════════════════ */}
 
-          {/* ACCESO RÁPIDO: INVENTARIO */}
-          <button onClick={() => navigate('/inventario')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-emerald-500/5 hover:border-emerald-500/30 transition-all group text-left">
-            <div className="bg-emerald-500/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <PackageX className="text-emerald-600 dark:text-emerald-400" size={24} />
+      {/* ── 🏪 BODEGA (LITE): Resumen + Accesos Rápidos ── */}
+      {dashTier === 'lite' && (
+        <>
+          {/* 💰 TARJETA VENTAS DE HOY — Simple y directo */}
+          <div className="mb-8 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 rounded-3xl p-8 shadow-xl border border-slate-700/50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 opacity-[0.06]"><Wallet size={160} className="text-white transform rotate-12" /></div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2.5 bg-primary/20 rounded-xl"><ShoppingCart size={20} className="text-primary" /></div>
+                <div>
+                  <h3 className="text-sm font-black text-white/60 uppercase tracking-widest">Ventas de Hoy</h3>
+                  <p className="text-[10px] text-slate-500 font-bold">{ventasFiltradas.length} transacciones</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total en Divisas</p>
+                  <p className="text-4xl font-black text-white font-mono tracking-tight">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Equivalente Bs</p>
+                  <p className="text-4xl font-black text-emerald-400 font-mono tracking-tight">Bs {(tesoreriaResumen * (configuracion.tasa || 0)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-black text-content-main mb-1">Inventario</h3>
-            <p className="text-xs text-content-secondary">Consultar precios y stock</p>
-          </button>
+          </div>
 
-          {/* ACCESO RÁPIDO: CONFIGURACIÓN */}
-          <button onClick={() => navigate('/configuracion')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-slate-500/5 hover:border-slate-500/30 transition-all group text-left">
-            <div className="bg-slate-500/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Settings className="text-slate-600 dark:text-slate-400" size={24} />
+          {/* 🚀 ACCESOS RÁPIDOS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <button onClick={() => navigate('/vender')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-primary/5 hover:border-primary/30 transition-all group text-left">
+              <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <ShoppingCart className="text-primary" size={24} />
+              </div>
+              <h3 className="text-lg font-black text-content-main mb-1">Punto de Venta</h3>
+              <p className="text-xs text-content-secondary">Facturar y procesar clientes</p>
+            </button>
+
+            <button onClick={() => navigate('/inventario')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-emerald-500/5 hover:border-emerald-500/30 transition-all group text-left">
+              <div className="bg-emerald-500/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <PackageX className="text-emerald-600 dark:text-emerald-400" size={24} />
+              </div>
+              <h3 className="text-lg font-black text-content-main mb-1">Inventario</h3>
+              <p className="text-xs text-content-secondary">Consultar precios y stock</p>
+            </button>
+
+            <button onClick={() => navigate('/configuracion')} className="bg-surface-light dark:bg-surface-dark p-6 rounded-3xl shadow-md border border-border-subtle hover:bg-slate-500/5 hover:border-slate-500/30 transition-all group text-left">
+              <div className="bg-slate-500/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Settings className="text-slate-600 dark:text-slate-400" size={24} />
+              </div>
+              <h3 className="text-lg font-black text-content-main mb-1">Configuración</h3>
+              <p className="text-xs text-content-secondary">Hardware y Preferencias</p>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── 🏬 ABASTO (MID): Ventas + Inventario + Total Diario ── */}
+      {dashTier === 'mid' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* TARJETA VENTAS (reutilizada del Full) */}
+            <Link to="/total-diario" className="block group col-span-1 lg:col-span-2">
+              <div className="h-full bg-surface-dark rounded-3xl p-8 shadow-xl relative overflow-hidden transition-all transform hover:scale-[1.01] border border-border-subtle flex flex-col justify-between">
+                <div className="absolute top-0 right-0 p-8 opacity-10"><Wallet size={180} className="text-white transform rotate-12" /></div>
+                <div className="relative z-10">
+                  <span className="bg-primary/20 text-primary-focus px-3 py-1 rounded-full text-[10px] font-black uppercase mb-3 inline-block">Caja Principal</span>
+                  <h3 className="text-3xl font-black text-white mb-1">Ventas de Hoy</h3>
+                  <p className="text-xs text-slate-500 font-bold">{ventasFiltradas.length} transacciones</p>
+                </div>
+                <div className="relative z-10 mt-8">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">Total Divisas</p>
+                      <p className="text-4xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">En Bolívares</p>
+                      <p className="text-4xl font-black text-emerald-400 font-mono tracking-tighter">Bs {(tesoreriaResumen * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-primary font-bold mt-4 opacity-80 flex items-center gap-1 group-hover:opacity-100 transition-opacity">
+                    <Search size={12} /> Ver detalle Total Diario →
+                  </p>
+                </div>
+              </div>
+            </Link>
+
+            {/* CAPITAL EN INVENTARIO */}
+            <div className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-sm border border-border-subtle flex flex-col justify-between">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-primary-light/40 dark:bg-primary/20 text-primary rounded-2xl"><Layers size={24} /></div>
+                <div><h4 className="font-black text-content-main uppercase text-sm">Capital en Inventario</h4></div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs mb-1"><span className="text-content-secondary">Inversión (Costo)</span><span className="font-bold text-content-main">${inventarioValor.costo.toLocaleString()}</span></div>
+                  <div className="w-full bg-app-light dark:bg-app-dark rounded-full h-2"><div className="bg-content-secondary h-2 rounded-full" style={{ width: '100%' }}></div></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1"><span className="text-content-secondary">Valor Venta</span><span className="font-bold text-primary">${inventarioValor.venta.toLocaleString()}</span></div>
+                  <div className="w-full bg-app-light dark:bg-app-dark rounded-full h-2"><div className="bg-primary h-2 rounded-full" style={{ width: '100%' }}></div></div>
+                </div>
+              </div>
+              <div className="mt-6 pt-6 border-t border-border-subtle text-center">
+                <p className="text-xs text-content-secondary uppercase font-bold">Ganancia Estimada</p>
+                <p className="text-2xl font-black text-primary">+${inventarioValor.gananciaPotencial.toLocaleString()}</p>
+              </div>
             </div>
-            <h3 className="text-lg font-black text-content-main mb-1">Configuración</h3>
-            <p className="text-xs text-content-secondary">Hardware y Preferencias</p>
-          </button>
-        </div>
-      ) : (
-        // 🔸 MODO FINANCIERO (MINIMARKET/ABASTO+)
+          </div>
+
+          {/* ACCESOS RÁPIDOS COMPACTOS — Abasto */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <button onClick={() => navigate('/vender')} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle hover:border-primary/30 transition-all group text-left flex items-center gap-3">
+              <div className="bg-primary/10 w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <ShoppingCart className="text-primary" size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-content-main">Vender</h3>
+                <p className="text-[10px] text-content-secondary">Punto de Venta</p>
+              </div>
+            </button>
+            <button onClick={() => navigate('/inventario')} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle hover:border-emerald-500/30 transition-all group text-left flex items-center gap-3">
+              <div className="bg-emerald-500/10 w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <PackageX className="text-emerald-600 dark:text-emerald-400" size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-content-main">Inventario</h3>
+                <p className="text-[10px] text-content-secondary">Stock y precios</p>
+              </div>
+            </button>
+            <button onClick={() => navigate('/historial')} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle hover:border-blue-500/30 transition-all group text-left flex items-center gap-3">
+              <div className="bg-blue-500/10 w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Clock className="text-blue-600 dark:text-blue-400" size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-content-main">Historial</h3>
+                <p className="text-[10px] text-content-secondary">Ventas pasadas</p>
+              </div>
+            </button>
+            <button onClick={() => navigate('/configuracion')} className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle hover:border-slate-500/30 transition-all group text-left flex items-center gap-3">
+              <div className="bg-slate-500/10 w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Settings className="text-slate-600 dark:text-slate-400" size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-content-main">Ajustes</h3>
+                <p className="text-[10px] text-content-secondary">Preferencias</p>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── 🏢 MINIMARKET (FULL): Dashboard Completo ── */}
+      {dashTier === 'full' && (
         <>
           <div className="mb-8">
             <DashboardStats ventas={ventasFiltradas} balancesApertura={balancesHoy} />
@@ -310,7 +430,6 @@ export default function Dashboard() {
                 </div>
                 <div className="relative z-10 mt-8 text-right">
                   <p className="text-xs font-bold text-slate-400 uppercase mb-1">Total en Divisas</p>
-                  {/* Mostramos el Tesoreria Resumen que ya incluye apertura si es 'hoy' */}
                   <p className="text-5xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                   <p className="text-xs text-primary font-bold mt-2 opacity-80">≈ Bs {(tesoreriaResumen * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
                 </div>

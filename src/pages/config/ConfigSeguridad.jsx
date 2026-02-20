@@ -6,6 +6,8 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../../context/StoreContext';
 import { PERMISOS, useRBAC } from '../../hooks/store/useRBAC';
+import { useConfigStore } from '../../stores/useConfigStore';
+import { hasFeature, FEATURES, getPlan } from '../../config/planTiers';
 import { useSecurityManager } from './security/hooks/useSecurityManager';
 import { FileText, Users, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -21,6 +23,14 @@ import EmployeeDetail from './security/components/EmployeeDetail'; // 🆕
 const ConfigSeguridad = ({ readOnly }) => {
   const { usuario } = useStore();
   const { tienePermiso } = useRBAC(usuario);
+
+  // 🏪 PLAN GATING
+  const { license } = useConfigStore();
+  const planId = license?.plan || 'bodega';
+  const hasEmployeeFeatures = hasFeature(planId, FEATURES.EMPLEADOS_BASICO) || hasFeature(planId, FEATURES.ROLES);
+  const hasFullRoles = hasFeature(planId, FEATURES.ROLES);
+  const planConfig = getPlan(planId);
+  const maxEmpleados = planConfig.maxEmpleados ?? 0;
 
   // Hook que contiene toda la lógica "sucia" (Alertas, Validaciones, Estado)
   const manager = useSecurityManager(readOnly);
@@ -49,7 +59,7 @@ const ConfigSeguridad = ({ readOnly }) => {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px]" />
       </div>
 
-      {tienePermiso(PERMISOS.CONF_USUARIOS_EDITAR) && (
+      {hasEmployeeFeatures && tienePermiso(PERMISOS.CONF_USUARIOS_EDITAR) && (
         <div className="flex justify-between items-center bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-slate-200/50 shadow-sm mb-6">
           <div className="flex gap-2">
             <button
@@ -58,12 +68,14 @@ const ConfigSeguridad = ({ readOnly }) => {
             >
               <Users size={16} /> Personal
             </button>
-            <button
-              onClick={() => setViewMode('PAYROLL')}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'PAYROLL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
-            >
-              <FileText size={16} /> Reporte Nómina
-            </button>
+            {hasFullRoles && (
+              <button
+                onClick={() => setViewMode('PAYROLL')}
+                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'PAYROLL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+              >
+                <FileText size={16} /> Reporte Nómina
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -81,7 +93,7 @@ const ConfigSeguridad = ({ readOnly }) => {
           />
 
           {/* 2. ZONA DE GESTIÓN (CONDICIONAL) */}
-          {tienePermiso(PERMISOS.CONF_USUARIOS_EDITAR) ? (
+          {hasEmployeeFeatures && tienePermiso(PERMISOS.CONF_USUARIOS_EDITAR) ? (
             <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 items-start">
 
               {/* Formulario de Alta */}
@@ -90,6 +102,9 @@ const ConfigSeguridad = ({ readOnly }) => {
                 setFormState={manager.setNuevoEmpleado}
                 onSubmit={manager.createEmployee}
                 readOnly={readOnly}
+                maxEmpleados={maxEmpleados}
+                currentCount={manager.usuarios?.filter(u => u.rol !== 'admin').length || 0}
+                isBasicPlan={!hasFullRoles}
               />
 
               {/* Lista de Personal */}
@@ -98,12 +113,12 @@ const ConfigSeguridad = ({ readOnly }) => {
                 onReset={manager.resetEmployeePin}
                 onDelete={manager.fireEmployee}
                 onEditName={manager.updateUserName}
-                onUpdatePermissions={manager.openPermissionsMatrix}
-                onViewFinance={(u) => setFinanceModalUser(u)} // ✅ Abrir Modal
+                onUpdatePermissions={hasFullRoles ? manager.openPermissionsMatrix : undefined}
+                onViewFinance={hasFullRoles ? (u) => setFinanceModalUser(u) : undefined}
                 readOnly={readOnly}
               />
             </div>
-          ) : (
+          ) : !hasEmployeeFeatures ? null : (
             /* Mensaje para Empleados sin permisos */
             <AccessDeniedBanner />
           )}

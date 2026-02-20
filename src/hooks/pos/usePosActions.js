@@ -153,8 +153,10 @@ export const usePosActions = (
         ventaRapida: (montoBs, aplicaIva) => {
             const tasa = configuracion.tasa || 1;
             const precioBaseUSD = parseFloat((montoBs / tasa).toFixed(6));
-            const nombreProd = aplicaIva ? 'VARIOS (GRAVADO)' : 'VARIOS (EXENTO)';
-            const productoRapido = { id: `QUICK-${Date.now()}`, nombre: nombreProd, tipoUnidad: 'unidad', stock: 999999, codigo: 'QUICK', aplicaIva: aplicaIva, exento: !aplicaIva };
+            // 🏪 IVA GATE: If IVA is globally disabled, force EXENTO
+            const ivaEfectivo = configuracion.ivaActivo ? aplicaIva : false;
+            const nombreProd = ivaEfectivo ? 'VARIOS (GRAVADO)' : 'VARIOS (EXENTO)';
+            const productoRapido = { id: `QUICK-${Date.now()}`, nombre: nombreProd, tipoUnidad: 'unidad', stock: 999999, codigo: 'QUICK', aplicaIva: ivaEfectivo, exento: !ivaEfectivo };
             if (playSound) playSound('SCAN');
             agregarAlCarrito(productoRapido, multiplicadorPendiente, 'unidad', precioBaseUSD);
             setMultiplicadorPendiente(1); setBusqueda(''); setSelectedIndex(0);

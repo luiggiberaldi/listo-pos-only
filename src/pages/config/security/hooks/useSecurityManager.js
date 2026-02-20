@@ -4,8 +4,10 @@ import { useStore } from '../../../../context/StoreContext';
 import { useSecureAction } from '../../../../hooks/security/useSecureAction';
 import { PERMISOS } from '../../../../hooks/store/useRBAC';
 import { ROLE_PERMISSIONS, ROLE_PRESETS, PERMISSION_META, PERMISSION_GROUPS } from '../../../../config/permissions';
-import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance'; // 🆕
-import { db } from '../../../../db'; // [FIX C2] DB access for fallback
+import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance';
+import { db } from '../../../../db';
+import { useConfigStore } from '../../../../stores/useConfigStore';
+import { hasFeature, FEATURES, getPlan } from '../../../../config/planTiers';
 
 export const useSecurityManager = (readOnly) => {
   const {
@@ -133,14 +135,28 @@ export const useSecurityManager = (readOnly) => {
     e.preventDefault();
     if (readOnly) return;
 
+    // 🏪 PLAN LIMIT: Enforce maxEmpleados
+    const { license } = useConfigStore.getState();
+    const planId = license?.plan || 'bodega';
+    const planConfig = getPlan(planId);
+    const maxEmp = planConfig.maxEmpleados ?? 0;
+    const currentEmployeeCount = usuarios?.filter(u => u.rol !== 'admin' && u.roleId !== 'ROL_DUENO').length || 0;
+
+    if (maxEmp !== Infinity && currentEmployeeCount >= maxEmp) {
+      return Swal.fire(
+        'Límite Alcanzado',
+        `Tu plan ${planConfig.label} permite máximo ${maxEmp} empleados. Actualiza a un plan superior para agregar más.`,
+        'warning'
+      );
+    }
+
     if (!nuevoEmpleado.nombre.trim() || !nuevoEmpleado.pin.trim()) return Swal.fire('Incompleto', 'Nombre y PIN requeridos', 'warning');
 
     const formato = validarRequisitosPin(nuevoEmpleado.pin);
     if (!formato.valid) return Swal.fire('Formato Inválido', formato.msg, 'warning');
 
-    // [FIX C1] Verificación de PIN único reactivada
-    const disponible = await verificarPinDisponible(nuevoEmpleado.pin);
-    if (!disponible) return Swal.fire('Duplicado', 'Ese PIN ya está en uso. Cada empleado debe tener un PIN único.', 'error');
+    // PIN duplicado permitido: con login estilo Netflix, el PIN solo verifica identidad
+    // La identificación en logs se hace por User ID, no por PIN
 
     ejecutarAccionSegura({
       permiso: PERMISOS.CONF_USUARIOS_EDITAR,

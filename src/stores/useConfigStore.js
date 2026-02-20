@@ -17,7 +17,7 @@ const DEFAULTS = {
     autoUpdateFrecuencia: 0,
     modoRedondeo: 'exacto', modoCaja: 'global',
     monedaBase: 'USD',
-    porcentajeIva: 16,
+    porcentajeIva: 16, ivaActivo: false,
     igtfActivo: false, igtfTasa: 3.00,
     pinAdmin: '123456',
     pinEmpleado: '000000',
@@ -187,6 +187,8 @@ export const useConfigStore = create(
                         tasaFinal = Math.ceil(rawTasa);
                     } else if (modoRedondeo === 'multiplo5' || modoRedondeo === 'm5') {
                         tasaFinal = Math.ceil(rawTasa / 5) * 5;
+                    } else if (modoRedondeo === 'multiplo10') {
+                        tasaFinal = Math.ceil(rawTasa / 10) * 10;
                     } else {
                         // 'exacto' (default)
                         tasaFinal = rawTasa;

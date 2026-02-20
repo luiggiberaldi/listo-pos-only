@@ -36,6 +36,9 @@ export const FEATURES = {
     VENCIMIENTOS: 'vencimientos',
     METODOS_PAGO: 'metodosPago',
 
+    // ═══ BUSINESS (Gestión de personal — Abasto+) ═══
+    EMPLEADOS_BASICO: 'empleadosBasico', // Adelantos y consumos, máx 3 empleados
+
     // ═══ ENTERPRISE (Escala — Minimarket) ═══
     DASHBOARD: 'dashboard',
     REPORTES_AVANZADOS: 'reportes',
@@ -44,7 +47,7 @@ export const FEATURES = {
     GHOST_ANALYTICS: 'ghostAnalytics',
     KNOWLEDGE_BASE: 'knowledgeBase',
     SIMULADOR: 'simulador',
-    ROLES: 'roles',
+    ROLES: 'roles',               // Permisos granulares + empleados ilimitados
     CONFIG_AVANZADA: 'configAvanzada',
     ETIQUETAS: 'etiquetas',
 };
@@ -72,11 +75,12 @@ const BODEGA_FEATURES = new Set([
 const ABASTO_FEATURES = new Set([
     ...BODEGA_FEATURES,
     // BUSINESS — Gestión de negocio mediano
-    FEATURES.KARDEX,        // 📊 Auditoría de movimientos de inventario
-    FEATURES.TOTAL_DIARIO,  // 📋 Reporte financiero detallado
-    FEATURES.MULTI_CAJA,    // 📦 2+ cajas simultáneas
-    FEATURES.VENCIMIENTOS,  // 📅 Control de caducidad (perecederos)
-    FEATURES.METODOS_PAGO,  // 💵 Desglose: efectivo/$, PagoMóvil, Punto
+    FEATURES.KARDEX,            // 📊 Auditoría de movimientos de inventario
+    FEATURES.TOTAL_DIARIO,      // 📋 Reporte financiero detallado
+    FEATURES.MULTI_CAJA,        // 📦 2+ cajas simultáneas
+    FEATURES.VENCIMIENTOS,      // 📅 Control de caducidad (perecederos)
+    FEATURES.METODOS_PAGO,      // 💵 Desglose: efectivo/$, PagoMóvil, Punto
+    FEATURES.EMPLEADOS_BASICO,  // 👷 Adelantos + consumos de empleados (máx 3)
 ]);
 
 const MINIMARKET_FEATURES = new Set([
@@ -101,6 +105,7 @@ export const PLANES = {
         id: 'bodega',
         label: 'Bodega',
         maxCajas: 1,
+        maxEmpleados: 0,           // Sin módulo de empleados
         features: BODEGA_FEATURES,
         color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
         icon: '🏪',
@@ -109,6 +114,7 @@ export const PLANES = {
         id: 'abasto',
         label: 'Abasto',
         maxCajas: 2,
+        maxEmpleados: 3,           // Adelantos/consumos, máx 3 trabajadores
         features: ABASTO_FEATURES,
         color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
         icon: '🛒',
@@ -117,6 +123,7 @@ export const PLANES = {
         id: 'minimarket',
         label: 'Minimarket',
         maxCajas: 99,
+        maxEmpleados: Infinity,    // Sin límite, con permisos granulares
         features: MINIMARKET_FEATURES,
         color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
         icon: '🏬',
@@ -148,7 +155,7 @@ export const PLAN_REQUIREMENTS = {
     [PERMISOS.REP_VER_AUDITORIA]: FEATURES.AUDITORIA,
 
     // Config
-    [PERMISOS.CONF_USUARIOS_VER]: FEATURES.ROLES,
+    [PERMISOS.CONF_USUARIOS_VER]: FEATURES.EMPLEADOS_BASICO, // Abasto+ puede ver empleados (gating fino en ConfigSeguridad)
     [PERMISOS.CONF_NEGOCIO_EDITAR]: FEATURES.CONFIG_BASICA,
     [PERMISOS.CONF_FINANZAS_VER]: FEATURES.CONFIG_BASICA,
 };

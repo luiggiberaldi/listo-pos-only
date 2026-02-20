@@ -196,7 +196,7 @@ function App() {
                     }
                   />
 
-                  {/* 👥 CLIENTES (Abasto+) */}
+                  {/* 👥 CLIENTES (Bodega+) */}
                   <Route
                     path="clientes"
                     element={
@@ -232,7 +232,7 @@ function App() {
                     }
                   />
 
-                  {/* 📜 HISTORIAL DE VENTAS (Abasto+) */}
+                  {/* 📜 HISTORIAL DE VENTAS (Bodega+) */}
                   <Route
                     path="historial-ventas"
                     element={

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { dbMaster, initFirebase } from '../../services/firebase'; // 🚀 Init Import
 import { doc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_PLAN } from '../../config/planTiers';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 // [FIX M1] Salt centralizado — solo se usa para validación LEGACY (V1 SHA-256).
 // Una vez que todos los terminales migren a JWT (V2), este import puede eliminarse.
@@ -178,6 +179,11 @@ export const useLicenseGuard = () => {
                 localStorage.setItem('listo_isDemo', String(remoteIsDemo));
                 localStorage.setItem('listo_quotaLimit', String(remoteQuotaLimit));
                 console.log(`🛡️ [FÉNIX] Demo: ${remoteIsDemo}, Quota: ${remoteQuotaLimit}`);
+
+                // 🔄 SYNC TO ZUSTAND STORE (Real-Time Reactivity)
+                const { setDemoConfig, loadConfig } = useConfigStore.getState();
+                setDemoConfig(remoteIsDemo, remoteQuotaLimit);
+                loadConfig(); // Recalculate isQuotaBlocked with fresh usageCount
             } else {
                 // 🆕 TERMINAL NUEVO (No existe en Cloud)
                 // No hacemos nada destructivo aún. Esperamos activación manual.

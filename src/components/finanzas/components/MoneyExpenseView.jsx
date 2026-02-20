@@ -6,8 +6,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../../db';
 import { useFinance } from '../../../hooks/store/useFinance';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator';
-import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance'; // ✅ Import
+import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
 import { useStore } from '../../../context/StoreContext';
+import { useConfigStore } from '../../../stores/useConfigStore';
+import { hasFeature, FEATURES, getPlan } from '../../../config/planTiers';
 import FinancialLayout from '../design/FinancialLayout';
 import BigCurrencyInput from '../design/BigCurrencyInput';
 import HoldToConfirmButton from '../design/HoldToConfirmButton';
@@ -16,7 +18,14 @@ export default function MoneyExpenseView({ onClose }) {
     const { usuario, configuracion, usuarios } = useStore();
     const { registrarGasto, revertirGasto } = useFinance();
     const { registrarAdelantoSueldo } = useFinanceIntegrator();
-    const { validarCapacidadEndeudamiento } = useEmployeeFinance(); // ✅ Destructure
+    const { validarCapacidadEndeudamiento } = useEmployeeFinance();
+
+    // 🏪 PLAN GATING: Employee features
+    const { license } = useConfigStore();
+    const planId = license?.plan || 'bodega';
+    const hasEmployeeFeatures = hasFeature(planId, FEATURES.EMPLEADOS_BASICO) || hasFeature(planId, FEATURES.ROLES);
+    const planConfig = getPlan(planId);
+    const maxEmpleados = planConfig.maxEmpleados ?? 0;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [moneyData, setMoneyData] = useState({
@@ -74,7 +83,9 @@ export default function MoneyExpenseView({ onClose }) {
         }
     };
 
-    const CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento', 'Limpieza', 'Varios'];
+    // 🏪 Filter chips by plan — 'Personal' only for plans with employee management
+    const ALL_CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento', 'Limpieza', 'Varios'];
+    const CHIPS = hasEmployeeFeatures ? ALL_CHIPS : ALL_CHIPS.filter(c => c !== 'Personal');
 
     const handleMoneySubmit = async () => {
         if (!moneyData.monto || parseFloat(moneyData.monto) <= 0) {
@@ -282,22 +293,24 @@ export default function MoneyExpenseView({ onClose }) {
                     conversionRate={configuracion.tasa}
                 />
 
-                {/* 2. TOGGLE ADELANTO */}
-                <div
-                    onClick={() => setMoneyData({ ...moneyData, esAdelanto: !moneyData.esAdelanto })}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center gap-4 group ${moneyData.esAdelanto ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${moneyData.esAdelanto ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                        <Banknote size={24} strokeWidth={2.5} />
+                {/* 2. TOGGLE ADELANTO — Only for plans with employee management */}
+                {hasEmployeeFeatures && (
+                    <div
+                        onClick={() => setMoneyData({ ...moneyData, esAdelanto: !moneyData.esAdelanto })}
+                        className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center gap-4 group ${moneyData.esAdelanto ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                    >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${moneyData.esAdelanto ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                            <Banknote size={24} strokeWidth={2.5} />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className={`text-sm font-black ${moneyData.esAdelanto ? 'text-indigo-900' : 'text-slate-600'}`}>¿Es Adelanto de Nómina?</h4>
+                            <p className="text-xs text-slate-400">Se descontará del pago del empleado.</p>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${moneyData.esAdelanto ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>
+                            {moneyData.esAdelanto && <motion.div layoutId="check" className="w-2 h-2 bg-white rounded-full" />}
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h4 className={`text-sm font-black ${moneyData.esAdelanto ? 'text-indigo-900' : 'text-slate-600'}`}>¿Es Adelanto de Nómina?</h4>
-                        <p className="text-xs text-slate-400">Se descontará del pago del empleado.</p>
-                    </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${moneyData.esAdelanto ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>
-                        {moneyData.esAdelanto && <motion.div layoutId="check" className="w-2 h-2 bg-white rounded-full" />}
-                    </div>
-                </div>
+                )}
 
                 {/* 3. INPUT MOTIVO */}
                 <div className="space-y-2">

@@ -102,15 +102,17 @@ export default function EmployeeCard({ user, onReset, onDelete, onEdit, onUpdate
 
       {!isUserOwner ? (
         <div className="flex gap-2 pt-2 border-t border-border-subtle/50 dark:border-slate-800/50 mt-2 overflow-x-auto no-scrollbar">
-          {/* 🆕 Ficha Financiera Button */}
-          <button
-            onClick={() => onViewFinance && onViewFinance(user)}
-            disabled={readOnly}
-            className="flex-1 min-w-[100px] py-2 bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all flex items-center justify-center gap-2 border border-emerald-100 dark:border-emerald-800/30"
-            title="Ver Nómina y Deudas"
-          >
-            <Banknote size={14} strokeWidth={2.5} /> FICHA
-          </button>
+          {/* 🆕 Ficha Financiera Button — Only for plans with full ROLES */}
+          {onViewFinance && (
+            <button
+              onClick={() => onViewFinance(user)}
+              disabled={readOnly}
+              className="flex-1 min-w-[100px] py-2 bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all flex items-center justify-center gap-2 border border-emerald-100 dark:border-emerald-800/30"
+              title="Ver Nómina y Deudas"
+            >
+              <Banknote size={14} strokeWidth={2.5} /> FICHA
+            </button>
+          )}
 
           <button
             onClick={() => onReset(user)}
@@ -130,14 +132,17 @@ export default function EmployeeCard({ user, onReset, onDelete, onEdit, onUpdate
             <Pencil size={16} />
           </button>
 
-          <button
-            onClick={() => onUpdatePermissions && onUpdatePermissions(user)}
-            disabled={readOnly}
-            className="w-10 h-10 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 text-slate-400 hover:text-violet-500 rounded-xl transition-all border border-border-subtle dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-800 flex items-center justify-center shrink-0"
-            title="Gestionar Permisos"
-          >
-            <Shield size={16} />
-          </button>
+          {/* Gestionar Permisos — Only for plans with full ROLES */}
+          {onUpdatePermissions && (
+            <button
+              onClick={() => onUpdatePermissions(user)}
+              disabled={readOnly}
+              className="w-10 h-10 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 text-slate-400 hover:text-violet-500 rounded-xl transition-all border border-border-subtle dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-800 flex items-center justify-center shrink-0"
+              title="Gestionar Permisos"
+            >
+              <Shield size={16} />
+            </button>
+          )}
 
           <button
             onClick={() => onDelete(user)}

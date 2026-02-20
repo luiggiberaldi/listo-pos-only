@@ -7,7 +7,8 @@ import Decimal from 'decimal.js';
  */
 export const useCartCalculations = (carrito, configuracion) => {
   const tasa = new Decimal(configuracion.tasa || 1);
-  const ivaGlobal = new Decimal(configuracion.porcentajeIva || 0);
+  // 🏪 IVA GATE: If IVA is globally disabled, force 0% regardless of product flags
+  const ivaGlobal = configuracion.ivaActivo ? new Decimal(configuracion.porcentajeIva || 0) : new Decimal(0);
 
   // Helper local para decimales
   const d = (val) => new Decimal(val || 0);
@@ -65,7 +66,7 @@ export const useCartCalculations = (carrito, configuracion) => {
       tasa: tasa.toNumber(),
       ivaGlobal: ivaGlobal.toNumber()
     };
-  }, [carrito, configuracion.tasa, configuracion.porcentajeIva]);
+  }, [carrito, configuracion.tasa, configuracion.porcentajeIva, configuracion.ivaActivo]);
 
   return calculos;
 };

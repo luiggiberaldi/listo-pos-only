@@ -204,7 +204,7 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
             {/* 🆕 MODO DE REDONDEO */}
             <div className="mt-4 flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
               <span className="text-xs font-bold text-slate-500 uppercase">Modo Redondeo</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setForm(prev => ({ ...prev, modoRedondeo: 'exacto' }))}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'exacto' ? 'bg-white shadow text-emerald-600 border border-emerald-200' : 'text-slate-400 hover:text-slate-600'}`}
@@ -222,6 +222,12 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'multiplo5' ? 'bg-white shadow text-purple-600 border border-purple-200' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   Múltiplo 5
+                </button>
+                <button
+                  onClick={() => setForm(prev => ({ ...prev, modoRedondeo: 'multiplo10' }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${form.modoRedondeo === 'multiplo10' ? 'bg-white shadow text-amber-600 border border-amber-200' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Múltiplo 10
                 </button>
               </div>
             </div>
@@ -272,14 +278,32 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                 <Banknote size={24} />
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white">Impuesto al Valor Agregado (IVA)</h3>
-                <p className="text-sm text-slate-500">Define la tasa impositiva general para productos gravados.</p>
+                <p className="text-sm text-slate-500">Habilita o deshabilita el cálculo de IVA en todo el sistema.</p>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 items-center">
-              <div className="flex-1 w-full relative">
+              {/* TOGGLE HABILITAR IVA */}
+              <div
+                onClick={() => setForm(prev => ({ ...prev, ivaActivo: !prev.ivaActivo }))}
+                className={`flex-1 w-full flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${form.ivaActivo
+                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800'
+                    : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700 hover:border-blue-300'
+                  }`}
+              >
+                <div>
+                  <span className="font-bold text-slate-700 dark:text-slate-200 block">Habilitar IVA</span>
+                  <span className="text-xs text-slate-400">{form.ivaActivo ? 'Activo — productos pueden marcarse como gravados' : 'Deshabilitado — no se cobra IVA en ningún producto'}</span>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${form.ivaActivo ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${form.ivaActivo ? 'translate-x-6' : ''}`} />
+                </div>
+              </div>
+
+              {/* INPUT PORCENTAJE — Solo visible si IVA está activo */}
+              <div className={`flex-1 w-full relative transition-opacity ${!form.ivaActivo && 'opacity-40 pointer-events-none'}`}>
                 <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Tasa General (%)</label>
                 <input
                   type="number"
@@ -291,11 +315,16 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
                 />
                 <span className="absolute right-4 top-9 text-slate-400 font-bold">%</span>
               </div>
-              <div className="flex-1 w-full flex items-center p-4 bg-blue-50/50 rounded-xl border border-blue-100 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-xs text-blue-800 dark:text-blue-300">
-                  ℹ️ <b>Nota:</b> Este porcentaje aplicará automáticamente a todos los productos marcados como "Gravados" y a los cálculos de reportes Z.
-                </p>
-              </div>
+            </div>
+
+            {/* NOTA CONTEXTUAL */}
+            <div className="mt-4 flex items-center p-3 bg-blue-50/50 rounded-xl border border-blue-100 dark:bg-slate-800 dark:border-slate-700">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                {form.ivaActivo
+                  ? <>ℹ️ <b>Nota:</b> Este porcentaje aplicará automáticamente a todos los productos marcados como "Gravados" y a los cálculos de reportes Z.</>
+                  : <>⚠️ <b>IVA Deshabilitado:</b> No se cobrará impuesto en ninguna venta. Los productos no podrán marcarse como gravados.</>
+                }
+              </p>
             </div>
           </div>
         )}

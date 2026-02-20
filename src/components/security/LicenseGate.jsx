@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Lock, Terminal, ShieldCheck, Server, AlertCircle, ArrowRight, Key, WifiOff, Copy, Check, Wifi, Monitor, Loader2 } from 'lucide-react';
 import { useLicenseGuard } from '../../hooks/security/useLicenseGuard';
 import OwnerLockScreen from './OwnerLockScreen'; // 🟠 NEW TACTICAL LOCK
+import { DemoQuotaExhaustedLock } from './guard_modules/DemoQuotaExhaustedLock';
 import { generateChallenge, validateSOS } from '../../utils/securityUtils';
 import { useConfigStore } from '../../stores/useConfigStore';
 import { dbMaster } from '../../services/firebase';
@@ -316,47 +317,7 @@ export default function LicenseGate({ children }) {
 
     // 🆕 2.5 DEMO SHIELD LOCK (CUOTAS AGOTADAS) 🧪
     if (license.isDemo && license.isQuotaBlocked) {
-        return (
-            <div className="h-screen w-screen bg-[#0f172a] flex items-center justify-center p-8 z-[60] fixed inset-0 font-sans overflow-hidden">
-                {/* Decoration */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px] -mr-64 -mt-64"></div>
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-slate-500/5 rounded-full blur-[100px] -ml-64 -mb-64"></div>
-
-                <div className="max-w-2xl w-full bg-slate-900 border-2 border-amber-500/30 rounded-[2.5rem] p-16 shadow-[0_35px_100px_-15px_rgba(245,158,11,0.2)] relative z-10 flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-500">
-                    <div className="w-24 h-24 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-8 border-2 border-amber-500/40 shadow-lg shadow-amber-900/20">
-                        <ShieldAlert className="w-12 h-12 text-amber-500" strokeWidth={1.5} />
-                    </div>
-
-                    <h2 className="text-4xl font-black text-white mb-6 uppercase tracking-tight">
-                        Periodo de Prueba <span className="text-amber-500">Finalizado</span>
-                    </h2>
-
-                    <div className="space-y-6 max-w-md">
-                        <p className="text-slate-400 text-lg leading-relaxed">
-                            Has completado tus <span className="text-white font-bold">{license.quotaLimit} ventas</span> de demostración satisfactoriamente.
-                        </p>
-
-                        <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800">
-                            <p className="text-sm text-slate-500 mb-2 uppercase font-bold tracking-widest">Estado del Terminal</p>
-                            <p className="text-amber-500/80 font-mono text-sm">LICENSE_QUOTA_EXHAUSTED</p>
-                        </div>
-
-                        <p className="text-slate-500 text-sm italic">
-                            Contacte a soporte técnico para adquirir la licencia full y conservar su base de datos.
-                        </p>
-                    </div>
-
-                    <div className="mt-12 flex flex-col items-center gap-4 w-full">
-                        <button
-                            onClick={() => window.open('https://listopos.com', '_blank')}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 px-12 rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-3 uppercase tracking-wider text-sm active:scale-95"
-                        >
-                            Contactar a Soporte <ArrowRight size={20} />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
+        return <DemoQuotaExhaustedLock license={license} machineId={machineId} />;
     }
 
     // 3. LOADING (Local Check)

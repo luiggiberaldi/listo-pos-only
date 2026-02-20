@@ -7,6 +7,8 @@ import { useInventory } from '../../../hooks/store/useInventory';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
 import { useStore } from '../../../context/StoreContext';
+import { useConfigStore } from '../../../stores/useConfigStore';
+import { hasFeature, FEATURES, getPlan } from '../../../config/planTiers';
 import FinancialLayout from '../design/FinancialLayout';
 import HoldToConfirmButton from '../design/HoldToConfirmButton';
 
@@ -15,6 +17,14 @@ export default function GoodsConsumptionView({ onClose }) {
     const { registrarConsumoInterno, revertirConsumoInterno } = useInventory(usuario);
     const { registrarConsumoEmpleado } = useFinanceIntegrator();
     const { validarCapacidadEndeudamiento } = useEmployeeFinance();
+
+    // 🏪 PLAN GATING: Employee features
+    const { license } = useConfigStore();
+    const planId = license?.plan || 'bodega';
+    const hasEmployeeFeatures = hasFeature(planId, FEATURES.EMPLEADOS_BASICO) || hasFeature(planId, FEATURES.ROLES);
+    const planConfig = getPlan(planId);
+    const maxEmpleados = planConfig.maxEmpleados ?? 0;
+    const isBasicEmployeePlan = hasFeature(planId, FEATURES.EMPLEADOS_BASICO) && !hasFeature(planId, FEATURES.ROLES);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -247,24 +257,28 @@ export default function GoodsConsumptionView({ onClose }) {
                     </div>
                 </div>
 
-                <div className="bg-slate-50 p-1 rounded-xl flex border border-slate-200">
-                    <button
-                        onClick={() => setConsumidorType('SYSTEM')}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${consumidorType === 'SYSTEM' ? "bg-white text-emerald-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
-                            }`}
-                    >
-                        <Store size={14} />
-                        Uso Local
-                    </button>
-                    <button
-                        onClick={() => setConsumidorType('EMPLOYEE')}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${consumidorType === 'EMPLOYEE' ? "bg-white text-indigo-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
-                            }`}
-                    >
-                        <User size={14} />
-                        Empleado
-                    </button>
-                </div>
+                {/* Consumer type toggle — only show if plan has employee features */}
+                {hasEmployeeFeatures && (
+                    <div className="bg-slate-50 p-1 rounded-xl flex border border-slate-200">
+                        <button
+                            onClick={() => setConsumidorType('SYSTEM')}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${consumidorType === 'SYSTEM' ? "bg-white text-emerald-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
+                                }`}
+                        >
+                            <Store size={14} />
+                            Uso Local
+                        </button>
+                        <button
+                            onClick={() => setConsumidorType('EMPLOYEE')}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${consumidorType === 'EMPLOYEE' ? "bg-white text-indigo-600 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
+                                }`}
+                        >
+                            <User size={14} />
+                            Empleado
+                            {isBasicEmployeePlan && <span className="text-[9px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-full font-black">Máx {maxEmpleados}</span>}
+                        </button>
+                    </div>
+                )}
 
                 {consumidorType === 'EMPLOYEE' && (
                     <div className="animate-in slide-in-from-top-2 fade-in duration-300">
@@ -274,13 +288,18 @@ export default function GoodsConsumptionView({ onClose }) {
                             className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
                         >
                             <option value="">-- Seleccionar Empleado --</option>
-                            {/* [FIX M5] Agregar filtro .activo para excluir empleados desactivados */}
-                            {usuarios.filter(u => u.activo && u.rol !== 'admin').map((u) => (
-                                <option key={u.id} value={u.id}>
-                                    {u.nombre}
-                                </option>
-                            ))}
+                            {usuarios
+                                .filter(u => u.activo && u.rol !== 'admin')
+                                .slice(0, maxEmpleados === Infinity ? undefined : maxEmpleados)
+                                .map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.nombre}
+                                    </option>
+                                ))}
                         </select>
+                        {isBasicEmployeePlan && (
+                            <p className="text-[10px] text-slate-400 mt-1 pl-1">Plan Abasto: hasta {maxEmpleados} empleados. Actualiza a Minimarket para equipos más grandes.</p>
+                        )}
                     </div>
                 )}
             </div>
@@ -398,7 +417,7 @@ export default function GoodsConsumptionView({ onClose }) {
         <FinancialLayout
             icon={Package}
             title="Consumo de Inventario"
-            subtitle="Registra mermas, uso interno o consumo de empleados."
+            subtitle={hasEmployeeFeatures ? "Registra mermas, uso interno o consumo de empleados." : "Registra mermas y uso interno."}
             color="emerald"
             sidePanel={sidePanel}
         >

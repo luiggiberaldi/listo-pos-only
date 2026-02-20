@@ -271,7 +271,7 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                                             <div className="flex justify-between py-1.5 border-b border-slate-50">
                                                 <span className="text-slate-500">Redondeo</span>
                                                 <span className="font-bold text-slate-700">
-                                                    {configuracion.modoRedondeo === 'exacto' ? 'Exacto' : configuracion.modoRedondeo === 'entero' ? 'Entero' : 'Múltiplo 5'}
+                                                    {configuracion.modoRedondeo === 'exacto' ? 'Exacto' : configuracion.modoRedondeo === 'entero' ? 'Entero' : configuracion.modoRedondeo === 'multiplo10' ? 'Múltiplo 10' : 'Múltiplo 5'}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between py-1.5 border-b border-slate-50">
