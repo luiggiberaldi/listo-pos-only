@@ -83,11 +83,13 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
         </div>
     );
 }, (prevProps, nextProps) => {
-    // Custom comparator for max performance (optional, default shall diff props)
-    // Re-render only if index product changes or tasa changes.
+    // Custom comparator for max performance
+    // Re-render only if this card's data, tasa, processing, or focus state changes.
     return prevProps.data[prevProps.index] === nextProps.data[nextProps.index] &&
         prevProps.tasa === nextProps.tasa &&
-        prevProps.isProcessing === nextProps.isProcessing;
+        prevProps.isProcessing === nextProps.isProcessing &&
+        // 🚀 FIX: Must re-render when this specific card gains/loses keyboard focus
+        (prevProps.index === prevProps.selectedIndex) === (nextProps.index === nextProps.selectedIndex);
 });
 
 export default ProductCard;

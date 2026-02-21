@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useStore } from '../context/StoreContext';
 
 // ⚡ PERFORMANCE: Swal lazy-loaded — solo se carga al abrir un diálogo
@@ -9,12 +9,15 @@ const getSwal = async () => {
 };
 import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
-// Modales
-import ModalProducto from '../components/ModalProducto';
-import ModalAjusteStock from '../components/ModalAjusteStock';
-import ModalKardex from '../components/ModalKardex';
+// 🚀 PERFORMANCE: Modales lazy-loaded — solo se cargan al abrir
+const ModalProducto = lazy(() => import('../components/ModalProducto'));
+const ModalAjusteStock = lazy(() => import('../components/ModalAjusteStock'));
+const ModalKardex = lazy(() => import('../components/ModalKardex'));
+const BulkImportModal = lazy(() => import('../components/inventario/BulkImportModal').then(m => ({ default: m.BulkImportModal })));
+const LabelStudioModal = lazy(() => import('../components/inventario/LabelStudioModal').then(m => ({ default: m.LabelStudioModal })));
+const PrintListsModal = lazy(() => import('../components/inventario/PrintListsModal').then(m => ({ default: m.PrintListsModal })));
 
-// Subcomponentes
+// Subcomponentes (always needed)
 import InventarioStats from '../components/inventario/InventarioStats';
 import InventarioHeader from '../components/inventario/InventarioHeader';
 import ProductoRow from '../components/inventario/ProductoRow';
@@ -28,10 +31,10 @@ import { useInventoryPagination } from '../hooks/ui/useInventoryPagination';
 
 // ✅ UTILIDADES LOCALES (FASE 3)
 import { generarEtiquetas } from '../components/inventario/PriceLabelGenerator';
-import { BulkImportModal } from '../components/inventario/BulkImportModal';
-import { LabelStudioModal } from '../components/inventario/LabelStudioModal';
-import { PrintListsModal } from '../components/inventario/PrintListsModal';
 import { exportarCatalogo, importarCatalogo } from '../utils/catalogTransfer';
+
+// Lazy fallback for modals
+const ModalFallback = () => <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center"><div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-xl"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div></div>;
 
 export default function InventarioPage() {
     const {
@@ -294,20 +297,21 @@ export default function InventarioPage() {
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 animate-in fade-in duration-500 pb-20">
             <div className="max-w-[1600px] mx-auto">
 
-                {/* MODALES */}
-                {mostrarPrintLists && <PrintListsModal
-                    isOpen={mostrarPrintLists}
-                    onClose={() => setMostrarPrintLists(false)}
-                    selectedIds={selectedIds}
-                    allProducts={productos} // Pasamos TODO para que el modal pueda filtrar
-                    onPrint={(lista, ctx) => executePrint(lista, ctx)} // Reusamos executePrint
-                />}
-                {mostrarLabelStudio && <LabelStudioModal isOpen={mostrarLabelStudio} onClose={() => setMostrarLabelStudio(false)} selectedProducts={productosParaEtiquetas} tasa={configuracion.tasa || 1} />}
-                {mostrarModal && <ModalProducto productoEditar={productoAEditar} onClose={() => setMostrarModal(false)} onGuardar={guardarDesdeModal} configuracion={configuracion} />}
-                {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={async () => { const Swal = await getSwal(); Swal.fire("Listo", "Inventario actualizado", "success"); }} />}
-
-                {mostrarKardex && canManageAudit && <ModalKardex movimientos={movimientos} productos={productos} onClose={() => setMostrarKardex(false)} />}
-                {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { actualizarProducto(d.id, d); const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
+                {/* MODALES (Lazy-loaded with Suspense) */}
+                <Suspense fallback={<ModalFallback />}>
+                    {mostrarPrintLists && <PrintListsModal
+                        isOpen={mostrarPrintLists}
+                        onClose={() => setMostrarPrintLists(false)}
+                        selectedIds={selectedIds}
+                        allProducts={productos}
+                        onPrint={(lista, ctx) => executePrint(lista, ctx)}
+                    />}
+                    {mostrarLabelStudio && <LabelStudioModal isOpen={mostrarLabelStudio} onClose={() => setMostrarLabelStudio(false)} selectedProducts={productosParaEtiquetas} tasa={configuracion.tasa || 1} />}
+                    {mostrarModal && <ModalProducto productoEditar={productoAEditar} onClose={() => setMostrarModal(false)} onGuardar={guardarDesdeModal} configuracion={configuracion} />}
+                    {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={async () => { const Swal = await getSwal(); Swal.fire("Listo", "Inventario actualizado", "success"); }} />}
+                    {mostrarKardex && canManageAudit && <ModalKardex movimientos={movimientos} productos={productos} onClose={() => setMostrarKardex(false)} />}
+                    {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { actualizarProducto(d.id, d); const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
+                </Suspense>
 
                 {/* KPIS */}
                 {canSeeStats && <InventarioStats kpis={kpis} />}

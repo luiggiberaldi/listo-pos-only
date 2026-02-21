@@ -165,6 +165,19 @@ const CartItem = memo(({
             </div>
         </div>
     );
+}, (prev, next) => {
+    // 🚀 PERFORMANCE: Only re-render if data actually changed.
+    // Callbacks (onRemoveItem, handleQtyChangeSafe, etc.) are new refs every render
+    // so we must not compare them.
+    return prev.item === next.item &&
+        prev.item?.cantidad === next.item?.cantidad &&
+        prev.item?.unidadVenta === next.item?.unidadVenta &&
+        prev.realIndex === next.realIndex &&
+        prev.lastAddedIndex === next.lastAddedIndex &&
+        prev.viewMode === next.viewMode &&
+        prev.isProcessing === next.isProcessing &&
+        prev.isKeyboardSelected === next.isKeyboardSelected &&
+        prev.calculos?.tasa === next.calculos?.tasa;
 });
 
 export default CartItem;
