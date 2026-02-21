@@ -45,8 +45,9 @@ const ghostEventBus = {
      * @param {string} event - Event name (e.g. 'sale_completed')
      * @param {object} data - Event-specific payload (auto-sanitized)
      * @param {string} severity - GHOST_SEVERITY value (default: INFO)
+     * @param {number} customTimestamp - Optional custom timestamp (for simulation)
      */
-    emit(category, event, data = {}, severity = GHOST_SEVERITY.INFO) {
+    emit(category, event, data = {}, severity = GHOST_SEVERITY.INFO, customTimestamp = null) {
         // Dedup: skip identical events within 2s window
         const now = Date.now();
         const hash = `${category}.${event}.${JSON.stringify(data)}`;
@@ -54,13 +55,14 @@ const ghostEventBus = {
         _lastEventHash = hash;
         _lastEventTime = now;
 
+        const ts = customTimestamp || now;
         const entry = {
             category,
             event,
             severity,
             data: _sanitize(data),
-            timestamp: now,
-            date: getDateKey()
+            timestamp: ts,
+            date: customTimestamp ? new Date(ts).toISOString().slice(0, 10) : getDateKey()
         };
 
         // Push to in-memory buffer

@@ -1382,62 +1382,76 @@ async function simularDia() {
 
         const dateKey = state.fechaActual.toISOString().slice(0, 10);
 
+        // Clear old ghost events for this date (avoid stale accumulation)
+        try {
+            const { db: dexieDb } = await import('../db');
+            await dexieDb.ghost_audit_log.where('date').equals(dateKey).delete();
+        } catch (e) { /* non-fatal */ }
+
         // Emit simulated events through the REAL event bus
         // Sales — distribute across business hours (8AM-8PM)
-        const baseTime = state.fechaActual.getTime();
+        const baseTime = new Date(state.fechaActual);
+        baseTime.setHours(0, 0, 0, 0);
+        const baseMs = baseTime.getTime();
+
         for (let i = 0; i < simState.transaccionesDelDia; i++) {
             const hour = 8 + Math.floor(Math.random() * 12); // 8AM-8PM
-            const simTimestamp = baseTime + hour * 3600000 + Math.floor(Math.random() * 3600000);
+            const minute = Math.floor(Math.random() * 60);
+            const simTs = baseMs + hour * 3600000 + minute * 60000 + Math.floor(Math.random() * 60000);
             const ticketAmount = simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1);
             ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'sale_completed', {
                 total: +(ticketAmount * (0.5 + Math.random())).toFixed(2),
                 items: randomInt(1, 8),
                 paymentMethods: [pickRandom(['Efectivo USD', 'Pago Móvil', 'Efectivo Bs', 'Zelle', 'Punto de Venta'])],
                 hasDebt: Math.random() < 0.1,
-                tasa: simState.tasaCambioHoy,
-                _simTs: simTimestamp // unique per event, passes dedup
-            }, i < 2 ? 'WARN' : 'INFO');
+                tasa: simState.tasaCambioHoy
+            }, i < 2 ? 'WARN' : 'INFO', simTs);
         }
 
-        // Inventory adjustments
+        // Inventory adjustments (midday)
         const invAdjustments = randomInt(0, 5);
         for (let i = 0; i < invAdjustments; i++) {
+            const invTs = baseMs + (10 + i) * 3600000 + Math.floor(Math.random() * 3600000);
             ghostEventBus.emit(GHOST_CATEGORIES.INVENTORY, 'stock_adjusted', {
                 product: pickRandom(['Harina PAN', 'Aceite Diana', 'Arroz Mary', 'Azúcar', 'Leche']),
                 oldStock: randomInt(0, 50),
                 newStock: randomInt(5, 100),
                 reason: 'manual'
-            }, 'INFO');
+            }, 'INFO', invTs);
         }
 
-        // Errors (from sim)
+        // Errors (scattered)
         for (let i = 0; i < simState.erroresDelDia; i++) {
+            const errTs = baseMs + randomInt(8, 20) * 3600000;
             ghostEventBus.emit(GHOST_CATEGORIES.ERROR, 'runtime_error', {
-                message: 'Error simulado durante prueba de estrés',
+                message: `Error simulado #${i + 1} durante prueba de estrés`,
                 source: 'SimEngine'
-            }, 'CRITICAL');
+            }, 'CRITICAL', errTs);
         }
 
-        // Anulaciones
+        // Anulaciones (afternoon)
         if (simState.anulacionesDelDia > 0) {
+            const voidTs = baseMs + 16 * 3600000 + Math.floor(Math.random() * 3600000);
             ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'sale_voided', {
                 count: simState.anulacionesDelDia,
-                totalAnulado: simState.anulacionesDelDia * (simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1))
-            }, 'WARN');
+                totalAnulado: +(simState.anulacionesDelDia * (simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1))).toFixed(2)
+            }, 'WARN', voidTs);
         }
 
-        // Corte Z
+        // Corte Z (closing time ~8PM)
+        const corteTs = baseMs + 20 * 3600000;
         ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'corte_z', {
             totalVentas: simState.transaccionesDelDia,
             totalIngresos: ventasNetas,
             cajaId: `SIM-Z-${diaNum}`
-        }, 'INFO');
+        }, 'INFO', corteTs);
 
-        // Session
+        // Session end (~9PM)
+        const sessionTs = baseMs + 21 * 3600000;
         ghostEventBus.emit(GHOST_CATEGORIES.SESSION, 'session_end', {
             duration: randomInt(8, 14) * 3600000,
             source: 'SimEngine'
-        }, 'INFO');
+        }, 'INFO', sessionTs);
 
         // Flush events to Dexie
         await ghostEventBus.flush();
