@@ -6,6 +6,7 @@ import { dbMaster, initFirebase } from '../../services/firebase'; // 🚀 Init I
 import { doc, onSnapshot } from 'firebase/firestore';
 import { DEFAULT_PLAN } from '../../config/planTiers';
 import { useConfigStore } from '../../stores/useConfigStore';
+import { SecureStorage } from '../../utils/SecureStorage';
 
 // [FIX M1] Salt centralizado — solo se usa para validación LEGACY (V1 SHA-256).
 // Una vez que todos los terminales migren a JWT (V2), este import puede eliminarse.
@@ -58,7 +59,7 @@ export const useLicenseGuard = () => {
                 setMachineId(currentId);
 
                 // LÓGICA DE VALIDACIÓN (LAYER 1 - ASIMÉTRICA)
-                const storedLicense = localStorage.getItem('listo_license_key');
+                const storedLicense = SecureStorage.get('listo_license_key');
 
                 if (!storedLicense) {
                     console.warn("⚠️ [FÉNIX] Licencia local no encontrada.");
@@ -95,7 +96,7 @@ export const useLicenseGuard = () => {
                             // Aplicar Plan Localmente (Offline Capability)
                             if (payload.plan) {
                                 setPlan(payload.plan);
-                                localStorage.setItem('listo_plan', payload.plan);
+                                SecureStorage.set('listo_plan', payload.plan);
                             }
                         } else {
                             console.error("⛔ [FÉNIX] CLON DETECTADO. ID Licencia:", payload.id, "vs Hardware:", currentId);
@@ -170,7 +171,7 @@ export const useLicenseGuard = () => {
                 // 🏪 PLAN TIER: Leer plan del terminal
                 const remotePlan = data.plan || DEFAULT_PLAN;
                 setPlan(remotePlan);
-                localStorage.setItem('listo_plan', remotePlan);
+                SecureStorage.set('listo_plan', remotePlan);
                 console.log(`🏪 [FÉNIX] Plan activo: ${remotePlan}`);
 
                 // 🛡️ DEMO SHIELD: Leer config demo del terminal

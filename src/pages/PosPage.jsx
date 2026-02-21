@@ -1,88 +1,47 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 5.1 (FISCAL CONNECTION)
+// ✅ REFACTORED - V. 6.0 (ZUSTAND ARCHITECTURE)
 // Archivo: src/pages/PosPage.jsx
-// Objetivo: Conectar el botón de pago con el Generador de Correlativos Fiscales.
+// Antes: 325 líneas, 40+ props. Ahora: ~100 líneas, solo orquestación mínima.
+// Hijos se conectan directamente a stores. PosPage solo hydrata, scanner, keyboard.
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-// import { useStore } from '../context/StoreContext'; // 🗑️ DEPRECATED
+import Swal from 'sweetalert2';
+
+// --- STORES ---
 import { useCartStore } from '../stores/useCartStore';
 import { useInventoryStore } from '../stores/useInventoryStore';
 import { useConfigStore } from '../stores/useConfigStore';
-import { useAuthStore } from '../stores/useAuthStore';
-import { useTicketStore } from '../stores/useTicketStore';
 import { useUIStore } from '../stores/useUIStore';
+import { usePosSearchStore } from '../stores/usePosSearchStore';
+import { usePosActionsStore } from '../stores/usePosActionsStore';
+import { usePosCalcStore } from '../stores/usePosCalcStore';
+import { useTicketStore } from '../stores/useTicketStore';
+
+// --- AUTH ---
 import { useAuthContext } from '../context/AuthContext';
 
+// --- HOOKS ---
 import { useSalesProcessor } from '../hooks/store/useSalesProcessor';
 import { useInventory } from '../hooks/store/useInventory';
-import Swal from 'sweetalert2';
-
-// --- LAYOUTS ---
-import DesktopLayout from '../components/pos/DesktopLayout';
-import TouchLayout from '../components/pos/TouchLayout';
-import TicketSaldoFavor from '../components/TicketSaldoFavor';
-import ShortcutGuide from '../components/pos/ShortcutGuide';
-
-// --- HOOKS ---
-import { useCartCalculations } from '../hooks/pos/useCartCalculations';
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 import { useSecureAction } from '../hooks/security/useSecureAction';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 import { usePosKeyboard } from '../hooks/ui/usePosKeyboard';
-import { usePosModals } from '../hooks/ui/usePosModals';
-
-// --- CUSTOM HOOKS (MODULAR) ---
-import { usePosSearch } from '../hooks/pos/usePosSearch';
-import { usePosActions } from '../hooks/pos/usePosActions';
 import { useSaleFinalizer } from '../hooks/pos/useSaleFinalizer';
 import { useDemoShieldNotifications } from '../hooks/useDemoShieldNotifications';
+
+// --- LAYOUTS ---
+import DesktopLayout from '../components/pos/DesktopLayout';
+import TouchLayout from '../components/pos/TouchLayout';
+import ShortcutGuide from '../components/pos/ShortcutGuide';
 
 export default function PosPage() {
   // 🛡️ DEMO SHIELD MONITOR
   useDemoShieldNotifications();
 
-  // ⚡ ATOMIC STATE SUBSCRIPTION (Zustand)
-  const productos = useInventoryStore(state => state.productos);
-
-  const carrito = useCartStore(state => state.carrito);
-  const { agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, limpiarCarrito, cambiarUnidadCarrito } = useCartStore();
-
-  const configuracion = useConfigStore(state => state.configuracion);
-  const generarCorrelativo = useConfigStore(state => state.generarCorrelativo);
-
-  const { usuario } = useAuthContext(); // ⚡ LEGACY AUTH BRIDGE
-  // const usuario = useAuthStore(state => state.usuario); 
-
-  // 🚀 HYDRATION: Ensure Stores are populated on mount
-  useEffect(() => {
-    useInventoryStore.getState().loadProductos();
-    useConfigStore.getState().loadConfig();
-  }, []);
-
-  const { ticketsEspera, guardarEnEspera, recuperarDeEspera, eliminarTicketEspera } = useTicketStore();
-
-  const { playSound, isProcessing } = useUIStore();
-
-  // 🏗️ LEGACY HOOK INSTANTIATION (Bridge to ZUSTAND)
-  // We instantiate logic hooks using data from ZUSTAND instead of Context
-  const { transaccionVenta, transaccionAnulacion } = useInventory(usuario, configuracion, () => { });
-  const cajaMethods = useCajaEstado();
-
-  const { registrarVenta } = useSalesProcessor(
-    usuario,
-    configuracion,
-    { transaccionVenta, transaccionAnulacion, playSound, generarCorrelativo },
-    cajaMethods,
-    carrito,
-    (newCart) => useCartStore.getState().setCarrito(newCart) // Adapter for setCarrito
-  );
-
-  const { isCajaAbierta, abrirCaja } = useCajaEstado();
-  const cajaAbierta = isCajaAbierta();
-  const abrirCajaPOS = abrirCaja; // Alias for backward compatibility
-  const { ejecutarAccionSegura } = useSecureAction();
+  // --- AUTH & PERMISSIONS ---
+  const { usuario } = useAuthContext();
   const { tienePermiso } = useRBAC(usuario);
-
   const tieneAccesoPos = tienePermiso(PERMISOS.POS_ACCESO);
 
   // --- REFS ---
@@ -91,35 +50,83 @@ export default function PosPage() {
   const searchInputRef = useRef(null);
   const productRefs = useRef([]);
 
-  // --- NAVEGACIÓN Y ESTADO ---
+  // --- NAVIGATION ---
   const location = useLocation();
   const navigate = useNavigate();
-  const [clientePreseleccionado, setClientePreseleccionado] = useState(null);
 
-  // --- CÁLCULOS Y MODALES ---
-  const calculos = useCartCalculations(carrito, configuracion);
-  const tasaCaida = calculos.tasa === 1;
+  // 🚀 HYDRATION: Ensure Stores are populated on mount
+  useEffect(() => {
+    useInventoryStore.getState().loadProductos();
+    useConfigStore.getState().loadConfig();
+    // Trigger initial calc
+    setTimeout(() => usePosCalcStore.getState()._recalc(), 100);
+  }, []);
 
-  // 🚫 VALIDACIÓN: Prohibir ventas si la tasa es 0
-  const tasaInvalida = configuracion?.tasa === 0;
+  // --- CAJA ---
+  const cajaMethods = useCajaEstado();
+  const { isCajaAbierta, abrirCaja } = cajaMethods;
+  const cajaAbierta = isCajaAbierta();
+  const { ejecutarAccionSegura } = useSecureAction();
 
-  // ⚠️ P3: Detectar tasa vieja (>24h sin actualizar)
-  const tasaStale = useMemo(() => {
-    if (!configuracion?.fechaTasa) return false;
-    return (Date.now() - new Date(configuracion.fechaTasa).getTime()) > 24 * 60 * 60 * 1000;
-  }, [configuracion?.fechaTasa]);
-  const obtenerTasaBCV = useConfigStore(state => state.obtenerTasaBCV);
-  const onRefreshTasa = useCallback(() => obtenerTasaBCV(true), [obtenerTasaBCV]);
+  // --- INJECT REFS INTO ACTIONS STORE (once) ---
+  useEffect(() => {
+    usePosActionsStore.getState().setRefs({
+      searchInputRef,
+      ejecutarAccionSegura,
+      cajaAbiertaFn: () => isCajaAbierta(),
+    });
+  }, [ejecutarAccionSegura, isCajaAbierta]);
+
+  // --- SALES PROCESSOR (legacy hook, still needed for registrarVenta) ---
+  const configuracion = useConfigStore(s => s.configuracion);
+  const carrito = useCartStore(s => s.carrito);
+  const generarCorrelativo = useConfigStore(s => s.generarCorrelativo);
+  const playSound = useUIStore(s => s.playSound);
+  const { transaccionVenta, transaccionAnulacion } = useInventory(usuario, configuracion, () => { });
+  const { registrarVenta } = useSalesProcessor(
+    usuario, configuracion,
+    { transaccionVenta, transaccionAnulacion, playSound, generarCorrelativo },
+    cajaMethods, carrito,
+    (newCart) => useCartStore.getState().setCarrito(newCart)
+  );
+
+  const _subtotalBase = usePosCalcStore(s => s.subtotalBase);
+  const _totalImpuesto = usePosCalcStore(s => s.totalImpuesto);
+  const _totalUSD = usePosCalcStore(s => s.totalUSD);
+  const _totalBS = usePosCalcStore(s => s.totalBS);
+  const _carritoBS = usePosCalcStore(s => s.carritoBS);
+  const _tasa = usePosCalcStore(s => s.tasa);
+  const _ivaGlobal = usePosCalcStore(s => s.ivaGlobal);
+  const calculos = React.useMemo(() => ({
+    subtotalBase: _subtotalBase, totalImpuesto: _totalImpuesto,
+    totalUSD: _totalUSD, totalBS: _totalBS,
+    carritoBS: _carritoBS, tasa: _tasa, ivaGlobal: _ivaGlobal
+  }), [_subtotalBase, _totalImpuesto, _totalUSD, _totalBS, _carritoBS, _tasa, _ivaGlobal]);
+  const ticketsEspera = useTicketStore(s => s.ticketsEspera);
+  const recuperarDeEspera = useTicketStore(s => s.recuperarDeEspera);
+  const activeModal = useUIStore(s => s.activeModal);
+  const cerrarPago = useCallback(() => useUIStore.getState().closeModal(), []);
+  const cerrarEspera = cerrarPago;
+  const limpiarCarrito = useCartStore(s => s.limpiarCarrito);
 
   const {
-    modales, setModales, abrirPago, cerrarPago, abrirEspera, cerrarEspera,
-    abrirPesaje, cerrarPesaje, abrirJerarquia, cerrarJerarquia, toggleAyuda
-  } = usePosModals();
+    finalizarVenta, handlePrint, handlePrintSaldo, handleRecuperarTicket
+  } = useSaleFinalizer({
+    carrito, calculos, registrarVenta, limpiarCarrito, playSound,
+    generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera,
+    searchInputRef, ticketRef, ticketSaldoRef,
+    setCarrito: (items) => useCartStore.getState().setCarrito(items)
+  });
 
-  // 🆕 PRE-SELECCION CLIENTE (Restored)
+  // Store finalizarVenta and handleRecuperarTicket in the actions store for DesktopLayout/TouchLayout
+  useEffect(() => {
+    // We use Object.assign to avoid triggering a full re-render on the store
+    Object.assign(usePosActionsStore.getState(), { finalizarVenta, handlePrintSaldo, handleRecuperarTicket });
+  }, [finalizarVenta, handlePrintSaldo, handleRecuperarTicket]);
+
+  // 🆕 PRE-SELECCION CLIENTE
   useEffect(() => {
     if (location.state?.clienteSeleccionado) {
-      setClientePreseleccionado(location.state.clienteSeleccionado);
       Swal.fire({
         toast: true, position: 'top-end', icon: 'info',
         title: `Cliente: ${location.state.clienteSeleccionado.nombre}`,
@@ -129,55 +136,35 @@ export default function PosPage() {
     }
   }, [location, navigate]);
 
-  // --- HOOKS MODULARES ---
-  const {
-    busqueda, setBusqueda, categoriaActiva, setCategoriaActiva,
-    categorias, filtrados, selectedIndex, setSelectedIndex
-  } = usePosSearch();
+  // 📡 SCANNER ENGINE
+  const busqueda = usePosSearchStore(s => s.busqueda);
+  const productos = useInventoryStore(s => s.productos);
+  const isProcessing = useUIStore(s => s.isProcessing);
+  // Actions are stable store references — read once, no selector subscription needed
+  const actionsRef = useRef(usePosActionsStore.getState());
 
-  const {
-    actions, multiplicadorPendiente, setMultiplicadorPendiente
-  } = usePosActions(
-    { productos, carrito, agregarAlCarrito, eliminarDelCarrito, cambiarCantidadCarrito, limpiarCarrito, configuracion, playSound, cajaAbierta, isProcessing, guardarEnEspera, cambiarUnidadCarrito },
-    { ejecutarAccionSegura, abrirPago, abrirPesaje, abrirJerarquia, toggleAyuda, setBusqueda, setSelectedIndex, searchInputRef }
-  );
-
-  const {
-    ticketData, setTicketData, ventaExitosa, setVentaExitosa,
-    finalizarVenta, handlePrint, handlePrintSaldo, handleRecuperarTicket
-  } = useSaleFinalizer({
-    carrito, calculos, registrarVenta, limpiarCarrito, playSound, generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera, searchInputRef, ticketRef, ticketSaldoRef,
-    setCarrito: (items) => useCartStore.getState().setCarrito(items)
-  });
-
-  // 📡 [SCANNER ENGINE]: Monitoreo de búsqueda en tiempo real para agregado automático
   useEffect(() => {
     if (!busqueda || busqueda.length < 3) return;
     if (!cajaAbierta || isProcessing) return;
 
-    // ⚖️ [SCALE ENGINE]: Soporte para Etiquetas de Peso Variable (EAN-13/14 Prefijo 21)
+    const actions = usePosActionsStore.getState();
+
+    // ⚖️ SCALE ENGINE: Weight Variable Labels (EAN-13/14 Prefix 21)
     if (busqueda.length >= 13 && busqueda.startsWith('21')) {
       let plu = '';
       let peso = 0;
-
       if (busqueda.length === 14) {
-        // Estructura 14 digitos: 21 (2) + filler (1) + PLU (5) + Peso (5) + Check (1)
-        // Ejemplo: 21 0 00001 00930 4
         plu = busqueda.substring(3, 8);
         peso = parseInt(busqueda.substring(8, 13)) / 1000;
       } else {
-        // Estructura 13 digitos: 21 (2) + PLU (5) + Peso (5) + Check (1)
         plu = busqueda.substring(2, 7);
         peso = parseInt(busqueda.substring(7, 12)) / 1000;
       }
-
-      // Buscar producto por PLU (normalizando ceros a la izquierda)
       const pluNormalizado = plu.replace(/^0+/, '') || '0';
       const producto = productos.find(p => {
         const pCodigoNormalizado = (p.codigo || '').replace(/^0+/, '') || '0';
         return pCodigoNormalizado === pluNormalizado || p.codigo === plu || p.codigo === `0${plu}`;
       });
-
       if (producto) {
         actions.autoAgregarPesado(producto, peso);
         return;
@@ -185,83 +172,50 @@ export default function PosPage() {
     }
 
     const exactMatch = productos.find(p => p.codigo?.toLowerCase() === busqueda.toLowerCase());
-
     if (exactMatch) {
-      setBusqueda(''); // 🛑 STOP LOOP (Early Clear)
+      usePosSearchStore.getState().setBusqueda('');
       actions.prepararAgregar(exactMatch);
     }
-  }, [busqueda, productos, cajaAbierta, isProcessing, actions, setBusqueda]);
+  }, [busqueda, productos, cajaAbierta, isProcessing]);
 
-  // --- HOOK DE TECLADO ---
-  const { handleSearchInputKeyDown } = usePosKeyboard({
+  // --- KEYBOARD ---
+  const filtrados = usePosSearchStore(s => s.filtrados);
+  const selectedIndex = usePosSearchStore(s => s.selectedIndex);
+  const ventaExitosa = usePosActionsStore(s => s.ventaExitosa);
+  const multiplicadorPendiente = usePosActionsStore(s => s.multiplicadorPendiente);
+
+  const modalesAbiertos = React.useMemo(() => ({
+    pago: activeModal === 'PAGO', espera: activeModal === 'ESPERA',
+    ayuda: activeModal === 'AYUDA', exito: ventaExitosa,
+    pesaje: activeModal === 'PESAJE', jerarquia: activeModal === 'JERARQUIA'
+  }), [activeModal, ventaExitosa]);
+
+  const keyboardActions = React.useMemo(() => ({
+    ...usePosActionsStore.getState(),
+  }), []); // stable — store actions don't change identity
+
+  const { handleSearchInputKeyDown, cartSelectedIndex, focusCartItem } = usePosKeyboard({
     cajaAbierta, tieneAccesoPos, isProcessing,
-    modalesAbiertos: { ...modales, exito: ventaExitosa },
+    modalesAbiertos,
     carrito, busqueda, filtrados, productos,
     selectedIndex,
-    setSelectedIndex, setBusqueda, setMultiplicador: setMultiplicadorPendiente,
-    searchInputRef, productRefs, actions
+    setSelectedIndex: usePosSearchStore.getState().setSelectedIndex,
+    setBusqueda: usePosSearchStore.getState().setBusqueda,
+    setMultiplicador: usePosActionsStore.getState().setMultiplicadorPendiente,
+    searchInputRef, productRefs, actions: keyboardActions
   });
 
-
   // --- RENDER ---
-
-
   if (!tieneAccesoPos) return null;
 
-  // 🏮 SHORTCUT GUIDE (Global para ambos modos)
-  const guideComponent = <ShortcutGuide isOpen={modales.ayuda} onClose={toggleAyuda} />;
+  const guideComponent = <ShortcutGuide isOpen={activeModal === 'AYUDA'} onClose={() => useUIStore.getState().closeModal()} />;
 
-  // 🖖️ SWITCHER DE MODO TÁCTIL O ESCRITORIO
   if (configuracion.modoTouch) {
     return (
       <TouchLayout
-        cajaAbierta={cajaAbierta}
-        abrirCajaPOS={abrirCajaPOS}
-        ventaExitosa={ventaExitosa}
-        ticketData={ticketData}
-        modales={modales}
-        setModales={setModales} // ⚠️ DEPRECATED
-        // ✅ ATOMIC HANDLERS
-        handlers={{
-          abrirPago, cerrarPago,
-          abrirEspera, cerrarEspera,
-          abrirPesaje, cerrarPesaje,
-          abrirJerarquia, cerrarJerarquia,
-          toggleAyuda
-        }}
-        actions={actions}
-        busqueda={busqueda}
-        setBusqueda={setBusqueda}
-        categoriaActiva={categoriaActiva}
-        setCategoriaActiva={setCategoriaActiva}
-        categorias={categorias}
-        tasa={calculos.tasa}
-        tasaCaida={tasaCaida}
-        tasaInvalida={tasaInvalida}
-        tasaStale={tasaStale}
-        onRefreshTasa={onRefreshTasa}
-        tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
-        handleSearchInputKeyDown={handleSearchInputKeyDown}
-        multiplicadorPendiente={multiplicadorPendiente}
-        ticketsEspera={ticketsEspera}
-        carrito={carrito}
-        isProcessing={isProcessing}
-        filtrados={filtrados}
-        selectedIndex={selectedIndex}
-        productRefs={productRefs}
-        searchInputRef={searchInputRef}
-
-        calculos={calculos}
-        handleRecuperarTicket={handleRecuperarTicket}
-        eliminarTicketEspera={eliminarTicketEspera}
-        finalizarVenta={finalizarVenta}
-        agregarAlCarrito={agregarAlCarrito}
         ticketRef={ticketRef}
         ticketSaldoRef={ticketSaldoRef}
-        clientePreseleccionado={clientePreseleccionado} // 🆕
-        handlePrintSaldo={handlePrintSaldo} // 🖨️ Manual Print
-        onCloseSuccess={() => { setVentaExitosa(false); limpiarCarrito(); searchInputRef.current?.focus(); }} // Manual close handler
-        permitirSinStock={configuracion?.permitirSinStock} // 🆕
+        searchInputRef={searchInputRef}
       >
         {guideComponent}
       </TouchLayout>
@@ -270,52 +224,13 @@ export default function PosPage() {
 
   return (
     <DesktopLayout
-      cajaAbierta={cajaAbierta}
-      abrirCajaPOS={abrirCajaPOS}
-      ventaExitosa={ventaExitosa}
-      ticketData={ticketData}
-      modales={modales}
-      setModales={setModales} // ⚠️ DEPRECATED
-      // ✅ ATOMIC HANDLERS (New Architecture)
-      handlers={{
-        abrirPago, cerrarPago,
-        abrirEspera, cerrarEspera,
-        abrirPesaje, cerrarPesaje,
-        abrirJerarquia, cerrarJerarquia,
-        toggleAyuda
-      }}
-      actions={actions}
-      busqueda={busqueda}
-      setBusqueda={setBusqueda}
-      categoriaActiva={categoriaActiva}
-      setCategoriaActiva={setCategoriaActiva}
-      categorias={categorias}
-      tasa={calculos.tasa}
-      tasaCaida={tasaCaida}
-      tasaInvalida={tasaInvalida}
-      tasaStale={tasaStale}
-      onRefreshTasa={onRefreshTasa}
-      tasaReferencia={configuracion.tasaReferencia || 0} // 🆕
-      handleSearchInputKeyDown={handleSearchInputKeyDown}
-      multiplicadorPendiente={multiplicadorPendiente}
-      ticketsEspera={ticketsEspera}
-      carrito={carrito}
-      isProcessing={isProcessing}
-      filtrados={filtrados}
-      selectedIndex={selectedIndex}
-      productRefs={productRefs}
       searchInputRef={searchInputRef}
+      productRefs={productRefs}
       ticketRef={ticketRef}
       ticketSaldoRef={ticketSaldoRef}
-      calculos={calculos}
-      handleRecuperarTicket={handleRecuperarTicket}
-      eliminarTicketEspera={eliminarTicketEspera}
-      finalizarVenta={finalizarVenta}
-      agregarAlCarrito={agregarAlCarrito}
-      clientePreseleccionado={clientePreseleccionado} // 🆕
-      handlePrintSaldo={handlePrintSaldo} // 🖨️ Manual Print
-      onCloseSuccess={useCallback(() => { setVentaExitosa(false); limpiarCarrito(); searchInputRef.current?.focus(); }, [setVentaExitosa, limpiarCarrito])} // Manual close handler
-      permitirSinStock={configuracion?.permitirSinStock} // 🆕
+      handleSearchInputKeyDown={handleSearchInputKeyDown}
+      cartSelectedIndex={cartSelectedIndex}
+      focusCartItem={focusCartItem}
     >
       {guideComponent}
     </DesktopLayout>

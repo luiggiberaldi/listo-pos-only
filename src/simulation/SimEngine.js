@@ -6,6 +6,9 @@
 // que los servicios reales (SalesService, FinanceService).
 
 import { db } from '../db';
+import { FinanceService } from '../services/pos/FinanceService';
+import { ShiftService } from '../services/pos/ShiftService';
+import { timeProvider } from '../utils/TimeProvider';
 import { simTimekeeper } from './SimTimekeeper';
 import { generarPerfilDia, generarAprendizajeSemanal, generarAuditoriaDiaria } from './SimDirector';
 import { validarIntegridadDiaria, ejecutarEdgeCases } from './SimValidator';
@@ -77,6 +80,17 @@ const simState = {
     }
 };
 
+// ── Time sync helper: align timeProvider with simTimekeeper ──
+function syncTimeProvider() {
+    const simDate = simTimekeeper.getState().fechaActual;
+    const realNow = Date.now();
+    timeProvider.offset = simDate.getTime() - realNow;
+}
+function restoreTimeProvider() {
+    timeProvider.offset = 0;
+    timeProvider.saveOffset();
+}
+
 // ── Log helper (usa hora dinámica que avanza con la simulación) ──
 function addLog(msg, type = 'info') {
     const h = String(simState._logHora).padStart(2, '0');
@@ -117,8 +131,23 @@ async function cargarInventarioInicial() {
     const existentes = await db.productos.count();
     if (existentes > 20) {
         addLog(`📦 Inventario existente: ${existentes} productos`, 'info');
+
+        // 🛡️ Auto-fix: Ensure all products have precioVenta
+        const sinPrecio = await db.productos.filter(p => !p.precioVenta || p.precioVenta <= 0).toArray();
+        if (sinPrecio.length > 0) {
+            for (const p of sinPrecio) {
+                const precioFix = p.precio || p.costo * 1.4 || 1.00;
+                await db.productos.update(p.id, {
+                    precioVenta: +precioFix.toFixed(2),
+                    precio: p.precio || +precioFix.toFixed(2)
+                });
+            }
+            addLog(`🔧 ${sinPrecio.length} productos sin precio corregidos automáticamente`, 'warn');
+        }
+
         return;
     }
+
 
     addLog('📦 Cargando catálogo de minimarket (150 productos)...', 'info');
 
@@ -144,18 +173,31 @@ async function cargarInventarioInicial() {
  * FASE 1: Abrir caja del día.
  */
 async function abrirCaja(perfil) {
-    const fondoInicial = randomFloat(50, 150);
+    const fondoInicial = +randomFloat(50, 150).toFixed(2);
     const ts = simTimekeeper.generarTimestamp(6, 0);
     const empleado = pickRandom(EMPLEADOS_SIM);
+    const tasaCambio = perfil.tasaCambio || simState.tasaCambioHoy || 90;
 
+    // ✅ Use correct balance structure expected by FinanceService/ShiftService
+    const balancesApertura = {
+        usdCash: fondoInicial,
+        usdDigital: 0,
+        vesCash: +(fondoInicial * tasaCambio * 0.1).toFixed(2), // ~10% of fund in VES
+        vesDigital: 0
+    };
+
+    const idApertura = `AP-SIM-${Date.now()}`;
     await db.caja_sesion.put({
         key: 'caja-1',
         isAbierta: true,
         fondoInicial,
         fechaApertura: ts,
-        balances: { USD: fondoInicial, VES: fondoInicial * (perfil.tasaCambio || 90) },
+        idApertura,
+        balances: { ...balancesApertura },
+        balancesApertura: { ...balancesApertura },
         operador: empleado.nombre,
-        operadorId: empleado.id
+        operadorId: empleado.id,
+        usuarioApertura: empleado.nombre
     });
 
     await db.logs.add({
@@ -232,8 +274,16 @@ async function generarVentasDelDia(perfil) {
         for (let j = 0; j < numItems; j++) {
             const prod = seleccionarProductoPareto(productos);
 
+            // ✅ C1: Weight-based sales — fractional qty for kg products
+            let qty;
+            if (prod.unidadVenta === 'kg') {
+                // Realistic weight: 0.250 to 3.000 kg
+                qty = +(randomFloat(0.25, 3.0)).toFixed(3);
+            } else {
+                qty = randomInt(1, 3);
+            }
+
             // Mejora #2: Validar stock antes de agregar al carrito
-            const qty = randomInt(1, 3);
             if ((prod.stock || 0) < qty) continue; // Skip si stock insuficiente
 
             const precioUnitario = prod.precioVenta || prod.precio;
@@ -246,7 +296,8 @@ async function generarVentasDelDia(perfil) {
                 precio: precioUnitario,
                 costo: costoUnitario,
                 cantidad: qty,
-                subtotal
+                subtotal,
+                unidad: prod.unidadVenta || 'unidad'
             });
 
             totalVenta += subtotal;
@@ -266,8 +317,17 @@ async function generarVentasDelDia(perfil) {
         totalVenta = +totalVenta.toFixed(2);
         totalCosto = +totalCosto.toFixed(2);
 
+        // ✅ C2: Random discounts on ~5% of sales (10-20% off)
+        let descuento = 0;
+        if (Math.random() < 0.05) {
+            const porcentajeDesc = randomFloat(0.10, 0.20);
+            descuento = +(totalVenta * porcentajeDesc).toFixed(2);
+            totalVenta = +(totalVenta - descuento).toFixed(2);
+        }
+
         // Mejora #4: Sin variación artificial — precios reales del catálogo
         if (totalVenta < 0.50) totalVenta = 0.50;
+
 
         // Seleccionar método de pago
         const metodo = seleccionarMetodoPago();
@@ -286,8 +346,41 @@ async function generarVentasDelDia(perfil) {
             }
         }
 
-        // Calcular monto en Bs si aplica
-        const montoBS = metodo.moneda === 'VES' ? +(totalVenta * tasaCambio).toFixed(2) : 0;
+        // ✅ C3/C4: Build payment methods array with VES-only and mixed support
+        let metodosPago;
+        if (clienteCredito) {
+            metodosPago = [{
+                moneda: 'USD', medio: 'CREDIT',
+                monto: totalVenta, referencia: `FIADO-${clienteCredito.nombre}`
+            }];
+        } else {
+            const r = Math.random();
+            if (r < 0.15) {
+                // C3: 15% — VES-only payment (cash or digital)
+                const medioVES = Math.random() < 0.5 ? 'CASH' : 'DIGITAL';
+                metodosPago = [{
+                    moneda: 'VES', medio: medioVES,
+                    monto: +(totalVenta * tasaCambio).toFixed(2),
+                    referencia: correlativo
+                }];
+            } else if (r < 0.25) {
+                // C4: 10% — Mixed payment (part USD + part VES)
+                const splitRatio = randomFloat(0.3, 0.7);
+                const montoUSD = +(totalVenta * splitRatio).toFixed(2);
+                const montoVES = +((totalVenta - montoUSD) * tasaCambio).toFixed(2);
+                metodosPago = [
+                    { moneda: 'USD', medio: 'CASH', monto: montoUSD, referencia: correlativo },
+                    { moneda: 'VES', medio: Math.random() < 0.5 ? 'CASH' : 'DIGITAL', monto: montoVES, referencia: correlativo }
+                ];
+            } else {
+                // Regular USD payment
+                metodosPago = [{
+                    moneda: metodo.moneda, medio: metodo.medio,
+                    monto: metodo.moneda === 'VES' ? +(totalVenta * tasaCambio).toFixed(2) : totalVenta,
+                    referencia: correlativo
+                }];
+            }
+        }
 
         // Crear registro de venta (con timing para stress test)
         const _t0 = simState.stressMode ? performance.now() : 0;
@@ -296,12 +389,8 @@ async function generarVentasDelDia(perfil) {
             items,
             total: totalVenta,
             totalCosto,
-            metodosPago: [{
-                moneda: clienteCredito ? 'USD' : metodo.moneda,
-                medio: clienteCredito ? 'CREDIT' : metodo.medio,
-                monto: clienteCredito ? totalVenta : (metodo.moneda === 'VES' ? montoBS : totalVenta),
-                referencia: clienteCredito ? `FIADO-${clienteCredito.nombre}` : correlativo
-            }],
+            descuento, // ✅ C2: Track discounts
+            metodosPago,
             status: 'COMPLETADA',
             correlativo,
             clienteId: clienteCredito?.id || null,
@@ -312,6 +401,7 @@ async function generarVentasDelDia(perfil) {
             tasaDelMomento: tasaCambio,
             meta: { simulation: true }
         });
+
 
         // Performance check (stress mode)
         if (simState.stressMode && _t0) {
@@ -391,6 +481,7 @@ async function generarVentasDelDia(perfil) {
 
 /**
  * FASE 3: Generar gastos del día.
+ * ✅ A3: Now uses FinanceService.registrarGasto() real service.
  */
 async function generarGastosDelDia(perfil) {
     const gastosDelPerfil = perfil.gastos || [];
@@ -401,41 +492,48 @@ async function generarGastosDelDia(perfil) {
 
     const gastosFinales = gastosDelPerfil.length > 0 ? gastosDelPerfil : gastosFallback;
     let totalGastos = 0;
+    let gastosRegistrados = 0;
 
     for (const gasto of gastosFinales) {
         if (!simState.isRunning) break;
 
         const hora = randomInt(9, 17);
         avanzarLogHora(hora);
-        const ts = simTimekeeper.generarTimestamp(hora, randomInt(0, 59));
+        // Sync timeProvider so FinanceService writes correct timestamp
+        const simDate = new Date(simTimekeeper.getState().fechaActual);
+        simDate.setHours(hora, randomInt(0, 59), randomInt(0, 59));
+        timeProvider.offset = simDate.getTime() - Date.now();
+
         const empleado = pickRandom(EMPLEADOS_SIM);
         const monto = +(gasto.monto || randomFloat(5, 30)).toFixed(2);
 
-        await db.logs.add({
-            tipo: 'GASTO_CAJA',
-            fecha: ts,
-            producto: 'GASTO OPERATIVO',
-            cantidad: monto,
-            stockFinal: 0,
-            referencia: 'USD',
-            detalle: gasto.motivo || 'Gasto operativo',
-            usuarioId: empleado.id,
-            usuarioNombre: empleado.nombre,
-            meta: {
+        try {
+            // ✅ Use REAL FinanceService — exercises validation, balance update, and logging
+            await FinanceService.registrarGasto({
+                monto,
                 moneda: 'USD',
                 medio: 'CASH',
-                simulation: true
-            }
-        });
-
-        totalGastos += monto;
+                motivo: gasto.motivo || 'Gasto operativo',
+                usuario: { id: empleado.id, nombre: empleado.nombre }
+            });
+            totalGastos += monto;
+            gastosRegistrados++;
+        } catch (e) {
+            // Service might reject (e.g. caja cerrada) — log as bug
+            addLog(`🐛 FinanceService rechazó gasto: ${e.message}`, 'error');
+            simState.qaReport.serviceBugs.push({
+                service: 'FinanceService.registrarGasto',
+                error: e.message,
+                context: { monto, motivo: gasto.motivo }
+            });
+        }
     }
 
     simState.gastosDelDia = totalGastos;
     simState.metricas.gastosSemana += totalGastos;
 
-    if (gastosFinales.length > 0) {
-        addLog(`💸 ${gastosFinales.length} gastos registrados — Total: $${totalGastos.toFixed(2)}`, 'info');
+    if (gastosRegistrados > 0) {
+        addLog(`💸 ${gastosRegistrados} gastos registrados — Total: $${totalGastos.toFixed(2)}`, 'info');
     }
 }
 
@@ -755,91 +853,71 @@ async function anularVentasAleatorias() {
 
 /**
  * FASE 5B: Cerrar caja con Corte Z formal.
- * Escribe a db.cortes y genera reporte completo.
+ * ✅ A2: Now uses ShiftService.cerrarCaja() real service.
+ * Falls back to manual close if service fails (e.g., different balance structure).
  */
 async function cerrarCajaConCorteZ(perfil) {
-    const ts = simTimekeeper.generarTimestamp(21, 30);
     const empleado = pickRandom(EMPLEADOS_SIM);
     const sesion = await db.caja_sesion.get('caja-1');
     if (!sesion || !sesion.isAbierta) return;
 
-    const fondoInicial = sesion?.fondoInicial || 100;
-    const ventasNetas = simState.ventasDelDia - simState.anulacionesDelDia;
-    const gastosNetos = simState.gastosDelDia;
-    const abonosCobrados = simState.abonosDelDia;
-    const tasaCambio = simState.tasaCambioHoy;
+    // Sync timeProvider to closing hour (9:30 PM)
+    const simDate = new Date(simTimekeeper.getState().fechaActual);
+    simDate.setHours(21, 30, 0);
+    timeProvider.offset = simDate.getTime() - Date.now();
 
-    // Calcular balances finales por moneda/medio
-    const balancesFinales = {
-        usdCash: +(fondoInicial + ventasNetas * 0.45 - gastosNetos * 0.6 + abonosCobrados * 0.5).toFixed(2),
-        usdDigital: +(ventasNetas * 0.25 + abonosCobrados * 0.5).toFixed(2),
-        vesCash: +(ventasNetas * 0.15 * tasaCambio).toFixed(2),
-        vesDigital: +(ventasNetas * 0.15 * tasaCambio).toFixed(2),
-    };
+    const ventasNetas = +(simState.ventasDelDia - simState.anulacionesDelDia).toFixed(2);
 
-    // Simular descuadre ocasional (±$0.50-2.00)
-    const hayDescuadre = Math.random() < 0.20;
-    const descuadre = hayDescuadre ? +(randomFloat(-2, 2)).toFixed(2) : 0;
-    if (hayDescuadre) {
-        balancesFinales.usdCash += descuadre;
-    }
+    try {
+        // ✅ Use REAL ShiftService — exercises generarReporteZ, balance validation, corte persistence
+        const reporte = await ShiftService.cerrarCaja(
+            { id: empleado.id, nombre: empleado.nombre },
+            { meta: { simulation: true } },
+            null // no playSound during simulation
+        );
 
-    // Generar Corte Z formal
-    const corteId = `Z-SIM-${Date.now()}`;
-    const corteZ = {
-        id: corteId,
-        fecha: ts,
-        idApertura: sesion.idApertura || `AP-SIM-${Date.now()}`,
-        balancesApertura: sesion.balancesApertura || { usdCash: fondoInicial, usdDigital: 0, vesCash: 0, vesDigital: 0 },
-        balancesFinales,
-        usuario: empleado.nombre,
-        ventasTotales: simState.ventasDelDia,
-        ventasAnuladas: simState.anulacionesDelDia,
-        ventasNetas,
-        totalTransacciones: simState.transaccionesDelDia,
-        totalGastos: gastosNetos,
-        totalAbonos: abonosCobrados,
-        totalCreditos: simState.creditosDelDia,
-        totalCosto: simState.totalCostoDelDia,
-        margenReal: ventasNetas > 0 ? +((ventasNetas - simState.totalCostoDelDia) / ventasNetas * 100).toFixed(1) : 0,
-        utilidadBruta: +(ventasNetas - gastosNetos).toFixed(2),
-        descuadre,
-        tasaCambio,
-        corteRef: corteId,
-        meta: { simulation: true }
-    };
+        addLog(`🔒 Corte Z (Service): $${ventasNetas.toFixed(2)} neto | Gastos: $${simState.gastosDelDia.toFixed(2)} | Abonos: $${simState.abonosDelDia.toFixed(2)}`, 'success');
 
-    await db.cortes.put(corteZ);
+        // Check for descuadre in the real report
+        if (reporte?.descuadreTotal && Math.abs(reporte.descuadreTotal) > 0.01) {
+            addLog(`⚠️ Descuadre detectado: $${reporte.descuadreTotal.toFixed(2)}`, 'warn');
+        }
+    } catch (e) {
+        // Fallback: close manually if service fails
+        addLog(`⚠️ ShiftService.cerrarCaja falló: ${e.message} — cierre manual`, 'warn');
+        simState.qaReport.serviceBugs.push({
+            service: 'ShiftService.cerrarCaja',
+            error: e.message,
+            context: { ventasNetas, gastos: simState.gastosDelDia }
+        });
 
-    // Cerrar sesión de caja
-    await db.caja_sesion.put({
-        key: 'caja-1',
-        isAbierta: false,
-        fondoInicial,
-        fechaApertura: sesion?.fechaApertura,
-        fechaCierre: ts,
-        balances: balancesFinales,
-        operador: empleado.nombre,
-        operadorId: empleado.id
-    });
+        // Manual close fallback to not break simulation flow
+        const ts = simTimekeeper.generarTimestamp(21, 30);
+        await db.caja_sesion.put({
+            key: 'caja-1',
+            isAbierta: false,
+            fondoInicial: sesion?.fondoInicial || 100,
+            fechaApertura: sesion?.fechaApertura,
+            fechaCierre: ts,
+            balances: sesion?.balances || {},
+            operador: empleado.nombre,
+            operadorId: empleado.id
+        });
 
-    // Log de auditoría
-    await db.logs.add({
-        tipo: 'CORTE_Z',
-        fecha: ts,
-        producto: 'CAJA',
-        cantidad: ventasNetas,
-        stockFinal: 0,
-        referencia: corteId,
-        detalle: `Corte Z: $${ventasNetas.toFixed(2)} neto | ${simState.transaccionesDelDia} txns`,
-        usuarioId: empleado.id,
-        usuarioNombre: empleado.nombre,
-        meta: { ...corteZ, simulation: true }
-    });
+        await db.logs.add({
+            tipo: 'CORTE_Z',
+            fecha: ts,
+            producto: 'CAJA',
+            cantidad: ventasNetas,
+            stockFinal: 0,
+            referencia: `Z-SIM-${Date.now()}`,
+            detalle: `Corte Z (manual fallback): $${ventasNetas.toFixed(2)} neto`,
+            usuarioId: empleado.id,
+            usuarioNombre: empleado.nombre,
+            meta: { simulation: true, fallback: true }
+        });
 
-    addLog(`🔒 Corte Z: $${ventasNetas.toFixed(2)} neto | Gastos: $${gastosNetos.toFixed(2)} | Abonos: $${abonosCobrados.toFixed(2)}`, 'success');
-    if (hayDescuadre) {
-        addLog(`⚠️ Descuadre detectado: ${descuadre > 0 ? '+' : ''}$${descuadre.toFixed(2)}`, 'warn');
+        addLog(`🔒 Corte Z (fallback): $${ventasNetas.toFixed(2)} neto | Gastos: $${simState.gastosDelDia.toFixed(2)}`, 'success');
     }
 }
 
@@ -1104,6 +1182,9 @@ async function simularDia() {
     const state = simTimekeeper.getState();
     const tipoDia = simTimekeeper.getTipoDia();
     const diaNum = state.diasSimulados + 1;
+
+    // ✅ Phase A: Align timeProvider with simulated date
+    syncTimeProvider();
 
     addLog(`━━━━━━━━━━━━━━━━━━━━━━━━`, 'separator');
     addLog(`📅 DÍA ${diaNum}: ${state.fechaFormateada} (${tipoDia})`, 'header');
@@ -1469,6 +1550,16 @@ export async function iniciarSimulacion(config) {
         addLog(`⏱️ Operaciones lentas (>500ms): ${qa.slowOps}`, 'warn');
     }
 
+    // ✅ Phase A: Service bugs detected
+    if (qa.serviceBugs.length > 0) {
+        addLog(`🔧 Service Bugs: ${qa.serviceBugs.length} servicios rechazaron operaciones`, 'warn');
+        const grouped = {};
+        qa.serviceBugs.forEach(b => { grouped[b.service] = (grouped[b.service] || 0) + 1; });
+        Object.entries(grouped).forEach(([svc, count]) => {
+            addLog(`   └ ${svc}: ${count} rechazos`, 'warn');
+        });
+    }
+
     // Mejora #6: Score final — solo bugs técnicos afectan el veredicto
     const hasCriticalBugs = qa.bugsDetectados.some(b => b.bug.includes('🔴'));
     const hasEdgeFails = qa.edgeFailed > 0;
@@ -1512,6 +1603,9 @@ export async function iniciarSimulacion(config) {
     } catch { /* non-critical */ }
 
     addLog('🏁 SIMULACIÓN COMPLETADA', 'header');
+
+    // ✅ Phase A: Restore timeProvider to real time
+    restoreTimeProvider();
 }
 
 export function detenerSimulacion() {

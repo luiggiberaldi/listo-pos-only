@@ -12,6 +12,7 @@ import RouteGuard from './components/security/RouteGuard';
 import { GhostEye } from './components/ghost/GhostEye';
 import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { initFirebase } from './services/firebase'; // 🚀 LAZY INIT
 import { useLanSync } from './hooks/sync/useLanSync'; // 📡 LAN MULTI-CAJA
 import { secretsService } from './services/config/SecretsService';
@@ -181,7 +182,9 @@ function App() {
                     path="vender"
                     element={
                       <RouteGuard requiredPermiso={PERMISSIONS.POS_ACCESO}>
-                        <PosPage />
+                        <ErrorBoundary section="pos" title="Error en el Punto de Venta">
+                          <PosPage />
+                        </ErrorBoundary>
                       </RouteGuard>
                     }
                   />
@@ -191,7 +194,9 @@ function App() {
                     path="inventario"
                     element={
                       <RouteGuard requiredPermiso={PERMISSIONS.INV_VER}>
-                        <InventarioPage />
+                        <ErrorBoundary section="inventario" title="Error en Inventario">
+                          <InventarioPage />
+                        </ErrorBoundary>
                       </RouteGuard>
                     }
                   />
@@ -249,7 +254,9 @@ function App() {
                     path="cierre"
                     element={
                       <RouteGuard requiredPermiso={PERMISSIONS.CAJA_CERRAR}>
-                        <CierrePage />
+                        <ErrorBoundary section="cierre" title="Error en Cierre de Caja">
+                          <CierrePage />
+                        </ErrorBoundary>
                       </RouteGuard>
                     }
                   />

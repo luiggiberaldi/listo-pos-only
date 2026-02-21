@@ -1,18 +1,28 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 3.2 (MANUAL FOCUS CONTROL)
+// ✅ REFACTORED - V. 4.0 (ZUSTAND DIRECT CONNECTION)
 // Archivo: src/components/pos/PosHeader.jsx
-// Autorizado por Auditor en Fase 3 (UX Precision)
+// Antes: Recibía 9 props del padre. Ahora se conecta directamente a stores.
 
 import React, { useEffect } from 'react';
 import { Search, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { usePosSearchStore } from '../../stores/usePosSearchStore';
+import { usePosCalcStore } from '../../stores/usePosCalcStore';
+import { useConfigStore } from '../../stores/useConfigStore';
+import { useInventoryStore } from '../../stores/useInventoryStore';
 
-const PosHeader = React.forwardRef(({
-  busqueda, setBusqueda,
-  categorias, categoriaActiva, setCategoriaActiva,
-  tasa, tasaCaida, tasaReferencia, onKeyDown
-}, ref) => {
+const PosHeader = React.forwardRef(({ onKeyDown }, ref) => {
+  // 🧠 DIRECT STORE CONNECTION
+  const busqueda = usePosSearchStore(s => s.busqueda);
+  const setBusqueda = usePosSearchStore(s => s.setBusqueda);
+  const categoriaActiva = usePosSearchStore(s => s.categoriaActiva);
+  const setCategoriaActiva = usePosSearchStore(s => s.setCategoriaActiva);
+
+  const categorias = useInventoryStore(s => s.categorias);
+
+  const tasa = usePosCalcStore(s => s.tasa);
+  const tasaCaida = usePosCalcStore(s => s.tasaCaida);
+  const tasaReferencia = useConfigStore(s => s.configuracion?.tasaReferencia || 0);
 
   // ⚡ ENFOQUE INICIAL ÚNICO
-  // Solo enfocamos al montar el componente por primera vez
   useEffect(() => {
     if (ref && ref.current) {
       ref.current.focus();
@@ -25,14 +35,13 @@ const PosHeader = React.forwardRef(({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3.5 text-content-secondary" size={20} />
           <input
-            ref={ref} // searchInputRef
+            ref={ref}
             type="text"
             placeholder="Escanear o buscar producto..."
             className="w-full pl-10 pr-12 py-3 bg-app-light dark:bg-app-dark border-2 border-transparent focus:bg-surface-light dark:focus:bg-surface-dark focus:border-primary rounded-xl outline-none transition-all text-lg font-medium text-content-main shadow-inner"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             onKeyDown={onKeyDown}
-          // ⛔ autoFocus REMOVIDO: Controlamos el foco desde PosPage.jsx
           />
           <div className="absolute right-3 top-3 text-content-secondary bg-surface-light dark:bg-surface-dark border border-border-subtle px-2 py-1 rounded text-xs font-mono">F2</div>
         </div>
@@ -53,7 +62,6 @@ const PosHeader = React.forwardRef(({
               <AlertTriangle size={8} /> MENOR A BCV ({tasaReferencia})
             </div>
           )}
-
         </div>
       </div>
 

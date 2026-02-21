@@ -19,14 +19,16 @@ export const usePaymentCalculations = ({
     const allPayments = useMemo(() => {
         const list = metodosActivos.map(m => {
             const rawVal = val(m.id);
+            // 🛡️ FIX #3: Robust medium detection — not just name heuristic
+            const nameUpper = (m.nombre || '').toUpperCase();
+            const DIGITAL_KEYWORDS = ['DIGITAL', 'ZELLE', 'PAYPAL', 'TRANSFERENCIA', 'PAGO MOVIL', 'PAGO MÓVIL', 'BINANCE', 'ZINLI', 'VENMO', 'RESERVE'];
+            const isDigital = m.esCash === false || m.medio === 'DIGITAL' || DIGITAL_KEYWORDS.some(kw => nameUpper.includes(kw));
             return {
                 amount: rawVal,
                 currency: m.tipo === 'BS' ? 'VES' : 'USD',
                 type: m.tipo,
                 aplicaIGTF: m.aplicaIGTF,
-                // Heuristic: If method name implies digital/transfer, it might not trigger IGTF by default logic
-                // But the controller handles the "undefined" logic based on currency/type.
-                medium: m.nombre.toUpperCase().includes('DIGITAL') ? 'DIGITAL' : 'CASH',
+                medium: isDigital ? 'DIGITAL' : 'CASH',
                 id: m.id
             };
         });

@@ -2,7 +2,7 @@
 // Archivo: src/hooks/ui/usePosKeyboard.js
 // Responsabilidad: Gestión centralizada de atajos de teclado para el POS.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 
 export const usePosKeyboard = ({
@@ -22,6 +22,18 @@ export const usePosKeyboard = ({
   productRefs,
   actions // { limpiar, cobrar, cambiarCant, eliminarItem, prepararAgregar, playSound }
 }) => {
+
+  // --- NAVEGACIÓN DE CESTA (Clic y Flechas) ---
+  const [cartSelectedIndex, setCartSelectedIndex] = useState(0);
+
+  // Auto-seleccionar el último item al agregar al carrito
+  useEffect(() => {
+    if (carrito.length > 0) {
+      setCartSelectedIndex(carrito.length - 1);
+    } else {
+      setCartSelectedIndex(0);
+    }
+  }, [carrito.length]);
 
   // --- ⚖️ ALGORITMO DE BALANZA (EAN-13 PESO VARIABLE) ---
   useEffect(() => {
@@ -94,11 +106,27 @@ export const usePosKeyboard = ({
       if (e.key === 'F9') { e.preventDefault(); actions.cobrar(); }
       if (e.key === 'F6') { e.preventDefault(); actions.espera(); }
 
-      // --- COMANDOS DE CARRITO (+ / - / Del) ---
+      // --- COMANDOS DE CARRITO (+ / - / Del / Flechas) ---
       if (!isTyping && carrito.length > 0) {
-        const idx = carrito.length - 1;
+        // Asegurar que el índice seleccionado sea válido
+        const idx = Math.max(0, Math.min(cartSelectedIndex, carrito.length - 1));
         const item = carrito[idx];
 
+        if (!item) return;
+
+        // Flechas para navegar la cesta
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setCartSelectedIndex(Math.max(0, idx - 1));
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setCartSelectedIndex(Math.min(carrito.length - 1, idx + 1));
+          return;
+        }
+
+        // Acciones sobre el item seleccionado
         if (e.key === '+' || e.key === 'Add') {
           e.preventDefault();
           actions.cambiarCant(idx, item.cantidad + (item.tipoUnidad === 'peso' ? 0.05 : 1));
@@ -110,6 +138,11 @@ export const usePosKeyboard = ({
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
           actions.eliminarItem(idx);
+          if (carrito.length <= 1) {
+            searchInputRef.current?.focus(); // Volver al inicio si se vacía
+          } else {
+            setCartSelectedIndex(Math.max(0, idx - 1)); // Seleccionar el anterior
+          }
         }
       }
 
@@ -226,19 +259,37 @@ export const usePosKeyboard = ({
     if (filtrados.length === 0) return;
 
     // Detección de columnas responsive (Aprox)
+    // Detección de columnas responsive (Coincide con las clases de ProductGrid.jsx)
     const width = window.innerWidth;
     let cols = 2;
-    if (width >= 1280) cols = 5;
-    else if (width >= 1024) cols = 4;
-    else if (width >= 768) cols = 3;
+    if (width >= 1536) cols = 4; // 2xl:grid-cols-4
+    else if (width >= 768) cols = 3; // md/lg/xl:grid-cols-3
 
     const total = filtrados.length;
     let nextIndex = selectedIndex;
 
+    // Si aún no hemos entrado al grid (foco en buscador, selectedIndex === -1)
+    if (selectedIndex === -1) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedIndex(0);
+      }
+      return; // Fin de la lógica, no hacer math min/max aún
+    }
+
+    // Lógica normal de grid si ya estamos adentro
     if (e.key === 'ArrowRight') { e.preventDefault(); nextIndex = (selectedIndex + 1) % total; }
     if (e.key === 'ArrowLeft') { e.preventDefault(); nextIndex = (selectedIndex - 1 + total) % total; }
     if (e.key === 'ArrowDown') { e.preventDefault(); nextIndex = Math.min(selectedIndex + cols, total - 1); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); nextIndex = Math.max(selectedIndex - cols, 0); }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (selectedIndex < cols) {
+        // Si estamos en la 1ra fila y damos flecha arriba, perdemos el foco (volvemos al search input implícitamente)
+        nextIndex = -1;
+      } else {
+        nextIndex = Math.max(selectedIndex - cols, 0);
+      }
+    }
 
     if (nextIndex !== selectedIndex) {
       setSelectedIndex(nextIndex);
@@ -258,10 +309,20 @@ export const usePosKeyboard = ({
       }
 
       // 2. Fallback: Selección por índice visual
-      const productoIndex = filtrados[selectedIndex];
-      if (productoIndex) actions.prepararAgregar(productoIndex);
+      if (selectedIndex !== -1) {
+        const productoIndex = filtrados[selectedIndex];
+        if (productoIndex) actions.prepararAgregar(productoIndex);
+      } else {
+        // En caso que le de Enter al input y NO hay exact match y no ha seleccionado nada:
+        // Puede que quieras que no haga nada, o que seleccione el Item 0
+        // Dejaremos que no haga nada por seguridad, así el Enter en el input es para buscar/escanear
+      }
     }
   };
 
-  return { handleSearchInputKeyDown };
+  return {
+    handleSearchInputKeyDown,
+    cartSelectedIndex,
+    focusCartItem: (idx) => setCartSelectedIndex(idx)
+  };
 };

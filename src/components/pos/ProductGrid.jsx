@@ -1,33 +1,42 @@
+// ✅ REFACTORED - V. 5.0 (ZUSTAND DIRECT CONNECTION)
+// Archivo: src/components/pos/ProductGrid.jsx
+// Antes: Recibía 8 props. Ahora se conecta directamente a stores.
+
 import React, { memo, useRef, useEffect } from 'react';
 import { ScanBarcode, Search, Plus, Save, Zap } from 'lucide-react';
 import { VirtuosoGrid } from 'react-virtuoso';
 import ProductCard from './ProductCard';
-
-// 🛑 VIRTUALIZATION DISABLED Temporarily due to strict ESM/Vite/CJS Interop issues.
-// We keep ProductCard extraction as it provides Memoization benefits (Performance Pillar #2).
+import { usePosSearchStore } from '../../stores/usePosSearchStore';
+import { usePosCalcStore } from '../../stores/usePosCalcStore';
+import { usePosActionsStore } from '../../stores/usePosActionsStore';
+import { useUIStore } from '../../stores/useUIStore';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 const ProductGrid = ({
-  filtrados,
-  selectedIndex,
-  setRef,
-  onSelectProducto,
-  tasa,
-  permitirSinStock,
-  compactMode = false,
-  isProcessing // 🆕
+  setRef,           // Imperative ref setter (from parent)
+  compactMode = false
 }) => {
   const virtuosoRef = useRef(null);
+
+  // 🧠 DIRECT STORE CONNECTION
+  const filtrados = usePosSearchStore(s => s.filtrados);
+  const selectedIndex = usePosSearchStore(s => s.selectedIndex);
+  const tasa = usePosCalcStore(s => s.tasa);
+  const isProcessing = useUIStore(s => s.isProcessing);
+  const permitirSinStock = useConfigStore(s => s.configuracion?.permitirSinStock);
+  const prepararAgregar = usePosActionsStore(s => s.prepararAgregar);
 
   // 🖱️ SCROLL SYNC: Keep focus visible
   useEffect(() => {
     if (virtuosoRef.current && selectedIndex >= 0) {
       virtuosoRef.current.scrollToIndex({
         index: selectedIndex,
-        align: 'center', // Keep selected item in the middle
+        align: 'center',
         behavior: 'smooth'
       });
     }
   }, [selectedIndex]);
+
   // 🚀 VIRTUALIZATION COMPONENTS
   const GridContainer = React.forwardRef(({ style, className, children, ...props }, ref) => (
     <div
@@ -63,22 +72,22 @@ const ProductGrid = ({
               List: GridContainer,
               Item: ItemContainer
             }}
-            overscan={200} // Pre-render pixels
+            overscan={200}
             itemContent={(index) => {
               const p = filtrados[index];
               return (
                 <ProductCard
-                  key={p.id} // Stable Key
+                  key={p.id}
                   data={filtrados}
                   index={index}
-                  // style handled by ItemContainer usually, but card is self-contained
                   style={{ height: '100%' }}
-                  onSelectProducto={onSelectProducto}
+                  onSelectProducto={prepararAgregar}
                   tasa={tasa}
                   setRef={setRef}
                   permitirSinStock={permitirSinStock}
-                  isProcessing={isProcessing} // 🆕 Pass status down
+                  isProcessing={isProcessing}
                   isVirtual={true}
+                  selectedIndex={selectedIndex}
                 />
               );
             }}

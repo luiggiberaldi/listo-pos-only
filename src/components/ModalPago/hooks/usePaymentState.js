@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export const usePaymentState = (initialClient, metodosActivos, isTouch) => {
     const [modo, setModo] = useState('contado');
@@ -34,7 +34,8 @@ export const usePaymentState = (initialClient, metodosActivos, isTouch) => {
         }
     }, [activeInputId, isTouch, metodosActivos]);
 
-    const val = (id) => (pagos[id] === '' || !pagos[id] ? 0 : Math.round((parseFloat(pagos[id]) + Number.EPSILON) * 100) / 100);
+    // 🛡️ FIX #6: Memoized to prevent unnecessary re-renders in usePaymentCalculations
+    const val = useCallback((id) => (pagos[id] === '' || !pagos[id] ? 0 : Math.round((parseFloat(pagos[id]) + Number.EPSILON) * 100) / 100), [pagos]);
 
     return {
         modo, setModo,

@@ -1,5 +1,8 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 5.3 (SAFE MODE - SYNC PAUSED)
+// ✅ SYSTEM IMPLEMENTATION - V. 5.4 (ZUSTAND MIGRATION BRIDGE)
 // Archivo: src/context/StoreContext.jsx
+// ⚠️ DEPRECATED: This context aggregator is maintained for backward compatibility.
+//    New code should import from Zustand stores directly (useConfigStore, useAuthStore, etc.)
+//    See: src/stores/
 
 import React, { useEffect } from 'react';
 import { desglosarStock } from '../utils/mathUtils';
@@ -17,12 +20,24 @@ import { CajaEstadoProvider } from '../hooks/caja/CajaEstadoProvider';
 import { useSyncEngine } from '../hooks/sync/useSyncEngine';
 import { useAutoBackup } from '../hooks/safety/useAutoBackup';
 
+// 🔄 ZUSTAND BRIDGE: Overlay critical config from stores
+import { useConfigStore } from '../stores/useConfigStore';
+
+/**
+ * @deprecated Use Zustand stores directly (useConfigStore, useAuthStore, etc.)
+ * This hook is maintained for backward compatibility with 50+ consumers.
+ */
 export const useStore = () => {
   const config = useConfigContext();
   const auth = useAuthContext();
   const inventory = useInventoryContext();
   const pos = usePOSContext();
   const audit = useAuditContext();
+
+  // 🔄 ZUSTAND OVERLAY: License from store (source of truth)
+  // NOTE: Do NOT merge zustandConfig into configuracion here — it creates
+  // a new object ref every render, causing infinite loops in ConfigPage.
+  const { license } = useConfigStore();
 
   return {
     TOLERANCIA_AUDITORIA: 0.05,
@@ -31,7 +46,9 @@ export const useStore = () => {
     ...auth,
     ...inventory,
     ...pos,
-    ...audit
+    ...audit,
+    // 🔄 Zustand override (only stable primitive/object refs)
+    license
   };
 };
 

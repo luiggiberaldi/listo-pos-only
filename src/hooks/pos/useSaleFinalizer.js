@@ -26,12 +26,8 @@ export const useSaleFinalizer = ({
     const finalizarVenta = async (datosPago, imprimirTicket = false) => {
         cerrarPago();
         try {
-            let numeroFiscal = null;
-            if (generarCorrelativo) {
-                numeroFiscal = await generarCorrelativo('factura');
-            } else {
-                numeroFiscal = Date.now().toString().slice(-6);
-            }
+            // 🛡️ FIX #4: Correlativo generation moved entirely to SalesService
+            // to avoid wasting fiscal numbers with duplicate generation.
 
             const ventaFinal = {
                 items: carrito,
@@ -50,9 +46,6 @@ export const useSaleFinalizer = ({
                 cliente: datosPago.cliente || null,
                 deudaPendiente: datosPago.deudaPendiente || 0,
                 fecha: new Date().toISOString(),
-                idVenta: numeroFiscal,
-                numeroFactura: numeroFiscal,
-                referencia: `Factura #${numeroFiscal}`,
                 esExento: calculos.totalImpuesto === 0,
                 igtfTotal: datosPago.igtfTotal || 0,
                 montoVueltoDigital: datosPago.montoVueltoDigital || 0,

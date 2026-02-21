@@ -5,6 +5,7 @@ import OwnerLockScreen from './OwnerLockScreen'; // 🟠 NEW TACTICAL LOCK
 import { DemoQuotaExhaustedLock } from './guard_modules/DemoQuotaExhaustedLock';
 import { generateChallenge, validateSOS } from '../../utils/securityUtils';
 import { useConfigStore } from '../../stores/useConfigStore';
+import { SecureStorage } from '../../utils/SecureStorage';
 import { dbMaster } from '../../services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -68,7 +69,7 @@ export default function LicenseGate({ children }) {
 
         // [FIX M4] Verificar si el plan activo permite más cajas antes de intentar conectar
         // El plan se resuelve desde el store o localStorage como segundo fallback
-        const activePlan = license?.plan || localStorage.getItem('listo_plan') || 'bodega';
+        const activePlan = license?.plan || SecureStorage.get('listo_plan') || 'bodega';
         // Nota: aquí la caja principal ya cuenta como 1, estamos añadiendo la #2 (o más)
         // canAddCaja(plan, 1) → ¿puede añadir a partir de 1 caja existente?
         if (!canAddCaja(activePlan, 1)) {
@@ -107,8 +108,8 @@ export default function LicenseGate({ children }) {
             const { licenseKey, negocio, serverMachineId, plan: grantedPlan } = await licRes.json();
 
             // 3. Guardar la licencia y plan localmente
-            localStorage.setItem('listo_license_key', licenseKey);
-            localStorage.setItem('listo_plan', grantedPlan || 'bodega');
+            SecureStorage.set('listo_license_key', licenseKey);
+            SecureStorage.set('listo_plan', grantedPlan || 'bodega');
 
             // 4. Registrar en Firebase como terminal vinculado
             if (dbMaster) {
@@ -362,7 +363,7 @@ export default function LicenseGate({ children }) {
                         const payload = KJUR.jws.JWS.readSafeJSONString(userKey.split('.')[1]);
                         if (payload.id === currentId) {
                             // ✅ ÉXITO V2
-                            localStorage.setItem('listo_license_key', userKey);
+                            SecureStorage.set('listo_license_key', userKey);
                             window.location.reload();
                             return;
                         } else {
@@ -381,7 +382,7 @@ export default function LicenseGate({ children }) {
                     const expectedLicense = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
 
                     if (userKey.toUpperCase() === expectedLicense) {
-                        localStorage.setItem('listo_license_key', userKey.toUpperCase());
+                        SecureStorage.set('listo_license_key', userKey.toUpperCase());
                         window.location.reload();
                         return;
                     } else {

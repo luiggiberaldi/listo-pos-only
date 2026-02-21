@@ -25,60 +25,77 @@ export class GroqService {
         // Cola de claves viva. Se reordena dinámicamente.
         this.keyQueue = [...GROQ_KEYS_CONFIG];
         this.model = DEFAULT_MODEL;
-        this.requestCount = 0; // 🆕 Contador global de peticiones
+        this.requestCount = 0;
+
+        // 🛡️ Circuit Breaker
+        this._failures = [];
+        this._circuitOpen = false;
+        this._circuitCooldownUntil = 0;
 
         console.log(`🚀 Groq Engine Inicializado: ${this.keyQueue.length} Núcleos Activos.`);
     }
 
-    /**
-     * Obtiene ID de clave (últimos 4 caracteres para tracking)
-     */
     getKeyId(apiKey) {
         return apiKey ? apiKey.slice(-4) : '????';
     }
 
-    /**
-     * Obtiene y rota la clave.
-     * Estrategia "Perfect Rotation": Usa la primera, la mueve al final.
-     * Esto distribuye la carga uniformemente (1 req cada 8 turnos por clave).
-     */
     rotateKey() {
         if (this.keyQueue.length === 0) return null;
-
-        const key = this.keyQueue.shift(); // Saca la primera
-        this.keyQueue.push(key);           // La pone al final (Cola Circular)
-        this.requestCount++; // Incrementar contador
+        const key = this.keyQueue.shift();
+        this.keyQueue.push(key);
+        this.requestCount++;
         return key;
     }
 
-    /**
-     * Penaliza una clave que falló.
-     * Ya fue movida al final por rotateKey(), pero aquí podríamos añadir lógica extra 
-     * si quisiéramos "suspenderla" temporalmente. Por ahora, el push al final basta.
-     */
     penalizeKey(invalidKey) {
-        // En nuestra implementación de rotateKey, la clave YA se movió al final antes de usarse.
-        // Si quisiéramos ser más agresivos, podríamos sacarla de la rotación X segundos.
-        // Por simplicidad y robustez: La clave "mala" ya está al fondo de la fila.
         console.warn(`⚠️ Groq Key Penalizada (Movida al final de la cola)`);
     }
 
+    // 🛡️ Circuit Breaker: Track failures within a window
+    _recordFailure() {
+        const now = Date.now();
+        this._failures.push(now);
+        // Keep only failures from last 60s
+        this._failures = this._failures.filter(t => now - t < 60000);
+        // If 10+ failures in 60s, open circuit for 30s
+        if (this._failures.length >= 10) {
+            this._circuitOpen = true;
+            this._circuitCooldownUntil = now + 30000;
+            console.warn('🔴 [Circuit Breaker] OPEN — Groq bajo presión, cooldown 30s');
+        }
+    }
+
+    _isCircuitOpen() {
+        if (!this._circuitOpen) return false;
+        if (Date.now() > this._circuitCooldownUntil) {
+            this._circuitOpen = false;
+            this._failures = [];
+            console.log('🟢 [Circuit Breaker] CLOSED — Groq disponible');
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * Genera respuesta con reintentos inteligentes
+     * Genera respuesta con reintentos inteligentes + timeout + circuit breaker
      */
     async generateResponse(messages, systemPrompt) {
+        // Circuit breaker check
+        if (this._isCircuitOpen()) {
+            throw new Error('GROQ_CIRCUIT_OPEN: Servicio en cooldown');
+        }
+
         let attempts = 0;
-        const maxAttempts = this.keyQueue.length; // Intentamos una vez por cada clave disponible
+        const maxAttempts = this.keyQueue.length;
+        const REQUEST_TIMEOUT_MS = 8000; // 8s timeout per request
 
         while (attempts < maxAttempts) {
-            // 1. Obtener Siguiente Clave (Rotación Automática)
             const apiKey = this.rotateKey();
             if (!apiKey) throw new Error('NO_GROQ_KEYS_AVAILABLE');
 
-            const keyId = this.getKeyId(apiKey); // ID único de la clave
+            const keyId = this.getKeyId(apiKey);
 
             try {
-                // 2. Preparar Payload
                 const payload = {
                     model: this.model,
                     messages: [
@@ -89,36 +106,43 @@ export class GroqService {
                     max_tokens: 1024
                 };
 
-                // 3. Ejecutar Petición
+                // 🛡️ AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
                 const response = await fetch(GROQ_ENDPOINT, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
                 });
 
-                // 4. Manejo de Errores HTTP
+                clearTimeout(timeoutId);
+
                 if (!response.ok) {
                     const isRateLimit = response.status === 429;
                     const errorText = await response.text();
 
                     console.warn(`🔸 Groq Key ...${keyId} FAIL (${response.status}): ${isRateLimit ? 'RATE LIMIT' : errorText.slice(0, 30)}`);
 
-                    // Si falla, la clave ya está al final de la cola (por rotateKey).
-                    // Simplemente continuamos el loop para probar la siguiente clave (ahora primera).
+                    this._recordFailure();
                     attempts++;
+
+                    // Backoff: wait 200ms * attempt before retry
+                    if (attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 200 * attempts));
+                    }
                     continue;
                 }
 
-                // 5. Éxito
                 const data = await response.json();
                 const rawText = data.choices[0]?.message?.content || '';
 
                 if (!rawText.trim()) throw new Error('EMPTY_RESPONSE');
 
-                // Log Táctico con identificador de clave y posición en rotación
                 const position = ((this.requestCount - 1) % this.keyQueue.length) + 1;
                 console.log(`%c⚡ GROQ SUCCESS | Key ...${keyId} | Req #${this.requestCount} | Pos ${position}/${this.keyQueue.length}`, 'color: #10b981; font-weight: bold;');
 
@@ -129,14 +153,23 @@ export class GroqService {
                 };
 
             } catch (e) {
-                console.warn(`🔸 Groq Key ...${keyId} Network/Parse Error: ${e.message}`);
+                if (e.name === 'AbortError') {
+                    console.warn(`⏱️ Groq Key ...${keyId} TIMEOUT (${REQUEST_TIMEOUT_MS}ms)`);
+                } else {
+                    console.warn(`🔸 Groq Key ...${keyId} Network/Parse Error: ${e.message}`);
+                }
+                this._recordFailure();
                 attempts++;
-                // Reintentar con siguiente clave
+
+                if (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 200 * attempts));
+                }
             }
         }
 
         throw new Error('ALL_GROQ_KEYS_EXHAUSTED');
     }
+
 
     async checkAvailability() {
         if (this.keyQueue.length === 0) return false;

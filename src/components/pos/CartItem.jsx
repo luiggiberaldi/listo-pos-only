@@ -15,7 +15,9 @@ const CartItem = memo(({
     onChangeUnit, // 🆕
     getStep,
     getMinQty,
-    carrito // Necesario para calcular stock "consumido" por items duplicados
+    carrito, // Necesario para calcular stock "consumido" por items duplicados
+    isKeyboardSelected, // 🆕 Focus Zone highlighting
+    onFocusItem // 🆕 Click-to-focus manually
 }) => {
 
     let Badge = null;
@@ -53,10 +55,13 @@ const CartItem = memo(({
     });
     const isExceeded = item.tipoUnidad !== 'peso' && totalConsumo > stockActual;
 
+    // Solo aplicar borde azul suave si está seleccionado por teclado (o clic manual en este nuevo modo interactivo)
+    const kbBorder = isKeyboardSelected ? 'border-primary ring-2 ring-primary/40 shadow-md ring-offset-1 bg-primary/5 dark:bg-primary/10 transition-colors' : '';
+
     // --- VISTA COMPACTA ---
     if (viewMode === 'list') {
         return (
-            <div className={`flex items-center gap-2 p-2 rounded-lg border bg-surface-light dark:bg-surface-dark transition-colors ${isExceeded ? 'border-status-danger bg-status-dangerBg/10' : (isSuspicious ? 'border-status-warning bg-status-warningBg/10' : 'border-border-subtle')}`}>
+            <div onClick={onFocusItem} className={`flex items-center gap-2 p-2 rounded-lg border bg-surface-light dark:bg-surface-dark transition-colors cursor-pointer ${kbBorder || (isExceeded ? 'border-status-danger bg-status-dangerBg/10' : (isSuspicious ? 'border-status-warning bg-status-warningBg/10' : 'border-border-subtle'))}`}>
                 {/* THUMBNAIL MINI */}
                 <div className="w-12 h-12 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden relative">
                     {item.imagen ? (
@@ -94,7 +99,7 @@ const CartItem = memo(({
 
     // --- VISTA TARJETAS (Default) ---
     return (
-        <div className={`relative bg-surface-light dark:bg-surface-dark p-3 rounded-xl border shadow-sm transition-all group animate-in slide-in-from-right-2 ${realIndex === lastAddedIndex ? 'border-primary ring-2 ring-primary/30 shadow-md z-10' : (isExceeded ? 'border-status-danger ring-1 ring-status-danger/30' : (isSuspicious ? 'border-status-warning ring-1 ring-status-warning/30 bg-status-warning/5' : 'border-border-subtle'))}`}>
+        <div onClick={onFocusItem} className={`relative bg-surface-light dark:bg-surface-dark p-3 rounded-xl border shadow-sm transition-all group animate-in slide-in-from-right-2 cursor-pointer ${kbBorder || (realIndex === lastAddedIndex ? 'border-primary ring-2 ring-primary/30 shadow-md z-10' : (isExceeded ? 'border-status-danger ring-1 ring-status-danger/30' : (isSuspicious ? 'border-status-warning ring-1 ring-status-warning/30 bg-status-warning/5' : 'border-border-subtle')))}`}>
             <div className="flex justify-between items-start mb-2 gap-2">
                 {/* THUMBNAIL (Card Mode) */}
                 <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden relative">

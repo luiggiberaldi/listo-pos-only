@@ -5,7 +5,7 @@
 import React, { useMemo, Suspense, lazy } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { TrendingUp, Users, CreditCard, Clock, Wallet, ArrowRight, Banknote, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, Users, CreditCard, Clock, Wallet, ArrowRight, Banknote, DollarSign, Activity, Shield } from 'lucide-react';
 import { useConfigContext } from '../../context/ConfigContext';
 import { calcularKPIs, agruparPorHora, agruparPorMetodo, calcularTesoreia } from '../../utils/reportUtils';
 
@@ -37,6 +37,31 @@ const ChartsSkeleton = () => (
     </div>
   </div>
 );
+
+// 🛡️ Backup Status Indicator
+const BackupIndicator = () => {
+  const lastBackup = useLiveQuery(async () => {
+    const backup = await db.config.get('backup_snapshot_v1');
+    return backup?.timestamp || null;
+  }, []);
+
+  const formatTime = (ts) => {
+    if (!ts) return 'Sin respaldo';
+    const diff = Date.now() - ts;
+    if (diff < 60000) return 'Hace < 1 min';
+    if (diff < 3600000) return `Hace ${Math.floor(diff / 60000)} min`;
+    return new Date(ts).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const isRecent = lastBackup && (Date.now() - lastBackup < 600000); // < 10 min
+
+  return (
+    <div className={`flex items-center gap-1.5 ${isRecent ? 'text-emerald-500' : 'text-amber-500'}`}>
+      <Shield size={11} />
+      <span>Respaldo: {formatTime(lastBackup)}</span>
+    </div>
+  );
+};
 
 // ✅ Recibimos balancesApertura (objeto)
 export default function DashboardStats({ ventas, balancesApertura = {} }) {
@@ -162,9 +187,12 @@ export default function DashboardStats({ ventas, balancesApertura = {} }) {
         />
       </Suspense>
 
-      <div className="flex justify-end items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em]">
-        <ArrowRight size={12} />
-        <span>Sincronización en Tiempo Real • Tasa Activa: {tasa}</span>
+      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em]">
+        <BackupIndicator />
+        <div className="flex items-center gap-2">
+          <ArrowRight size={12} />
+          <span>Sincronización en Tiempo Real • Tasa Activa: {tasa}</span>
+        </div>
       </div>
     </div>
   );

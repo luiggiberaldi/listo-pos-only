@@ -287,8 +287,8 @@ export const SalesService = {
 
                         // A.2 Revertir Consumo de Saldo
                         let consumoSaldo = venta.montoSaldoFavor || 0;
-                        if (consumoSaldo === 0 && Array.isArray(venta.pagos)) {
-                            consumoSaldo = venta.pagos
+                        if (consumoSaldo === 0 && Array.isArray(venta.payments || venta.pagos)) {
+                            consumoSaldo = (venta.payments || venta.pagos)
                                 .filter(p => p.medium === 'INTERNAL' || p.method === 'SALDO A FAVOR' || p.metodo === 'SALDO A FAVOR')
                                 .reduce((sum, p) => sum + (parseFloat(p.amount || p.monto) || 0), 0);
                         }

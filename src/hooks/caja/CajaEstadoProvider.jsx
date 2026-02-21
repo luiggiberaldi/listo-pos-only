@@ -119,15 +119,18 @@ export const CajaEstadoProvider = ({ children, cajaId = DEFAULT_CAJA }) => {
       const multiplier = transactionType === 'SALE' ? 1 : -1;
       const newBalances = { ...currentSession.balances };
 
+      // 🛡️ FIX: Round after each operation to prevent floating-point drift
+      const safeAdd = (a, b) => parseFloat((a + b).toFixed(2));
+
       // Process payments (money IN for sales, money OUT for refunds)
       payments.forEach(payment => {
         const amount = parseFloat(payment.amount || payment.amountNominal || 0);
         if (payment.currency === 'USD') {
-          if (payment.medium === 'CASH') newBalances.usdCash += amount * multiplier;
-          else newBalances.usdDigital += amount * multiplier;
+          if (payment.medium === 'CASH') newBalances.usdCash = safeAdd(newBalances.usdCash, amount * multiplier);
+          else newBalances.usdDigital = safeAdd(newBalances.usdDigital, amount * multiplier);
         } else if (payment.currency === 'VES') {
-          if (payment.medium === 'CASH') newBalances.vesCash += amount * multiplier;
-          else newBalances.vesDigital += amount * multiplier;
+          if (payment.medium === 'CASH') newBalances.vesCash = safeAdd(newBalances.vesCash, amount * multiplier);
+          else newBalances.vesDigital = safeAdd(newBalances.vesDigital, amount * multiplier);
         }
       });
 
@@ -135,11 +138,11 @@ export const CajaEstadoProvider = ({ children, cajaId = DEFAULT_CAJA }) => {
       change.forEach(vuelto => {
         const amount = parseFloat(vuelto.amount || 0);
         if (vuelto.currency === 'USD') {
-          if (vuelto.medium === 'CASH') newBalances.usdCash -= amount * multiplier;
-          else newBalances.usdDigital -= amount * multiplier;
+          if (vuelto.medium === 'CASH') newBalances.usdCash = safeAdd(newBalances.usdCash, -(amount * multiplier));
+          else newBalances.usdDigital = safeAdd(newBalances.usdDigital, -(amount * multiplier));
         } else if (vuelto.currency === 'VES') {
-          if (vuelto.medium === 'CASH') newBalances.vesCash -= amount * multiplier;
-          else newBalances.vesDigital -= amount * multiplier;
+          if (vuelto.medium === 'CASH') newBalances.vesCash = safeAdd(newBalances.vesCash, -(amount * multiplier));
+          else newBalances.vesDigital = safeAdd(newBalances.vesDigital, -(amount * multiplier));
         }
       });
 
@@ -148,8 +151,12 @@ export const CajaEstadoProvider = ({ children, cajaId = DEFAULT_CAJA }) => {
     });
   }, []);
 
-  // --- 💸 REGISTRO DE GASTOS/SALIDAS (ATOMIC) ---
+  // --- 💸 REGISTRO DE GASTOS/SALIDAS (DEPRECATED — Use FinanceService.registrarGasto instead) ---
+  // ⚠️ FIX #5: This method only updates balances WITHOUT audit log.
+  //    FinanceService.registrarGasto does both (balances + log entry).
+  //    Kept as fallback for legacy callers but should not be used directly.
   const registrarSalidaCaja = useCallback(async (monto, moneda = 'USD', medio = 'CASH', _motivo = 'Gasto') => {
+    console.warn('[DEPRECATED] registrarSalidaCaja: Use FinanceService.registrarGasto instead for audit trail.');
     return await db.transaction('rw', db.caja_sesion, async () => {
       const currentSession = await db.caja_sesion.get(cajaId);
       if (!currentSession || !currentSession.isAbierta) {

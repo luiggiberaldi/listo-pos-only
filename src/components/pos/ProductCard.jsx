@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Lock } from 'lucide-react';
 
-const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, permitirSinStock, isProcessing }) => { // 🆕
+const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, permitirSinStock, isProcessing, selectedIndex }) => { // 🆕
     const p = data[index]; // Extract product from virtual array
     const stock = p.stock || 0;
     const isAgotado = stock <= 0;
@@ -10,6 +10,7 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
 
     // 🔓 DESBLOQUEO DE VENTA SIN STOCK
     const isBlocked = (isAgotado && !permitirSinStock) || isProcessing; // 🛑 DISABLED IF PROCESSING
+    const isFocused = index === selectedIndex; // 🎯 HIGHLIGHT IF SELECTED BY KEYBOARD
 
     let stockLabel = 'DISPONIBLE';
     let stockColor = 'bg-status-successBg text-status-success';
@@ -37,7 +38,7 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
                 className={`
           relative bg-surface-light dark:bg-surface-dark border rounded-xl p-3 transition-all flex flex-col justify-between h-full group select-none shadow-sm 
           ${isBlocked ? 'opacity-60 cursor-not-allowed grayscale' : 'cursor-pointer hover:border-primary/50 hover:shadow-md active:scale-95'}
-          border-border-subtle
+          ${isFocused ? 'ring-4 ring-primary/40 border-primary scale-[1.02] shadow-lg z-10 bg-primary/5' : 'border-border-subtle'}
         `}
             >
                 {/* 🖼️ POS 2.0 OPTION 1: SQUARE CONTAIN */}

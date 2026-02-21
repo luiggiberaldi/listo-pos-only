@@ -1,23 +1,42 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 4.0 (UX OPTIMIZED FOR LARGE ORDERS)
+// ✅ REFACTORED - V. 5.0 (ZUSTAND DIRECT CONNECTION)
 // Archivo: src/components/pos/CartSidebar.jsx
+// Antes: Recibía 12 props. Ahora se conecta directamente a stores.
 
 import React, { memo } from 'react';
 import { ShoppingBasket, Layers, Package, Scale, Calculator, X, Minus, Plus, Save, Loader2, PauseCircle, Search, AlertTriangle } from 'lucide-react';
 import { useCartSidebar } from '../../hooks/useCartSidebar';
 import { Assistant } from '../ghost/Assistant';
 import CartItem from './CartItem';
+import { useCartStore } from '../../stores/useCartStore';
+import { usePosCalcStore } from '../../stores/usePosCalcStore';
+import { usePosActionsStore } from '../../stores/usePosActionsStore';
+import { useUIStore } from '../../stores/useUIStore';
 
 const CartSidebar = ({
-  carrito,
-  calculos,
-  onRemoveItem,
-  onChangeQty,
-  onChangeUnit, // 🆕
-  onCheckout,
-  onHold,
-  isProcessing,
-  tasaInvalida // 🚫 NEW: Block checkout if rate = 0
+  cartSelectedIndex,  // Keyboard navigation (from usePosKeyboard)
+  focusCartItem       // Keyboard navigation callback
 }) => {
+  // 🧠 DIRECT STORE CONNECTION
+  const carrito = useCartStore(s => s.carrito);
+  const isProcessing = useUIStore(s => s.isProcessing);
+
+  // Calculations
+  const subtotalBase = usePosCalcStore(s => s.subtotalBase);
+  const totalUSD = usePosCalcStore(s => s.totalUSD);
+  const totalBS = usePosCalcStore(s => s.totalBS);
+  const tasaInvalida = usePosCalcStore(s => s.tasaInvalida);
+  const carritoBS = usePosCalcStore(s => s.carritoBS);
+
+  // Build calculos object for CartItem compatibility
+  const calculos = { subtotalBase, totalUSD, totalBS, carritoBS };
+
+  // Actions
+  const eliminarItem = usePosActionsStore(s => s.eliminarItem);
+  const cambiarCant = usePosActionsStore(s => s.cambiarCant);
+  const cambiarUnidad = usePosActionsStore(s => s.cambiarUnidad);
+  const cobrar = usePosActionsStore(s => s.cobrar);
+  const espera = usePosActionsStore(s => s.espera);
+
   // Use Custom Hook for Logic
   const {
     viewMode,
@@ -29,7 +48,7 @@ const CartSidebar = ({
     handleInputChangeSafe,
     getStep,
     getMinQty
-  } = useCartSidebar({ carrito, onChangeQty, isProcessing });
+  } = useCartSidebar({ carrito, onChangeQty: cambiarCant, isProcessing });
 
   const lastAddedIndex = carrito.length - 1;
 
@@ -81,7 +100,6 @@ const CartSidebar = ({
           </div>
         ) : (
           filteredCart.map((item) => {
-            // FIX: Encontrar index original para no romper callbacks
             const realIndex = carrito.indexOf(item);
 
             return (
@@ -93,13 +111,15 @@ const CartSidebar = ({
                 calculos={calculos}
                 viewMode={viewMode}
                 isProcessing={isProcessing}
-                onRemoveItem={onRemoveItem}
+                onRemoveItem={eliminarItem}
                 handleQtyChangeSafe={handleQtyChangeSafe}
                 handleInputChangeSafe={handleInputChangeSafe}
-                onChangeUnit={onChangeUnit}
+                onChangeUnit={cambiarUnidad}
                 getStep={getStep}
                 getMinQty={getMinQty}
                 carrito={carrito}
+                isKeyboardSelected={realIndex === cartSelectedIndex}
+                onFocusItem={() => focusCartItem && focusCartItem(realIndex)}
               />
             );
           })
@@ -110,18 +130,18 @@ const CartSidebar = ({
       <div className="p-5 bg-surface-light dark:bg-surface-dark border-t border-border-subtle shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-30">
         <div className="flex justify-between items-end mb-2">
           <span className="text-sm font-bold text-content-secondary">Subtotal</span>
-          <span className="text-base font-bold text-content-main">${calculos.subtotalBase.toFixed(2)}</span>
+          <span className="text-base font-bold text-content-main">${subtotalBase.toFixed(2)}</span>
         </div>
 
         <div className="flex justify-between items-center pt-4 border-t border-dashed border-border-subtle mb-4 gap-2">
           <div>
             <p className="text-xs text-content-secondary font-bold uppercase tracking-wider">Total $</p>
-            <p className="text-4xl font-black text-content-main leading-none tracking-tight">${calculos.totalUSD.toFixed(2)}</p>
+            <p className="text-4xl font-black text-content-main leading-none tracking-tight">${totalUSD.toFixed(2)}</p>
           </div>
           <div className="text-right bg-app-light dark:bg-app-dark p-3 rounded-xl border border-border-subtle flex-1 min-w-0">
             <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">BOLÍVARES</p>
             <p className="text-3xl font-black text-primary leading-none truncate">
-              {Math.round(calculos.totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {Math.round(totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -129,7 +149,7 @@ const CartSidebar = ({
         <div className="flex gap-2">
           {/* BOTÓN PONER EN ESPERA (F6) */}
           <button
-            onClick={onHold}
+            onClick={() => espera(totalUSD)}
             disabled={carrito.length === 0 || isProcessing}
             className="px-4 py-4 bg-status-warningBg hover:bg-status-warningBg/80 text-status-warning border border-status-warning/30 rounded-xl font-bold flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Poner en Espera (F6)"
@@ -139,7 +159,7 @@ const CartSidebar = ({
 
           {/* BOTÓN COBRAR (F9) */}
           <button
-            onClick={onCheckout}
+            onClick={cobrar}
             disabled={carrito.length === 0 || isProcessing || tasaInvalida}
             className={`
                 flex-1 py-4 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg 
@@ -162,10 +182,4 @@ const CartSidebar = ({
   );
 };
 
-// Memoize to prevent re-renders when cart hasn't changed
-export default memo(CartSidebar, (prevProps, nextProps) => {
-  return prevProps.carrito.length === nextProps.carrito.length &&
-    prevProps.calculos.totalUSD === nextProps.calculos.totalUSD &&
-    prevProps.isProcessing === nextProps.isProcessing &&
-    prevProps.tasaInvalida === nextProps.tasaInvalida;
-});
+export default memo(CartSidebar);

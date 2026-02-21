@@ -51,7 +51,10 @@ export default function ConfigPage() {
   const [loadingTasa, setLoadingTasa] = useState(false);
   const fileInputRef = useRef(null);
 
-  useEffect(() => { setForm(configuracion); }, [configuracion]);
+  // ⚠️ FIX: configuracion is a new object ref each render (context spread).
+  // Use JSON key to only sync when actual data changes, preventing infinite loop.
+  const configKey = JSON.stringify(configuracion);
+  useEffect(() => { setForm(configuracion); }, [configKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (form.modoOscuro) document.documentElement.classList.add('dark');

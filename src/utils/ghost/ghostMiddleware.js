@@ -11,14 +11,22 @@ const sanitizeValue = (key, value) => {
     return value;
 };
 
-const sanitizeObject = (obj) => {
+const sanitizeObject = (obj, seen = new WeakSet()) => {
     if (!obj || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(sanitizeObject);
+    if (seen.has(obj)) return '[Circular]';
+    seen.add(obj);
+    if (Array.isArray(obj)) return obj.map(item => sanitizeObject(item, seen));
 
     const newObj = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            newObj[key] = sanitizeValue(key, sanitizeObject(obj[key]));
+            // Skip internal/private keys (e.g. _refs with DOM elements)
+            if (key.startsWith('_')) continue;
+            const val = obj[key];
+            // Skip DOM nodes and React refs
+            if (val instanceof Element || val instanceof Node) continue;
+            if (val && typeof val === 'object' && val.current !== undefined && Object.keys(val).length <= 1) continue;
+            newObj[key] = sanitizeValue(key, sanitizeObject(val, seen));
         }
     }
     return newObj;
