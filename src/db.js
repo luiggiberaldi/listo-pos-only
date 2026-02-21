@@ -144,6 +144,13 @@ const applySchema = (dbInstance) => {
       });
     });
   });
+
+  // 👻 V. 19: GHOST AUDIT LOG (Operational Intelligence)
+  // Persistent event storage for the Ghost Auditor system.
+  // Date-indexed for efficient daily digest queries.
+  dbInstance.version(19).stores({
+    ghost_audit_log: '++id, category, date, timestamp'
+  });
 };
 
 // 🏭 DATABASE INSTANCE CREATION

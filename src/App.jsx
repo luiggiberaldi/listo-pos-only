@@ -80,7 +80,15 @@ function App() {
         if (ok) console.log('🔥 Firebase listo (carga diferida)');
       });
     }, 2000);
-    return () => clearTimeout(timer);
+
+    // 👻 GHOST AUDITOR: Initialize after Firebase (5s total delay)
+    const ghostTimer = setTimeout(() => {
+      import('./services/ghost/ghostAuditScheduler').then(({ initGhostAuditor }) => {
+        initGhostAuditor();
+      }).catch(e => console.warn('👻 Ghost Auditor init skipped:', e.message));
+    }, 5000);
+
+    return () => { clearTimeout(timer); clearTimeout(ghostTimer); };
   }, []);
 
   // 🔐 SECRETS BOOTSTRAP (Persist API Keys)
