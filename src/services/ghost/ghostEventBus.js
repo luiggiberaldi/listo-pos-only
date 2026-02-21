@@ -29,6 +29,11 @@ const MAX_BUFFER = 500;
 let _flushTimer = null;
 const FLUSH_INTERVAL_MS = 30_000; // Flush to Dexie every 30s
 
+// ─── DEDUP (prevent rapid-fire identical events) ───
+let _lastEventHash = '';
+let _lastEventTime = 0;
+const DEDUP_WINDOW_MS = 2_000; // 2 second dedup window
+
 // ─── DATE HELPER ───
 const getDateKey = () => new Date().toISOString().slice(0, 10); // "2026-02-21"
 
@@ -42,12 +47,19 @@ const ghostEventBus = {
      * @param {string} severity - GHOST_SEVERITY value (default: INFO)
      */
     emit(category, event, data = {}, severity = GHOST_SEVERITY.INFO) {
+        // Dedup: skip identical events within 2s window
+        const now = Date.now();
+        const hash = `${category}.${event}.${JSON.stringify(data)}`;
+        if (hash === _lastEventHash && (now - _lastEventTime) < DEDUP_WINDOW_MS) return;
+        _lastEventHash = hash;
+        _lastEventTime = now;
+
         const entry = {
             category,
             event,
             severity,
             data: _sanitize(data),
-            timestamp: Date.now(),
+            timestamp: now,
             date: getDateKey()
         };
 

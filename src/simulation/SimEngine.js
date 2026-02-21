@@ -1383,15 +1383,19 @@ async function simularDia() {
         const dateKey = state.fechaActual.toISOString().slice(0, 10);
 
         // Emit simulated events through the REAL event bus
-        // Sales
+        // Sales — distribute across business hours (8AM-8PM)
+        const baseTime = state.fechaActual.getTime();
         for (let i = 0; i < simState.transaccionesDelDia; i++) {
+            const hour = 8 + Math.floor(Math.random() * 12); // 8AM-8PM
+            const simTimestamp = baseTime + hour * 3600000 + Math.floor(Math.random() * 3600000);
             const ticketAmount = simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1);
             ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'sale_completed', {
                 total: +(ticketAmount * (0.5 + Math.random())).toFixed(2),
                 items: randomInt(1, 8),
                 paymentMethods: [pickRandom(['Efectivo USD', 'Pago Móvil', 'Efectivo Bs', 'Zelle', 'Punto de Venta'])],
                 hasDebt: Math.random() < 0.1,
-                tasa: simState.tasaCambioHoy
+                tasa: simState.tasaCambioHoy,
+                _simTs: simTimestamp // unique per event, passes dedup
             }, i < 2 ? 'WARN' : 'INFO');
         }
 

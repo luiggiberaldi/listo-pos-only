@@ -14,6 +14,9 @@ import { db } from '../../db';
 export async function generateDailyReport(date) {
     const dateKey = date || new Date().toISOString().slice(0, 10);
 
+    // 0. Flush any pending bridge events before collecting
+    try { (await import('./ghostAuditInterceptors')).bridgeGhostBuffer(); } catch { }
+
     // 1. Collect all events for the date
     const events = await ghostEventBus.getEventsForDate(dateKey);
 
@@ -53,14 +56,11 @@ export async function generateDailyReport(date) {
         businessName = config?.nombreNegocio || config?.nombre || 'POS Terminal';
     } catch { /* use default */ }
 
-    // 5. Compress events for storage (keep only essential fields)
-    const compressedEvents = events.map(e => ({
-        t: e.timestamp,
-        c: e.category,
-        e: e.event,
-        s: e.severity,
-        d: e.data
-    }));
+    // 5. Compress events for storage — drop STATE noise, cap at 200
+    const compressedEvents = events
+        .filter(e => e.category !== 'STATE')
+        .map(e => ({ t: e.timestamp, c: e.category, e: e.event, s: e.severity, d: e.data }))
+        .slice(0, 200);
 
     return {
         date: dateKey,
@@ -155,12 +155,23 @@ function _countPaymentMethods(saleEvents) {
 // ─── AI DIGEST (Groq) ───
 async function _generateAIDigest(metrics, events, dateKey) {
     // Build a concise data summary for the prompt (minimize tokens)
+    // Enrich with financial context
+    const tasaEvent = events.find(e => e.data?.tasa);
+    const voidCount = events.filter(e => e.event === 'sale_voided').length;
+    const corteCount = events.filter(e => e.event === 'corte_z').length;
+    const creditPct = metrics.sales.totalSales > 0
+        ? (metrics.sales.salesWithDebt / metrics.sales.totalSales * 100).toFixed(0)
+        : 0;
+
     const dataSummary = `
 FECHA: ${dateKey}
 VENTAS: ${metrics.sales.totalSales} ventas, $${metrics.sales.totalRevenue.toFixed(2)} ingresos, ticket promedio $${metrics.sales.avgTicket.toFixed(2)}
 ITEMS VENDIDOS: ${metrics.sales.totalItems}
 MÉTODOS DE PAGO: ${JSON.stringify(metrics.sales.paymentMethods)}
-VENTAS CON DEUDA: ${metrics.sales.salesWithDebt}
+VENTAS A CRÉDITO: ${metrics.sales.salesWithDebt} (${creditPct}% del total)
+ANULACIONES: ${voidCount}
+CORTES Z: ${corteCount}
+TASA CAMBIO: Bs ${tasaEvent?.data?.tasa || 'N/A'}/$
 ERRORES: ${metrics.errors.totalErrors} total, ${metrics.errors.criticalErrors} críticos. Tipos: ${metrics.errors.errorTypes.join(', ') || 'ninguno'}
 INVENTARIO: ${metrics.inventory.adjustments} ajustes, +${metrics.inventory.productsAdded} productos, -${metrics.inventory.productsRemoved} eliminados
 HORA PICO: ${metrics.peakHour}:00

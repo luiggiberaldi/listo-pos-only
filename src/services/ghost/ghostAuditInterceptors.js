@@ -175,9 +175,13 @@ export function bridgeGhostBuffer() {
         const diffKeys = Object.keys(log.diff || {});
         if (diffKeys.length === 0) continue;
 
-        // Skip high-frequency noise (selectedIndex, busqueda typing, etc.)
-        const noiseKeys = ['selectedIndex', 'busqueda', 'debouncedBusqueda'];
+        // Skip high-frequency noise
+        const noiseKeys = ['selectedIndex', 'busqueda', 'debouncedBusqueda', 'license', 'carritoBS', 'tasaCaida'];
         if (diffKeys.every(k => noiseKeys.includes(k))) continue;
+
+        // Skip stores that recalculate on every tasa/carrito change (no business value)
+        const noiseStores = ['PosCalcStore'];
+        if (noiseStores.includes(log.store)) continue;
 
         ghostEventBus.emit(C.STATE, 'state_change', {
             store: log.store,
@@ -194,7 +198,7 @@ export function initAllInterceptors() {
     initErrorInterceptor();
 
     // Bridge GhostBuffer every 60s
-    setInterval(bridgeGhostBuffer, 60_000);
+    setInterval(bridgeGhostBuffer, 30_000);
 
     // Auto-purge old events (keep 30 days)
     ghostEventBus.purgeOld(30);
