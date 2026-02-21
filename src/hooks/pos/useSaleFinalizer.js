@@ -67,6 +67,21 @@ export const useSaleFinalizer = ({
             setVentaExitosa(true);
             if (playSound) playSound('CASH');
 
+            // 👻 GHOST AUDITOR: Log successful sale
+            try {
+                const { emitSaleCompleted } = await import('../../services/ghost/ghostAuditInterceptors');
+                emitSaleCompleted({
+                    totalGeneral: ventaFinal.total,
+                    items: ventaFinal.items,
+                    pagos: ventaFinal.pagos,
+                    moneda: 'USD',
+                    clienteId: ventaFinal.clienteId,
+                    tasa: ventaFinal.tasa,
+                    saldoPendiente: ventaFinal.deudaPendiente,
+                    vuelto: ventaFinal.cambio
+                });
+            } catch { /* Ghost audit is non-critical */ }
+
             setTimeout(() => {
                 const procesarImpresion = async () => {
                     if (imprimirTicket) {

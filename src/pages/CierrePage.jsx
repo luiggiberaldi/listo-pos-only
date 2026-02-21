@@ -135,6 +135,16 @@ export default function CierrePage() {
 
                         await cerrarCaja(datosTicket);
 
+                        // 👻 GHOST AUDITOR: Log Corte Z
+                        try {
+                            const { emitCorteZ } = await import('../services/ghost/ghostAuditInterceptors');
+                            emitCorteZ({
+                                totalVentas: resumen.totalVentas,
+                                totalIngresos: resumen.ingresoReal,
+                                cajaId: datosTicket.id
+                            });
+                        } catch { /* Ghost audit is non-critical */ }
+
                         // SELLADO DE VENTAS
                         if (db && db.ventas) {
                             try {

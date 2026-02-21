@@ -310,7 +310,7 @@ export default function InventarioPage() {
                     {mostrarModal && <ModalProducto productoEditar={productoAEditar} onClose={() => setMostrarModal(false)} onGuardar={guardarDesdeModal} configuracion={configuracion} />}
                     {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={async () => { const Swal = await getSwal(); Swal.fire("Listo", "Inventario actualizado", "success"); }} />}
                     {mostrarKardex && canManageAudit && <ModalKardex movimientos={movimientos} productos={productos} onClose={() => setMostrarKardex(false)} />}
-                    {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { actualizarProducto(d.id, d); const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
+                    {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { const oldStock = productoAjuste.stock; actualizarProducto(d.id, d); try { const { emitStockAdjusted } = await import('../services/ghost/ghostAuditInterceptors'); emitStockAdjusted(productoAjuste.nombre, oldStock, d.stock, 'manual'); } catch { } const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
                 </Suspense>
 
                 {/* KPIS */}
