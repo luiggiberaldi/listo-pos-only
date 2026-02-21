@@ -34,8 +34,13 @@ let _lastEventHash = '';
 let _lastEventTime = 0;
 const DEDUP_WINDOW_MS = 2_000; // 2 second dedup window
 
-// ─── DATE HELPER ───
-const getDateKey = () => new Date().toISOString().slice(0, 10); // "2026-02-21"
+// ─── DATE HELPER (LOCAL timezone, not UTC) ───
+const getDateKey = (d = new Date()) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
 
 // ─── CORE API ───
 const ghostEventBus = {
@@ -62,7 +67,7 @@ const ghostEventBus = {
             severity,
             data: _sanitize(data),
             timestamp: ts,
-            date: customTimestamp ? new Date(ts).toISOString().slice(0, 10) : getDateKey()
+            date: getDateKey(new Date(ts))
         };
 
         // Push to in-memory buffer

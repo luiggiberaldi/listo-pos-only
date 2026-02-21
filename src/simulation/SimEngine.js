@@ -1380,7 +1380,8 @@ async function simularDia() {
         const ghostEventBus = (await import('../services/ghost/ghostEventBus')).default;
         const { GHOST_CATEGORIES } = await import('../services/ghost/ghostEventBus');
 
-        const dateKey = state.fechaActual.toISOString().slice(0, 10);
+        const fa = state.fechaActual;
+        const dateKey = `${fa.getFullYear()}-${String(fa.getMonth() + 1).padStart(2, '0')}-${String(fa.getDate()).padStart(2, '0')}`;
 
         // Clear old ghost events for this date (avoid stale accumulation)
         try {
