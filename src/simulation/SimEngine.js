@@ -1374,6 +1374,100 @@ async function simularDia() {
         }
     }
 
+    // ── FASE 17: 👻 Ghost Auditor Report (Real Pipeline → Firebase → Listo Master) ──
+    try {
+        addLog(`👻 Generando reporte Ghost Auditor...`, 'info');
+        const ghostEventBus = (await import('../services/ghost/ghostEventBus')).default;
+        const { GHOST_CATEGORIES } = await import('../services/ghost/ghostEventBus');
+
+        const dateKey = state.fechaActual.toISOString().slice(0, 10);
+
+        // Emit simulated events through the REAL event bus
+        // Sales
+        for (let i = 0; i < simState.transaccionesDelDia; i++) {
+            const ticketAmount = simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1);
+            ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'sale_completed', {
+                total: +(ticketAmount * (0.5 + Math.random())).toFixed(2),
+                items: randomInt(1, 8),
+                paymentMethods: [pickRandom(['Efectivo USD', 'Pago Móvil', 'Efectivo Bs', 'Zelle', 'Punto de Venta'])],
+                hasDebt: Math.random() < 0.1,
+                tasa: simState.tasaCambioHoy
+            }, i < 2 ? 'WARN' : 'INFO');
+        }
+
+        // Inventory adjustments
+        const invAdjustments = randomInt(0, 5);
+        for (let i = 0; i < invAdjustments; i++) {
+            ghostEventBus.emit(GHOST_CATEGORIES.INVENTORY, 'stock_adjusted', {
+                product: pickRandom(['Harina PAN', 'Aceite Diana', 'Arroz Mary', 'Azúcar', 'Leche']),
+                oldStock: randomInt(0, 50),
+                newStock: randomInt(5, 100),
+                reason: 'manual'
+            }, 'INFO');
+        }
+
+        // Errors (from sim)
+        for (let i = 0; i < simState.erroresDelDia; i++) {
+            ghostEventBus.emit(GHOST_CATEGORIES.ERROR, 'runtime_error', {
+                message: 'Error simulado durante prueba de estrés',
+                source: 'SimEngine'
+            }, 'CRITICAL');
+        }
+
+        // Anulaciones
+        if (simState.anulacionesDelDia > 0) {
+            ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'sale_voided', {
+                count: simState.anulacionesDelDia,
+                totalAnulado: simState.anulacionesDelDia * (simState.ventasDelDia / Math.max(simState.transaccionesDelDia, 1))
+            }, 'WARN');
+        }
+
+        // Corte Z
+        ghostEventBus.emit(GHOST_CATEGORIES.SALE, 'corte_z', {
+            totalVentas: simState.transaccionesDelDia,
+            totalIngresos: ventasNetas,
+            cajaId: `SIM-Z-${diaNum}`
+        }, 'INFO');
+
+        // Session
+        ghostEventBus.emit(GHOST_CATEGORIES.SESSION, 'session_end', {
+            duration: randomInt(8, 14) * 3600000,
+            source: 'SimEngine'
+        }, 'INFO');
+
+        // Flush events to Dexie
+        await ghostEventBus.flush();
+
+        // Now trigger the REAL digest + Firebase sync pipeline
+        const { generateDailyReport } = await import('../services/ghost/ghostDigestService');
+        const report = await generateDailyReport(dateKey);
+
+        if (report.status === 'complete') {
+            // Push to Firebase via the real scheduler mechanism
+            try {
+                const { dbMaster, initFirebase, isFirebaseReady } = await import('../services/firebase');
+                if (!isFirebaseReady()) await initFirebase();
+                const { dbMaster: masterDb } = await import('../services/firebase');
+                if (masterDb) {
+                    const { doc: fbDoc, setDoc: fbSetDoc } = await import('firebase/firestore');
+                    const systemId = report.businessName?.replace(/\s+/g, '_').toLowerCase() || 'sim_pos';
+                    const docId = `${systemId}_${dateKey}`;
+                    const docRef = fbDoc(masterDb, 'ghost_daily_reports', docId);
+                    await fbSetDoc(docRef, { ...report, systemId, syncedAt: Date.now(), _simulated: true });
+                    addLog(`👻 ✅ Reporte Ghost enviado a Listo Master — Score: ${report.aiDigest?.healthScore || '?'}`, 'success');
+                } else {
+                    addLog(`👻 ⚠️ Firebase Master no disponible — reporte guardado localmente`, 'warn');
+                }
+            } catch (fbErr) {
+                addLog(`👻 ⚠️ Firebase sync falló: ${fbErr.message} — reporte guardado localmente`, 'warn');
+            }
+        } else {
+            addLog(`👻 Día sin eventos, reporte vacío`, 'info');
+        }
+    } catch (ghostErr) {
+        addLog(`👻 ⚠️ Ghost Auditor fase omitida: ${ghostErr.message}`, 'warn');
+    }
+
     simState.qaReport.totalDias++;
 
     if (simState.onDayComplete) {
