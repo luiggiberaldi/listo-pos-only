@@ -167,8 +167,7 @@ export const usePosKeyboard = ({
 
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [cajaAbierta, tieneAccesoPos, isProcessing, modalesAbiertos, carrito, busqueda]);
-
+  }, [cajaAbierta, tieneAccesoPos, isProcessing, modalesAbiertos, carrito, busqueda, cartSelectedIndex]);
 
   // --- ATAJOS DE BÚSQUEDA (Input Focus) ---
   const handleSearchInputKeyDown = (e) => {
@@ -255,26 +254,58 @@ export const usePosKeyboard = ({
       }
     }
 
-    // C. NAVEGACIÓN GRID (Flechas)
+    // C. SELECCIÓN (Enter) — debe ir ANTES de la navegación grid
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtrados.length === 0) return;
+
+      // 1. Scanner Speed: Match exacto por código (Lector de código de barras) -> directo a cesta
+      if (busqueda && selectedIndex === -1) {
+        const exactMatch = filtrados.find(p => p.codigo?.toLowerCase() === busqueda.toLowerCase());
+        if (exactMatch) {
+          actions.prepararAgregar(exactMatch);
+          return;
+        }
+      }
+
+      // 2. Si ya navegó con flechas o ya marcó uno previamente -> despachar a cesta
+      if (selectedIndex !== -1) {
+        const productoSeleccionado = filtrados[selectedIndex];
+        if (productoSeleccionado) {
+          actions.prepararAgregar(productoSeleccionado);
+          return;
+        }
+      }
+
+      // 3. Primer Enter tras buscar texto: Solo selecciona (resalta) el primer producto
+      setSelectedIndex(0);
+      return;
+    }
+
+    // D. NAVEGACIÓN GRID (Flechas)
     if (filtrados.length === 0) return;
 
-    // Detección de columnas responsive (Aprox)
-    // Detección de columnas responsive (Coincide con las clases de ProductGrid.jsx)
     const width = window.innerWidth;
     let cols = 2;
-    if (width >= 1536) cols = 4; // 2xl:grid-cols-4
-    else if (width >= 768) cols = 3; // md/lg/xl:grid-cols-3
+    if (width >= 1536) cols = 4;
+    else if (width >= 768) cols = 3;
 
     const total = filtrados.length;
     let nextIndex = selectedIndex;
 
     // Si aún no hemos entrado al grid (foco en buscador, selectedIndex === -1)
     if (selectedIndex === -1) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex(0);
       }
-      return; // Fin de la lógica, no hacer math min/max aún
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (carrito.length > 0) {
+          searchInputRef.current?.blur(); // Quita el foco del buscador para activar la cesta
+        }
+      }
+      return;
     }
 
     // Lógica normal de grid si ya estamos adentro
@@ -284,7 +315,6 @@ export const usePosKeyboard = ({
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (selectedIndex < cols) {
-        // Si estamos en la 1ra fila y damos flecha arriba, perdemos el foco (volvemos al search input implícitamente)
         nextIndex = -1;
       } else {
         nextIndex = Math.max(selectedIndex - cols, 0);
@@ -293,32 +323,15 @@ export const usePosKeyboard = ({
 
     if (nextIndex !== selectedIndex) {
       setSelectedIndex(nextIndex);
-      // 🚀 PERFORMANCE: Scrolling is now handled efficiently by the Virtualized Grid in the View (ProductGrid)
-      // productRefs.current[nextIndex]?.scrollIntoView(...) -> REMOVED
-    }
-
-    // D. SELECCIÓN (Enter)
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filtrados.length === 0) return;
-
-      // 1. Navegó con flechas → respetar selección visual
-      if (selectedIndex !== -1) {
-        const productoSeleccionado = filtrados[selectedIndex];
-        if (productoSeleccionado) {
-          actions.prepararAgregar(productoSeleccionado);
-          return;
-        }
-      }
-
-      // 2. Sin flechas (Enter directo en barra) → primer producto filtrado
-      actions.prepararAgregar(filtrados[0]);
     }
   };
 
   return {
     handleSearchInputKeyDown,
     cartSelectedIndex,
-    focusCartItem: (idx) => setCartSelectedIndex(idx)
+    focusCartItem: (idx) => {
+      setCartSelectedIndex(idx);
+      searchInputRef.current?.blur(); // IMPORTANTE: Forza quitar el foco del buscador para que + y - funcionen en la cesta
+    }
   };
 };

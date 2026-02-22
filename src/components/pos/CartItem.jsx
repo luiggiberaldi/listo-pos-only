@@ -1,5 +1,4 @@
-
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import { Layers, Package, Scale, Calculator, X, Minus, Plus, AlertTriangle } from 'lucide-react';
 
 const CartItem = memo(({
@@ -19,6 +18,14 @@ const CartItem = memo(({
     isKeyboardSelected, // 🆕 Focus Zone highlighting
     onFocusItem // 🆕 Click-to-focus manually
 }) => {
+    const itemRef = useRef(null);
+
+    // 🌟 Auto-scroll cuando se selecciona por teclado
+    useEffect(() => {
+        if (isKeyboardSelected && itemRef.current) {
+            itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, [isKeyboardSelected]);
 
     let Badge = null;
     if (item.unidadVenta === 'bulto') {
@@ -61,7 +68,7 @@ const CartItem = memo(({
     // --- VISTA COMPACTA ---
     if (viewMode === 'list') {
         return (
-            <div onClick={onFocusItem} className={`flex items-center gap-2 p-2 rounded-lg border bg-surface-light dark:bg-surface-dark transition-colors cursor-pointer ${kbBorder || (isExceeded ? 'border-status-danger bg-status-dangerBg/10' : (isSuspicious ? 'border-status-warning bg-status-warningBg/10' : 'border-border-subtle'))}`}>
+            <div ref={itemRef} onClick={onFocusItem} className={`flex items-center gap-2 p-2 rounded-lg border bg-surface-light dark:bg-surface-dark transition-colors cursor-pointer ${kbBorder || (isExceeded ? 'border-status-danger bg-status-dangerBg/10' : (isSuspicious ? 'border-status-warning bg-status-warningBg/10' : 'border-border-subtle'))}`}>
                 {/* THUMBNAIL MINI */}
                 <div className="w-12 h-12 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden relative">
                     {item.imagen ? (
@@ -99,7 +106,7 @@ const CartItem = memo(({
 
     // --- VISTA TARJETAS (Default) ---
     return (
-        <div onClick={onFocusItem} className={`relative bg-surface-light dark:bg-surface-dark p-3 rounded-xl border shadow-sm transition-all group animate-in slide-in-from-right-2 cursor-pointer ${kbBorder || (realIndex === lastAddedIndex ? 'border-primary ring-2 ring-primary/30 shadow-md z-10' : (isExceeded ? 'border-status-danger ring-1 ring-status-danger/30' : (isSuspicious ? 'border-status-warning ring-1 ring-status-warning/30 bg-status-warning/5' : 'border-border-subtle')))}`}>
+        <div ref={itemRef} onClick={onFocusItem} className={`relative bg-surface-light dark:bg-surface-dark p-3 rounded-xl border shadow-sm transition-all group animate-in slide-in-from-right-2 cursor-pointer ${kbBorder || (isExceeded ? 'border-status-danger ring-1 ring-status-danger/30' : (isSuspicious ? 'border-status-warning ring-1 ring-status-warning/30 bg-status-warning/5' : 'border-border-subtle'))}`}>
             <div className="flex justify-between items-start mb-2 gap-2">
                 {/* THUMBNAIL (Card Mode) */}
                 <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden relative">
@@ -173,7 +180,6 @@ const CartItem = memo(({
         prev.item?.cantidad === next.item?.cantidad &&
         prev.item?.unidadVenta === next.item?.unidadVenta &&
         prev.realIndex === next.realIndex &&
-        prev.lastAddedIndex === next.lastAddedIndex &&
         prev.viewMode === next.viewMode &&
         prev.isProcessing === next.isProcessing &&
         prev.isKeyboardSelected === next.isKeyboardSelected &&
