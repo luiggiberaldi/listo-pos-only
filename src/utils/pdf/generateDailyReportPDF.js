@@ -3,6 +3,7 @@
 // V1.0
 
 import { savePdfUniversal } from './savePdfUniversal';
+import { s } from './pdfTextSanitizer';
 
 const fmtMoney = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
@@ -13,7 +14,7 @@ const fmtMoney = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits
  */
 export const generateDailyReportPDF = async (data, configuracion = {}) => {
     const { default: jsPDF } = await import('jspdf');
-    await import('jspdf-autotable');
+    const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF();
     const pw = doc.internal.pageSize.width;
@@ -96,7 +97,7 @@ export const generateDailyReportPDF = async (data, configuracion = {}) => {
 
     // Variación badge
     if (variacionAyer !== 0) {
-        const vSign = variacionAyer >= 0 ? '▲' : '▼';
+        const vSign = variacionAyer >= 0 ? '+' : '-';
         const vColor = variacionAyer >= 0 ? success : [239, 68, 68];
         doc.setFontSize(8);
         doc.setTextColor(...vColor);
@@ -113,12 +114,12 @@ export const generateDailyReportPDF = async (data, configuracion = {}) => {
     y += 4;
 
     if (topProductos.length > 0) {
-        doc.autoTable({
+        autoTable(doc, {
             startY: y,
             head: [['#', 'Producto', 'Cantidad', 'Ingresos']],
             body: topProductos.slice(0, 10).map((p, i) => [
                 i + 1,
-                (p.nombre || '').toUpperCase(),
+                s((p.nombre || '').toUpperCase()),
                 `${p.cantidad || 0} uds`,
                 `${simbolo}${fmtMoney(p.ingresos)}`
             ]),
@@ -138,12 +139,12 @@ export const generateDailyReportPDF = async (data, configuracion = {}) => {
     // ═══ TOP CLIENTES ═══
     const topCliY = y;
     if (topClientes.length > 0) {
-        doc.autoTable({
+        autoTable(doc, {
             startY: topCliY,
             head: [['#', 'Cliente', 'Visitas', 'Total']],
             body: topClientes.slice(0, 10).map((c, i) => [
                 i + 1,
-                (c.nombre || '').toUpperCase(),
+                s((c.nombre || '').toUpperCase()),
                 `${c.visitas || 0}`,
                 `${simbolo}${fmtMoney(c.totalGasto)}`
             ]),

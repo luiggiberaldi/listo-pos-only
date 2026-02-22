@@ -3,6 +3,7 @@
 // V1.0
 
 import { savePdfUniversal } from './savePdfUniversal';
+import { s } from './pdfTextSanitizer';
 
 const fmtMoney = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
@@ -14,7 +15,7 @@ const fmtMoney = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits
  */
 export const generateSalesHistoryPDF = async (ventas = [], filtros = {}, configuracion = {}) => {
     const { default: jsPDF } = await import('jspdf');
-    await import('jspdf-autotable');
+    const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF('landscape'); // Landscape for more columns
     const pw = doc.internal.pageSize.width;
@@ -56,10 +57,10 @@ export const generateSalesHistoryPDF = async (ventas = [], filtros = {}, configu
     doc.line(14, 24, pw - 14, 24);
 
     // ═══ SUMMARY ROW ═══
-    const validSales = ventas.filter(v => v.status !== 'anulada');
+    const validSales = ventas.filter(v => v.status !== 'ANULADA');
     const totalVentas = validSales.reduce((sum, v) => sum + (parseFloat(v.total) || 0), 0);
     const totalItems = validSales.reduce((sum, v) => sum + (v.items?.length || 0), 0);
-    const anuladas = ventas.filter(v => v.status === 'anulada').length;
+    const anuladas = ventas.filter(v => v.status === 'ANULADA').length;
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
@@ -74,10 +75,13 @@ export const generateSalesHistoryPDF = async (ventas = [], filtros = {}, configu
     // ═══ SALES TABLE ═══
     const tableData = ventas.map(v => {
         const fecha = new Date(v.fecha);
-        const statusLabel = v.status === 'anulada' ? '❌ ANULADA' : '✅ VÁLIDA';
-        const clienteNombre = v.clienteNombre || v.cliente?.nombre || 'Contado';
-        const items = v.items?.map(i => i.nombre).join(', ').substring(0, 40) || '—';
-        const metodos = v.metodosPago?.map(m => `${m.moneda}/${m.medio}`).join(', ') || '—';
+        const statusLabel = v.status === 'ANULADA' ? 'ANULADA' : 'VALIDA';
+        const clienteNombre = s(v.clienteNombre || v.cliente?.nombre || 'Contado');
+        const items = s(v.items?.map(i => i.nombre).join(', ').substring(0, 40) || '—');
+        // Extraer métodos de pago desde v.payments (estructura real)
+        const pagos = v.payments || [];
+        const metodosUnicos = [...new Set(pagos.map(p => p.method))];
+        const metodos = metodosUnicos.length > 0 ? metodosUnicos.join(', ') : (v.esCredito ? 'Credito' : '—');
 
         return [
             `${fecha.toLocaleDateString()}\n${fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
@@ -90,7 +94,7 @@ export const generateSalesHistoryPDF = async (ventas = [], filtros = {}, configu
         ];
     });
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 34,
         head: [['Fecha', 'Ref', 'Cliente', 'Productos', 'Pago', 'Total', 'Estado']],
         body: tableData,
@@ -132,7 +136,7 @@ export const generateSalesHistoryPDF = async (ventas = [], filtros = {}, configu
                 }
             }
         },
-        margin: { left: 14, right: 14, top: 30 }
+        margin: { left: 14, right: 14, top: 30 },
     });
 
     // ═══ FOOTER ═══
