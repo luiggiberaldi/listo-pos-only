@@ -13,6 +13,20 @@ import { useUIStore } from '../../stores/useUIStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useConfigStore } from '../../stores/useConfigStore'; // 🟢 Added Config Store
 import { db } from '../../db'; // 🔌 Phase 3: DB Access
+import { PERMISSIONS, ROLE_PERMISSIONS, ROLES } from '../../config/permissions';
+
+/**
+ * 🔐 Permission check helper
+ */
+function _hasPermission(permission) {
+    const usuario = useAuthStore.getState().usuario;
+    if (!usuario) return false;
+    const role = usuario.roleId;
+    if (role === ROLES.OWNER || usuario.tipo === 'ADMIN' || usuario.id === 1) return true;
+    const rolePerms = ROLE_PERMISSIONS[role] || [];
+    const customPerms = usuario.customPermissions || [];
+    return [...rolePerms, ...customPerms].includes(permission);
+}
 
 export const getChatContext = () => {
     // 1. Detectar Ruta Actual
@@ -61,11 +75,26 @@ export const getFullContext = async () => {
         // 💰 Get Config (Exchange Rate)
         const configState = useConfigStore.getState().configuracion;
 
+        // 🏪 Get Plan / License Info
+        const license = useConfigStore.getState().license || {};
+        const authState = useAuthStore.getState();
+
+        // 🔐 DATA SECURITY: Check if user is allowed to see sales
+        const canSeeSales = _hasPermission(PERMISSIONS.REP_VER_DASHBOARD);
+
         return {
             ...syncCtx,
+            user_role: authState.usuario?.rol || 'desconocido',
+            plan: {
+                name: license.plan || 'bodega',
+                is_demo: license.isDemo || false,
+                quota_limit: license.isDemo ? (license.quotaLimit || 0) : null,
+                usage_count: license.isDemo ? (license.usageCount || 0) : null,
+                remaining: license.isDemo ? Math.max(0, (license.quotaLimit || 0) - (license.usageCount || 0)) : null,
+            },
             financial: {
-                today_sales: totalSales,
-                sales_count: sales.length,
+                today_sales: canSeeSales ? totalSales : 'ACCESO_DENEGADO (Solo Administrador)',
+                sales_count: canSeeSales ? sales.length : 'ACCESO_DENEGADO',
                 low_stock_items: lowStock,
                 exchange_rate: configState?.tasa || 0,
                 currency_type: configState?.tipoTasa || 'USD'

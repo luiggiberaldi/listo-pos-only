@@ -1,6 +1,33 @@
 import { useCallback } from 'react';
 import { db } from '../../db';
 
+// 🔧 Helper: Get current open period ID (or create one)
+// [FIX] Resilient to missing periodos_nomina table (stale IndexedDB)
+const _getPeriodoId = async () => {
+    try {
+        // Check if table exists before querying
+        if (!db.periodos_nomina) {
+            console.warn('⚠️ periodos_nomina table not defined in schema');
+            return `auto-${Date.now()}`;
+        }
+        const abierto = await db.periodos_nomina.where('status').equals('ABIERTO').first();
+        if (abierto) return abierto.id;
+        // Auto-create if missing
+        return await db.periodos_nomina.add({
+            fechaInicio: new Date().toISOString(),
+            fechaFin: null,
+            totalPagado: 0,
+            totalDeuda: 0,
+            status: 'ABIERTO'
+        });
+    } catch (err) {
+        // [FIX] If periodos_nomina doesn't exist in IDB (version mismatch),
+        // fallback to a timestamp-based period so the rest of the flow works
+        console.warn('⚠️ periodos_nomina not available, using fallback period:', err.message);
+        return `auto-${Date.now()}`;
+    }
+};
+
 export const useEmployeeFinance = (usuarioActivo) => {
 
     // Registrar Deuda (Adelanto de dinero o Consumo de producto)
@@ -8,7 +35,10 @@ export const useEmployeeFinance = (usuarioActivo) => {
         if (!empleadoId) return { success: false, message: 'ID de empleado requerido' };
 
         try {
-            return await db.transaction('rw', db.empleados_finanzas, db.historial_nomina, db.nomina_ledger, async () => {
+            // [FIX] Build table list dynamically — periodos_nomina may not exist in older IDB versions
+            const tables = [db.empleados_finanzas, db.historial_nomina, db.nomina_ledger];
+            if (db.periodos_nomina) tables.push(db.periodos_nomina);
+            return await db.transaction('rw', ...tables, async () => {
                 // 1. Obtener o Crear registro financiero
                 let finanzas = await db.empleados_finanzas.get(empleadoId);
                 if (!finanzas) {
@@ -32,6 +62,7 @@ export const useEmployeeFinance = (usuarioActivo) => {
                 });
 
                 // 4. 🆕 FINANCE 2.0 LEDGER (Immutable)
+                const currentPeriodoId = await _getPeriodoId(); // [FIX BUG-2]
                 const ledgerId = await db.nomina_ledger.add({
                     empleadoId,
                     tipo: 'DEUDA',
@@ -39,7 +70,7 @@ export const useEmployeeFinance = (usuarioActivo) => {
                     monto,
                     fecha: new Date().toISOString(),
                     detalle,
-                    periodoId: 'current',
+                    periodoId: currentPeriodoId, // [FIX BUG-2] Real period ID
                     status: 'PENDIENTE',
                     metadata, // 🏷️ Linked IDs (Expense, Product, Log)
                     historyId: histId,
@@ -87,7 +118,9 @@ export const useEmployeeFinance = (usuarioActivo) => {
     // Pagar Nómina (Liquidar deuda y registrar salida de dinero)
     const procesarPagoNomina = useCallback(async (empleadoId, montoPagoReal, totalDeudaDescontada, detallesPago) => {
         try {
-            await db.transaction('rw', db.empleados_finanzas, db.historial_nomina, db.nomina_ledger, async () => {
+            const tables = [db.empleados_finanzas, db.historial_nomina, db.nomina_ledger];
+            if (db.periodos_nomina) tables.push(db.periodos_nomina);
+            await db.transaction('rw', ...tables, async () => {
                 const finanzas = await db.empleados_finanzas.get(empleadoId);
                 if (!finanzas) throw new Error("Empleado sin registro financiero");
 
@@ -106,9 +139,15 @@ export const useEmployeeFinance = (usuarioActivo) => {
                     registradoPor: usuarioActivo?.id
                 });
 
-                // 3. 🆕 FINANCE 2.0 LEDGER (Cierre de Deudas)
-                // Marcaríamos las deudas anteriores como PAGADAS si tuviéramos IDs, 
-                // por ahora registramos el evento de PAGO CREDIT.
+                // 3. 🆕 FINANCE 2.0 LEDGER
+                const currentPeriodoId = await _getPeriodoId(); // [FIX BUG-2]
+
+                // [FIX BUG-3] Mark all pending debts as PAID
+                await db.nomina_ledger
+                    .where({ empleadoId, status: 'PENDIENTE' })
+                    .modify({ status: 'PAGADO', pagadoEn: new Date().toISOString() });
+
+                // Register the payment event
                 await db.nomina_ledger.add({
                     empleadoId,
                     tipo: 'PAGO',
@@ -116,7 +155,7 @@ export const useEmployeeFinance = (usuarioActivo) => {
                     monto: montoPagoReal,
                     deudaDescontada: totalDeudaDescontada,
                     fecha: new Date().toISOString(),
-                    periodoId: 'current',
+                    periodoId: currentPeriodoId, // [FIX BUG-2]
                     status: 'COMPLETED',
                     registradoPor: usuarioActivo?.id
                 });
@@ -145,22 +184,22 @@ export const useEmployeeFinance = (usuarioActivo) => {
 
     // 🆕 Cierre de Periodo (Reiniciar Contadores)
     const cerrarPeriodo = useCallback(async (empleadoId, pinAdmin) => {
-        // Validar PIN Admin podría hacerse aquí o en la capa de UI. 
-        // Por simplicidad y reuso de auth, asumimos que ActionGuard ya validó el permiso.
-
         try {
-            await db.transaction('rw', db.empleados_finanzas, db.historial_nomina, async () => {
+            const tables = [db.empleados_finanzas, db.historial_nomina, db.nomina_ledger];
+            if (db.periodos_nomina) tables.push(db.periodos_nomina);
+            await db.transaction('rw', ...tables, async () => {
                 const finanzas = await db.empleados_finanzas.get(empleadoId);
                 if (!finanzas || finanzas.deudaAcumulada === 0) return; // Nada que cerrar
 
                 const deudaCerrada = finanzas.deudaAcumulada;
+                const currentPeriodoId = await _getPeriodoId(); // [FIX BUG-2]
 
                 // 1. Resetear Deuda de la semana/periodo
                 finanzas.deudaAcumulada = 0;
                 finanzas.ultimoCierre = new Date().toISOString();
                 await db.empleados_finanzas.put(finanzas);
 
-                // 2. Log de Cierre
+                // 2. Log de Cierre (Legacy)
                 await db.historial_nomina.add({
                     userId: empleadoId,
                     fecha: new Date().toISOString(),
@@ -169,6 +208,24 @@ export const useEmployeeFinance = (usuarioActivo) => {
                     detalle: `Cierre de Periodo. Deuda Archivada: $${deudaCerrada.toFixed(2)}`,
                     registradoPor: usuarioActivo?.id || 'ADMIN'
                 });
+
+                // 3. [FIX BUG-1] Write to Ledger too
+                await db.nomina_ledger.add({
+                    empleadoId,
+                    tipo: 'CIERRE',
+                    subtipo: 'PERIODO_INDIVIDUAL',
+                    monto: 0,
+                    deudaArchivada: deudaCerrada,
+                    fecha: new Date().toISOString(),
+                    periodoId: currentPeriodoId,
+                    status: 'COMPLETED',
+                    registradoPor: usuarioActivo?.id || 'ADMIN'
+                });
+
+                // [FIX BUG-3] Mark pending debts as PAID for this employee
+                await db.nomina_ledger
+                    .where({ empleadoId, status: 'PENDIENTE' })
+                    .modify({ status: 'PAGADO', pagadoEn: new Date().toISOString() });
             });
             return { success: true };
         } catch (error) {
@@ -179,24 +236,32 @@ export const useEmployeeFinance = (usuarioActivo) => {
 
     // 🗓️ GESTIÓN DE PERIODOS
     const obtenerPeriodoActual = async () => {
-        const abierto = await db.periodos_nomina.where('status').equals('ABIERTO').first();
-        if (abierto) return abierto;
+        try {
+            if (!db.periodos_nomina) return null;
+            const abierto = await db.periodos_nomina.where('status').equals('ABIERTO').first();
+            if (abierto) return abierto;
 
-        // Si no hay abierto, creamos uno nuevo AUTO
-        const nuevoId = await db.periodos_nomina.add({
-            fechaInicio: new Date().toISOString(),
-            fechaFin: null,
-            totalPagado: 0,
-            totalDeuda: 0,
-            status: 'ABIERTO'
-        });
-        return await db.periodos_nomina.get(nuevoId);
+            // Si no hay abierto, creamos uno nuevo AUTO
+            const nuevoId = await db.periodos_nomina.add({
+                fechaInicio: new Date().toISOString(),
+                fechaFin: null,
+                totalPagado: 0,
+                totalDeuda: 0,
+                status: 'ABIERTO'
+            });
+            return await db.periodos_nomina.get(nuevoId);
+        } catch (err) {
+            console.warn('⚠️ obtenerPeriodoActual failed:', err.message);
+            return null;
+        }
     };
 
     // 🆕 Cierre de Periodo GLOBAL (Finance 2.0)
     const cerrarPeriodoGlobal = useCallback(async (pinAdmin) => {
         try {
-            const closureMetrics = await db.transaction('rw', db.empleados_finanzas, db.historial_nomina, db.nomina_ledger, db.periodos_nomina, async () => {
+            const tables = [db.empleados_finanzas, db.historial_nomina, db.nomina_ledger];
+            if (db.periodos_nomina) tables.push(db.periodos_nomina);
+            const closureMetrics = await db.transaction('rw', ...tables, async () => {
                 const periodo = await obtenerPeriodoActual();
                 if (!periodo) throw new Error("No hay periodo abierto para cerrar.");
 
@@ -241,26 +306,44 @@ export const useEmployeeFinance = (usuarioActivo) => {
         }
     }, [usuarioActivo]);
 
-    // 🆕 Obtener historial (Filtrado por Periodo Actual)
+    // 🆕 Obtener historial (Filtrado por Periodo Actual) [FIX BUG-4]
     const obtenerHistorial = useCallback(async (empleadoId) => {
-        // En Finance 2.0, el ledger es la fuente de verdad para el periodo actual
-        const ledger = await db.nomina_ledger
-            .where('empleadoId')
-            .equals(empleadoId)
-            .reverse()
-            .sortBy('fecha');
+        try {
+            const currentPeriodoId = await _getPeriodoId();
 
-        // Filtrar solo movimientos del periodo "current" o no liquidados
-        // Por ahora, todos los que no estén en un periodo cerrado (status !== 'PAGADO')
-        return ledger.map(entry => ({
-            id: entry.historyId || `ledger-${entry.id}`,
-            ledgerId: entry.id, // Fundamental para el UNDO
-            fecha: entry.fecha,
-            tipo: entry.subtipo || entry.tipo,
-            monto: entry.monto,
-            detalle: entry.detalle,
-            status: entry.status // 'PENDIENTE', 'ANULADO'
-        }));
+            // Filter by employee AND current period
+            const ledger = await db.nomina_ledger
+                .where('[empleadoId+periodoId]')
+                .equals([empleadoId, currentPeriodoId])
+                .reverse()
+                .sortBy('fecha');
+
+            return ledger.map(entry => ({
+                id: entry.historyId || `ledger-${entry.id}`,
+                ledgerId: entry.id, // Fundamental para el UNDO
+                fecha: entry.fecha,
+                tipo: entry.subtipo || entry.tipo,
+                monto: entry.monto,
+                detalle: entry.detalle,
+                status: entry.status // 'PENDIENTE', 'ANULADO', 'PAGADO'
+            }));
+        } catch (err) {
+            console.warn('⚠️ obtenerHistorial (ledger) failed, falling back to historial_nomina:', err.message);
+            // Fallback to legacy historial_nomina table
+            const legacy = await db.historial_nomina
+                .where('userId').equals(empleadoId)
+                .reverse()
+                .sortBy('fecha');
+            return legacy.map(entry => ({
+                id: entry.id,
+                ledgerId: null,
+                fecha: entry.fecha,
+                tipo: entry.tipo,
+                monto: entry.monto,
+                detalle: entry.detalle,
+                status: 'LEGACY'
+            }));
+        }
     }, []);
 
     // 🛡️ VALIDAR CAPACIDAD DE ENDEUDAMIENTO

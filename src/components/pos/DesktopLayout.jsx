@@ -67,7 +67,7 @@ export default function DesktopLayout({
     const obtenerTasaBCV = useConfigStore(s => s.obtenerTasaBCV);
     const clientePreseleccionado = null; // Managed via location state in PosPage, passed if needed
 
-    const { isCajaAbierta } = useCajaEstado();
+    const { isCajaAbierta, abrirCaja } = useCajaEstado();
     const cajaAbierta = isCajaAbierta();
 
     // Handlers
@@ -85,6 +85,11 @@ export default function DesktopLayout({
     const limpiar = usePosActionsStore(s => s.limpiar);
     const toggleAyuda = usePosActionsStore(s => s.toggleAyuda);
     const espera = usePosActionsStore(s => s.espera);
+
+    // Callbacks that were illegally inside JSX:
+    const handleSetProductRef = useCallback((el, idx) => {
+        if (productRefs.current) productRefs.current[idx] = el;
+    }, [productRefs]);
 
     return (
         <div className="flex h-screen bg-app-light dark:bg-app-dark overflow-hidden font-sans relative">
@@ -143,7 +148,7 @@ export default function DesktopLayout({
 
             <div className="flex-1 flex flex-col min-w-0 border-r border-border-subtle relative bg-surface-light dark:bg-surface-dark">
                 {!cajaAbierta ? (
-                    <WelcomeScreen />
+                    <WelcomeScreen onAbrir={abrirCaja} />
                 ) : (
                     <>
                         <div className="relative">
@@ -192,7 +197,7 @@ export default function DesktopLayout({
                         )}
 
                         <ProductGrid
-                            setRef={useCallback((el, idx) => { if (productRefs.current) productRefs.current[idx] = el; }, [productRefs])}
+                            setRef={handleSetProductRef}
                         />
                     </>
                 )}

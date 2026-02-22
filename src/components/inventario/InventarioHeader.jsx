@@ -25,7 +25,8 @@ export default function InventarioHeader({
   selectedCount = 0
 }) {
 
-  const isFiltering = filtroCategoria !== 'Todas' && filtroCategoria !== 'General';
+  // [BUG-5 FIX] Solo "Todas" es el bypass de filtrado
+  const isFiltering = filtroCategoria !== 'Todas';
 
   return (
     <div className="flex flex-col gap-4 mb-8 relative z-30">

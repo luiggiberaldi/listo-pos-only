@@ -198,13 +198,17 @@ export const useConfigStore = create(
                         tasa: tasaFinal,
                         tipoTasa: tipoMoneda,
                         fechaTasa: new Date().toISOString(),
-                        fuenteTasa: fuenteExitosa || 'BCV'
+                        fuenteTasa: fuenteExitosa || 'BCV',
+                        modoRedondeo: modoRedondeo // Asegurar que guarda el redondeo
                     });
 
                     if (forzar) Swal.fire({ icon: 'success', title: 'Sincronizado', text: `${tasaFinal} Bs`, timer: 2000, showConfirmButton: false });
                     return tasaFinal;
-                } else if (forzar) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo obtener la tasa.' });
+                } else {
+                    if (forzar) Swal.fire({ icon: 'error', title: 'Fallo de Conexión', text: 'No se pudo obtener la tasa en este momento. Inténtalo nuevamente.' });
+                    // Even if not forced, if called manually via ConfigFinanzas we might want some feedback, 
+                    // but according to user: "cuando fallen las api de obtension de tasa tieneq ue salir un mnesaje qeu diga intentalo nuevamente"
+                    // we'll show it if forzar is true (which is the case when hitting the Sincronizar button).
                 }
                 return null;
             },

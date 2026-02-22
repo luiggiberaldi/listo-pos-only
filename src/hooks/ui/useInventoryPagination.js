@@ -11,27 +11,27 @@ export const useInventoryPagination = (todosLosProductos, itemsPorPagina = 20) =
     if (!todosLosProductos) return [];
     let resultado = todosLosProductos;
 
-    // A. Filtro por Categoría
-    if (categoriaActiva !== 'Todas' && categoriaActiva !== 'General') {
-      resultado = resultado.filter(p => p.categoria === categoriaActiva);
+    // A. Filtro por Categoría — [BUG-5 FIX] "General" ahora filtra correctamente
+    if (categoriaActiva !== 'Todas') {
+      resultado = resultado.filter(p => (p.categoria || 'General') === categoriaActiva);
     }
 
     // B. Filtro por Búsqueda (Buscador Inteligente)
     if (busqueda.trim()) {
       const q = busqueda.toLowerCase();
-      resultado = resultado.filter(p => 
-        (p.nombre || '').toLowerCase().includes(q) || 
+      resultado = resultado.filter(p =>
+        (p.nombre || '').toLowerCase().includes(q) ||
         (p.codigo || '').toLowerCase().includes(q)
       );
     }
 
     // C. Ordenamiento
     resultado = [...resultado].sort((a, b) => {
-        if (orden === 'nombre-asc') return (a.nombre || '').localeCompare(b.nombre || '');
-        if (orden === 'nombre-desc') return (b.nombre || '').localeCompare(a.nombre || '');
-        if (orden === 'stock-asc') return (parseFloat(a.stock)||0) - (parseFloat(b.stock)||0);
-        if (orden === 'stock-desc') return (parseFloat(b.stock)||0) - (parseFloat(a.stock)||0);
-        return 0;
+      if (orden === 'nombre-asc') return (a.nombre || '').localeCompare(b.nombre || '');
+      if (orden === 'nombre-desc') return (b.nombre || '').localeCompare(a.nombre || '');
+      if (orden === 'stock-asc') return (parseFloat(a.stock) || 0) - (parseFloat(b.stock) || 0);
+      if (orden === 'stock-desc') return (parseFloat(b.stock) || 0) - (parseFloat(a.stock) || 0);
+      return 0;
     });
 
     return resultado;

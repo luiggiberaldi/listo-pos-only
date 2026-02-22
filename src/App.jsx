@@ -100,8 +100,6 @@ function App() {
         secretsService.get('VITE_SUPABASE_URL'),
         secretsService.get('VITE_SUPABASE_ANON_KEY')
       );
-      // Init Ghost
-      ghostService.reloadKeys();
     };
     loadSecrets();
   }, []);
@@ -293,10 +291,10 @@ function App() {
               )}
             </Routes>
           </Suspense>
-          <Assistant variant="floating" />
+          {isAuthenticated && <Assistant variant="floating" />}
         </HashRouter>
       </ContractGuard>
-      <GhostEye />
+      {isAuthenticated && <GhostEye />}
     </LicenseGate>
   );
 }

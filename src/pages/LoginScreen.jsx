@@ -11,6 +11,9 @@ import { Keyboard, MessageSquare } from 'lucide-react';
 import { dbMaster } from '../services/firebase';
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import Swal from 'sweetalert2';
+import { getPlan, DEFAULT_PLAN } from '../config/planTiers';
+import { SecureStorage } from '../utils/SecureStorage';
+import { useConfigStore } from '../stores/useConfigStore';
 
 // 🟢 NEW MODULAR COMPONENTS
 import UserCard from '../components/login/UserCard';
@@ -47,6 +50,15 @@ export default function LoginScreen() {
 
     // Filter active users
     const activeUsers = (usuarios || []).filter(u => u.activo !== false);
+
+    // 🏪 PLAN INFO — Read from SecureStorage (set by useLicenseGuard at App level)
+    const currentPlanId = SecureStorage.get('listo_plan') || DEFAULT_PLAN;
+    const currentPlan = getPlan(currentPlanId);
+
+    // 🛡️ DEMO INFO — from Zustand store
+    const license = useConfigStore(s => s.license);
+    const isDemo = license?.isDemo;
+    const remaining = isDemo ? Math.max(0, (license.quotaLimit || 0) - (license.usageCount || 0)) : 0;
 
     // --- BUZZER LISTENER ---
     useEffect(() => {
@@ -176,6 +188,32 @@ export default function LoginScreen() {
             </div>
 
             <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+
+                {/* PLAN BADGE — Premium Glass */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
+                    className="absolute top-5 left-5 lg:top-7 lg:left-7 z-50 pointer-events-none"
+                >
+                    <div className="relative">
+                        {/* Glow ring */}
+                        <div className="absolute -inset-[1px] rounded-lg bg-gradient-to-r from-primary via-primary-light to-primary blur-[3px] opacity-70" />
+                        {/* Badge body */}
+                        <div className="relative bg-slate-800/95 backdrop-blur-xl rounded-lg px-5 py-2.5 flex items-center gap-3 border border-white/15">
+                            <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${isDemo ? (remaining <= 5 ? 'bg-red-400 shadow-[0_0_10px_3px_rgba(248,113,113,0.6)]' : remaining <= 20 ? 'bg-amber-400 shadow-[0_0_10px_3px_rgba(251,191,36,0.6)]' : 'bg-emerald-400 shadow-[0_0_10px_3px_rgba(52,211,153,0.6)]') : 'bg-emerald-400 shadow-[0_0_10px_3px_rgba(52,211,153,0.6)]'}`} />
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-[0.25em]">{isDemo ? 'Demo Activo' : 'Plan Activo'}</span>
+                                <span className="text-sm font-bold text-white tracking-wide mt-0.5">{currentPlan.label}</span>
+                                {isDemo && (
+                                    <span className={`text-[10px] font-semibold mt-1 ${remaining <= 5 ? 'text-red-400' : remaining <= 20 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                        {remaining > 0 ? `${remaining} ventas disponibles` : 'Sin ventas disponibles'}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
 
                 {/* HEADER */}
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16 relative">

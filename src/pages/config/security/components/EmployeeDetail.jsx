@@ -4,12 +4,13 @@ import { useEmployeeFinance } from '../../../../hooks/store/useEmployeeFinance';
 import { useFinanceIntegrator } from '../../../../hooks/store/useFinanceIntegrator';
 import { useStore } from '../../../../context/StoreContext';
 import { ActionGuard } from '../../../../components/security/ActionGuard';
+import { PERMISSIONS } from '../../../../config/permissions'; // [FIX PERM-1]
 import Swal from 'sweetalert2';
 
-export default function EmployeeDetail({ usuario, onClose }) {
-    const { obtenerFinanzas, actualizarConfiguracion, procesarPagoNomina, obtenerHistorial } = useEmployeeFinance();
+export default function EmployeeDetail({ usuario: empleado, onClose }) {
+    const { configuracion, actualizarUsuario, usuario } = useStore(); // [FIX ARQ-2] Added usuario
+    const { obtenerFinanzas, actualizarConfiguracion, procesarPagoNomina, obtenerHistorial } = useEmployeeFinance(usuario); // [FIX ARQ-2]
     const { revertirMovimiento } = useFinanceIntegrator();
-    const { configuracion, actualizarUsuario } = useStore(); // ✅ Added actualizarUsuario
 
     const [finanzas, setFinanzas] = useState(null);
     const [historial, setHistorial] = useState([]); // 📜 Historial
@@ -25,14 +26,14 @@ export default function EmployeeDetail({ usuario, onClose }) {
 
     useEffect(() => {
         cargarDatos();
-    }, [usuario]);
+    }, [empleado]);
 
     const cargarDatos = async () => {
         setLoading(true);
         try {
             const [data, hist] = await Promise.all([
-                obtenerFinanzas(usuario.id),
-                obtenerHistorial(usuario.id)
+                obtenerFinanzas(empleado.id),
+                obtenerHistorial(empleado.id)
             ]);
 
             setFinanzas(data);
@@ -40,7 +41,7 @@ export default function EmployeeDetail({ usuario, onClose }) {
             setFormData({
                 sueldoBase: data.sueldoBase || 0,
                 frecuenciaPago: data.frecuenciaPago || 'Semanal',
-                allowSelfConsume: usuario.allowSelfConsume || false // 📥 Load from User Prop
+                allowSelfConsume: empleado.allowSelfConsume || false // 📥 Load from User Prop
             });
         } catch (e) {
             console.error(e);
@@ -58,14 +59,14 @@ export default function EmployeeDetail({ usuario, onClose }) {
         }));
 
         // 1. Guardar Finanzas (Sueldo)
-        await actualizarConfiguracion(usuario.id, {
+        await actualizarConfiguracion(empleado.id, {
             sueldoBase: formData.sueldoBase,
             frecuenciaPago: formData.frecuenciaPago
         });
 
         // 2. Guardar Permisos (Usuario)
         if (actualizarUsuario) {
-            await actualizarUsuario(usuario.id, { allowSelfConsume: formData.allowSelfConsume });
+            await actualizarUsuario(empleado.id, { allowSelfConsume: formData.allowSelfConsume });
         }
 
         setConfigMode(false);
@@ -115,7 +116,7 @@ export default function EmployeeDetail({ usuario, onClose }) {
         });
 
         if (confirm.isConfirmed) {
-            const result = await procesarPagoNomina(usuario.id, neto, deuda, `Pago de ${formData.frecuenciaPago}`);
+            const result = await procesarPagoNomina(empleado.id, neto, deuda, `Pago de ${formData.frecuenciaPago}`);
             if (result.success) {
                 Swal.fire('Pagado', 'La nómina ha sido procesada y la deuda reseteada.', 'success');
                 cargarDatos();
@@ -155,17 +156,25 @@ export default function EmployeeDetail({ usuario, onClose }) {
         }
     };
 
-    if (!usuario) return null;
+    if (!empleado) return null;
     if (loading) return <div className="p-8 text-center text-slate-400">Cargando datos financieros...</div>;
 
     return (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 p-6 max-w-2xl mx-auto">
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <h2 className="text-xl font-black text-slate-800">{usuario.nombre}</h2>
-                    <p className="text-sm text-slate-500 font-medium">{usuario.rol}</p>
+                    <h2 className="text-xl font-black text-slate-800">{empleado.nombre}</h2>
+                    <p className="text-sm text-slate-500 font-medium">{empleado.rol}</p>
                 </div>
-
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                        title="Cerrar"
+                    >
+                        <X size={20} strokeWidth={2.5} />
+                    </button>
+                )}
             </div>
 
             {/* TARJETAS RESUMEN */}
@@ -275,7 +284,9 @@ export default function EmployeeDetail({ usuario, onClose }) {
 
                                                 {/* UNDO BUTTON */}
                                                 {!isAnulado && mov.ledgerId && (
-                                                    <ActionGuard permission="SUPERVISOR_ACCESS">
+                                                    <ActionGuard permission={PERMISSIONS.NOMINA_AJUSTES}
+                                                        onClick={(e) => { e.stopPropagation(); handleRevertir(mov); }}
+                                                        actionName="Revertir Movimiento de Nómina">
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleRevertir(mov); }}
                                                             className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"

@@ -4,15 +4,16 @@ import { useStore } from '../../../context/StoreContext';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator'; // 🛡️ Synergy Hook
 import { ActionGuard } from '../../../components/security/ActionGuard';
+import { PERMISSIONS } from '../../../config/permissions'; // [FIX PERM-1]
 import EmployeeDetail from './components/EmployeeDetail'; // 🆕 Componente Detalle
 
 import Swal from 'sweetalert2';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function PayrollPage() {
-    const { usuarios } = useStore();
+    const { usuarios, usuario } = useStore(); // [FIX ARQ-1] Added usuario
     // Keep individual methods for reading data, but use Integrator for actions
-    const { obtenerFinanzas, cerrarPeriodo, obtenerPeriodoActual } = useEmployeeFinance();
+    const { obtenerFinanzas, cerrarPeriodo, obtenerPeriodoActual } = useEmployeeFinance(usuario); // [FIX ARQ-1]
     const { cerrarSemanaConPago } = useFinanceIntegrator(); // 🛡️
 
     const [empleadosData, setEmpleadosData] = useState([]);
@@ -136,7 +137,7 @@ export default function PayrollPage() {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <ActionGuard permission="OWNER_ACCESS" onClick={handleCloseGlobal}>
+                    <ActionGuard permission={PERMISSIONS.NOMINA_CIERRE} onClick={handleCloseGlobal}>
                         <button
                             className="bg-white border-2 border-rose-100 hover:bg-rose-50 text-rose-600 px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
                         >
@@ -218,7 +219,7 @@ export default function PayrollPage() {
                                                 <Eye size={18} />
                                             </button>
 
-                                            <ActionGuard permission="OWNER_ACCESS" onClick={() => handleClosePeriod(emp)}>
+                                            <ActionGuard permission={PERMISSIONS.NOMINA_CIERRE} onClick={() => handleClosePeriod(emp)}>
                                                 <button
                                                     className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                                                     title="Cerrar Periodo (Reset Deuda)"

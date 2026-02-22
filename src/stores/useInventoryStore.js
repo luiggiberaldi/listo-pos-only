@@ -1,9 +1,7 @@
 import { create } from 'zustand';
 import { ghostMiddleware } from '../utils/ghost/ghostMiddleware';
 import { db } from '../db';
-import { useLiveQuery } from 'dexie-react-hooks'; // We can't use hooks inside Zustand stores directly.
-// We have to subscribe to DB changes elsewhere or manual sync.
-// For Phase 3 Performance, manual sync or specific subscription is better than auto-refreshing on every byte change.
+// [MJ-4] Removed unused useLiveQuery import
 
 export const useInventoryStore = create(ghostMiddleware((set, get) => ({
     productos: [],
@@ -38,7 +36,7 @@ export const useInventoryStore = create(ghostMiddleware((set, get) => ({
     // Optimized Search Action
     searchProductos: (term, categoria) => {
         const state = get();
-        if (!term && categoria === 'Todo') return state.productos;
+        if (!term && categoria === 'Todas') return state.productos;
 
         const termLower = term.toLowerCase();
 

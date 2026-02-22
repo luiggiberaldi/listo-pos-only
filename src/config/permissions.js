@@ -22,6 +22,7 @@ export const PERMISSIONS = {
     POS_VOID_TICKET: 'POS_VOID_TICKET',
 
     CASH_OPEN: 'CASH_OPEN',
+    CAJA_ABRIR: 'CAJA_ABRIR', // Legacy Alias — was in META but missing from dictionary
     CASH_CLOSE: 'CASH_CLOSE',
     CAJA_CERRAR: 'CAJA_CERRAR', // Legacy Alias
 
@@ -85,7 +86,12 @@ export const PERMISSIONS = {
     CONF_SISTEMA_VER: 'CONF_SISTEMA_VER',
     CONF_SISTEMA_EDITAR: 'CONF_SISTEMA_EDITAR',
 
-    SETTINGS_DB_RESET: 'SETTINGS_DB_RESET'
+    SETTINGS_DB_RESET: 'SETTINGS_DB_RESET',
+
+    // 💰 NÓMINA Y PERSONAL
+    NOMINA_AJUSTES: 'NOMINA_AJUSTES',                     // Adelantos de sueldo
+    NOMINA_CONSUMO_EMPLEADO: 'NOMINA_CONSUMO_EMPLEADO',   // Consumo de inventario a cuenta del empleado
+    NOMINA_CIERRE: 'NOMINA_CIERRE'                        // Cerrar periodo / semana (acción destructiva)
 };
 
 // ✅ ALIAS DE COMPATIBILIDAD
@@ -133,7 +139,12 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.SETTINGS_VIEW,
         PERMISSIONS.CONF_ACCESO,
         PERMISSIONS.CONF_NEGOCIO_VER,
-        PERMISSIONS.CONF_USUARIOS_VER
+        PERMISSIONS.CONF_USUARIOS_VER,
+
+        // Nómina
+        PERMISSIONS.NOMINA_AJUSTES,
+        PERMISSIONS.NOMINA_CONSUMO_EMPLEADO,
+        PERMISSIONS.NOMINA_CIERRE
     ],
 
     [ROLES.CASHIER]: [
@@ -178,8 +189,9 @@ export const PERMISSION_GROUPS = {
     SALES: { id: 'SALES', label: 'Ventas y Caja', order: 1 },
     INVENTORY: { id: 'INVENTORY', label: 'Inventario y Stock', order: 2 },
     CLIENTS: { id: 'CLIENTS', label: 'Clientes y Créditos', order: 3 },
-    REPORTS: { id: 'REPORTS', label: 'Reportes y Tesorería', order: 4 },
-    CONFIG: { id: 'CONFIG', label: 'Configuración Global', order: 5 }
+    PAYROLL: { id: 'PAYROLL', label: 'Nómina y Personal', order: 4 },
+    REPORTS: { id: 'REPORTS', label: 'Reportes y Tesorería', order: 5 },
+    CONFIG: { id: 'CONFIG', label: 'Configuración Global', order: 6 }
 };
 
 // --- 6. METADATA DE PERMISOS (PARA UI DE GESTIÓN) ---
@@ -219,6 +231,11 @@ export const PERMISSION_META = {
     [PERMISSIONS.CONF_USUARIOS_EDITAR]: { label: 'Gestionar Equipo', description: 'Crear/Borrar usuarios.', group: PERMISSION_GROUPS.CONFIG.id, critical: true },
     [PERMISSIONS.CONF_SISTEMA_VER]: { label: 'Ver Salud Datos', description: 'Consultar estado BD.', group: PERMISSION_GROUPS.CONFIG.id },
     [PERMISSIONS.CONF_SISTEMA_EDITAR]: { label: 'Admin Sistema', description: 'Backups y Reset.', group: PERMISSION_GROUPS.CONFIG.id, critical: true },
+
+    // NÓMINA
+    [PERMISSIONS.NOMINA_AJUSTES]: { label: 'Adelantos de Nómina', description: 'Registrar adelantos de sueldo descontables al empleado.', group: PERMISSION_GROUPS.PAYROLL.id, critical: true },
+    [PERMISSIONS.NOMINA_CONSUMO_EMPLEADO]: { label: 'Consumos de Empleado', description: 'Registrar consumo de inventario a cuenta de un empleado.', group: PERMISSION_GROUPS.PAYROLL.id, critical: true },
+    [PERMISSIONS.NOMINA_CIERRE]: { label: 'Cerrar Periodo/Semana', description: 'Cerrar periodos de nómina y procesar pagos globales.', group: PERMISSION_GROUPS.PAYROLL.id, critical: true },
 };
 
 export const getGroupedPermissions = () => {

@@ -2,12 +2,14 @@ import { dbMaster } from '../../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../db';
 import { supabase } from '../supabaseClient';
+import { useAuthStore } from '../../stores/useAuthStore'; // 🔐 Added to get current user
 
 export class GhostMemoryService {
     constructor() {
         this.systemId = this.getSystemId();
         this.sessionStart = Date.now();
         this.sessionId = null; // Will start on first message
+        this.currentUserId = null; // Track who owns the session
         this.sessionLogs = []; // Buffer for current session
         this.uploadTimer = null;
     }
@@ -38,24 +40,41 @@ export class GhostMemoryService {
      * Add message to Local and Cloud memory
      */
     async addMessage(role, content) {
+        const authState = useAuthStore.getState();
+        const usuario = authState?.usuario || {};
+        const userId = usuario.id || 'anonymous';
+        const userName = usuario.nombre || 'Desconocido';
+
+        // 🔄 Session Rotation: If a different user types, start a new session!
+        if (this.currentUserId !== null && this.currentUserId !== userId) {
+            console.log("🔄 Ghost: User changed, rotating session memory");
+            this.sessionId = null;
+            this.sessionLogs = [];
+            this.sessionStart = Date.now();
+        }
+        this.currentUserId = userId;
+
         // 1. Local Persistence (Fast)
         await db.ghost_history.add({
+            sessionId: this.sessionId || 'pending',
+            userId: userId,
             role: role,
             content: content,
             timestamp: Date.now()
         });
 
         // 2. Cloud Persistence (Async)
-        await this._saveToCloud(role, content);
+        await this._saveToCloud(role, content, userId, userName);
     }
 
-    async _saveToCloud(role, content) {
+    async _saveToCloud(role, content, userId, userName) {
         if (this.systemId === "ID_PENDING") return;
 
         // Init Session ID if new
         if (!this.sessionId) {
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            this.sessionId = `${this.systemId}_${this.sessionStart}`;
+            // 🔑 Master Update: Include User ID in the Session ID so they don't mix!
+            this.sessionId = `${this.systemId}_U${userId}_${this.sessionStart}`;
         }
 
         // 1. Supabase (Neural Memory for Context - UNCHANGED)
@@ -65,7 +84,7 @@ export class GhostMemoryService {
                     system_id: this.systemId,
                     role: role,
                     content: content,
-                    metadata: { source: 'POS', v: '6.0' }
+                    metadata: { source: 'POS', v: '6.0', user_id: userId, user_name: userName }
                 });
             } catch (e) {
                 console.warn("☁️ Cloud Memory Save Failed", e);
@@ -105,8 +124,13 @@ export class GhostMemoryService {
             // This counts as 1 WRITE per batch, saving massive costs.
             const docRef = doc(dbMaster, 'ghost_compact_sessions', this.sessionId);
 
+            const authState = useAuthStore.getState();
+            const userName = authState?.usuario?.nombre || 'Desconocido';
+
             await setDoc(docRef, {
                 systemId: this.systemId,
+                userId: this.currentUserId,
+                userName: userName,
                 startTime: this.sessionStart,
                 lastUpdate: new Date().toISOString(),
                 logCount: this.sessionLogs.length,
@@ -120,16 +144,26 @@ export class GhostMemoryService {
     }
 
     /**
-     * Retrieve recent history for context
+     * Retrieve recent history for context (Isolated per user)
      */
     async getHistory(limit = 10) {
+        const authState = useAuthStore.getState();
+        const userId = authState?.usuario?.id || 'anonymous';
+
         try {
+            // En IDB no podemos hacer un .where('userId').equals() seguido de .orderBy('timestamp').reverse()
+            // sin tener un compound index [userId+timestamp].
+            // Para mantener compatibilidad con la DB actual, obtenemos todo y filtramos en JS.
             let chatHistory = await db.ghost_history
                 .orderBy('timestamp')
                 .reverse()
-                .limit(limit)
                 .toArray();
-            let history = chatHistory.reverse();
+
+            // Filter by current User
+            chatHistory = chatHistory.filter(h => h.userId === userId || (!h.userId && userId === 1));
+
+            // Apply limit and reverse to chronological order
+            let history = chatHistory.slice(0, limit).reverse();
             return history;
         } catch (e) {
             console.warn("Memory Fail", e);
@@ -138,9 +172,12 @@ export class GhostMemoryService {
     }
 
     async clearMemory() {
+        const authState = useAuthStore.getState();
+        const userId = authState?.usuario?.id || 'anonymous';
+
         try {
-            // Local
-            await db.ghost_history.clear();
+            // Local: Borrar SOLO los del usuario actual
+            await db.ghost_history.filter(h => h.userId === userId || (!h.userId && userId === 1)).delete();
             this.sessionLogs = [];
             this.sessionId = null; // Reset session
 

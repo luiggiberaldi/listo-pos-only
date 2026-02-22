@@ -35,8 +35,18 @@ export default defineConfig({
           }
         ]
       },
+      // 🛡️ Disable SW in development to prevent stale cache conflicts
+      devOptions: {
+        enabled: false
+      },
       workbox: {
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB (increased for better offline support)
+        // 🧹 Clean old caches on SW activation to prevent stale asset errors
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        // Prevent SW from intercepting API calls as navigation
+        navigateFallbackDenylist: [/^\/api/, /^https:\/\//],
         // Estrategia de Caché:
         // - Assets (JS/CSS/Img) -> CacheFirst (Carga instantánea)
         // - APIs externas -> NetworkFirst (Intenta red, falla silenciosamente)

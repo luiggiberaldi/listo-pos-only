@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, AlertCircle, Banknote, User, Clock, FileText, Trash2 } from 'lucide-react';
+import { DollarSign, AlertCircle, Banknote, User, Clock, FileText, Trash2, Wallet, Smartphone, CreditCard, Sparkles, TrendingDown, Wrench, SprayCan, Users, ShoppingBag, MoreHorizontal } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../../db';
 import { useFinance } from '../../../hooks/store/useFinance';
 import { useFinanceIntegrator } from '../../../hooks/store/useFinanceIntegrator';
 import { useEmployeeFinance } from '../../../hooks/store/useEmployeeFinance';
+import { useRBAC } from '../../../hooks/store/useRBAC';
+import { PERMISSIONS } from '../../../config/permissions';
 import { useStore } from '../../../context/StoreContext';
 import { useConfigStore } from '../../../stores/useConfigStore';
 import { hasFeature, FEATURES, getPlan } from '../../../config/planTiers';
@@ -14,13 +16,42 @@ import FinancialLayout from '../design/FinancialLayout';
 import BigCurrencyInput from '../design/BigCurrencyInput';
 import HoldToConfirmButton from '../design/HoldToConfirmButton';
 
+// [FIX BUG-5] Helper: Get local day boundaries as ISO strings
+const getLocalDayBounds = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { inicio: start.toISOString(), fin: end.toISOString() };
+};
+
+// [V3] Category icons for visual distinction
+const CATEGORY_CONFIG = {
+    'PROVEEDORES': { icon: ShoppingBag, color: 'text-amber-500', bg: 'bg-amber-50' },
+    'SERVICIOS': { icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50' },
+    'PERSONAL': { icon: Users, color: 'text-violet-500', bg: 'bg-violet-50' },
+    'MANTENIMIENTO': { icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-50' },
+    'LIMPIEZA': { icon: SprayCan, color: 'text-teal-500', bg: 'bg-teal-50' },
+    'VARIOS': { icon: MoreHorizontal, color: 'text-slate-500', bg: 'bg-slate-50' },
+    'GENERAL': { icon: DollarSign, color: 'text-rose-500', bg: 'bg-rose-50' },
+};
+
+// [V3] Color-code amounts by magnitude
+const getAmountColor = (amount) => {
+    if (amount <= 5) return 'text-emerald-600';
+    if (amount <= 20) return 'text-amber-600';
+    return 'text-rose-600';
+};
+
 export default function MoneyExpenseView({ onClose }) {
     const { usuario, configuracion, usuarios } = useStore();
     const { registrarGasto, revertirGasto } = useFinance();
     const { registrarAdelantoSueldo } = useFinanceIntegrator();
     const { validarCapacidadEndeudamiento } = useEmployeeFinance();
 
-    // 🏪 PLAN GATING: Employee features
+    const { hasPermission } = useRBAC(usuario);
+    const canDoAdelantos = hasPermission(PERMISSIONS.NOMINA_AJUSTES);
+    const canRevertGastos = hasPermission(PERMISSIONS.NOMINA_AJUSTES);
+
     const { license } = useConfigStore();
     const planId = license?.plan || 'bodega';
     const hasEmployeeFeatures = hasFeature(planId, FEATURES.EMPLEADOS_BASICO) || hasFeature(planId, FEATURES.ROLES);
@@ -33,25 +64,30 @@ export default function MoneyExpenseView({ onClose }) {
         moneda: 'USD',
         medio: 'CASH',
         motivo: '',
+        categoria: '',
         esAdelanto: false
     });
     const [targetEmployeeId, setTargetEmployeeId] = useState('');
 
-    // 📊 Live query: últimos gastos de hoy
+    // Live query: últimos gastos de hoy
     const gastosRecientes = useLiveQuery(async () => {
-        const inicio = new Date(); inicio.setHours(0, 0, 0, 0);
-        const fin = new Date(); fin.setHours(23, 59, 59, 999);
+        const { inicio, fin } = getLocalDayBounds();
         const logs = await db.logs
             .where('fecha')
-            .between(inicio.toISOString(), fin.toISOString())
+            .between(inicio, fin)
             .and(l => l.tipo === 'GASTO_CAJA')
             .reverse()
             .toArray();
-        return logs.slice(0, 5); // últimos 5
+        return logs.slice(0, 5);
     }, []) || [];
 
-    // 🗑️ Handle Revert
+    // Handle Revert
     const handleDeleteGasto = async (gasto) => {
+        if (!canRevertGastos) {
+            Swal.fire('Acceso Denegado', 'No tienes permiso para revertir gastos.', 'error');
+            return;
+        }
+
         const result = await Swal.fire({
             title: '¿Eliminar Gasto?',
             text: `Se devolverá el dinero a la caja (${gasto.referencia} ${parseFloat(gasto.cantidad).toFixed(2)}). Esta acción no se puede deshacer.`,
@@ -64,28 +100,33 @@ export default function MoneyExpenseView({ onClose }) {
 
         if (result.isConfirmed) {
             try {
-                // Pedir motivo opcional? Por rapidez usamos "Corrección de Usuario"
                 const res = await revertirGasto(gasto.id, `Eliminado por usuario: ${usuario?.nombre}`);
                 if (res.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Eliminado',
-                        text: 'El dinero ha regresado a la gaveta.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                } else {
-                    throw new Error(res.message);
-                }
+                    Swal.fire({ icon: 'success', title: 'Eliminado', text: 'El dinero ha regresado a la gaveta.', timer: 1500, showConfirmButton: false });
+                } else throw new Error(res.message);
             } catch (error) {
                 Swal.fire('Error', error.message || 'No se pudo eliminar', 'error');
             }
         }
     };
 
-    // 🏪 Filter chips by plan — 'Personal' only for plans with employee management
-    const ALL_CHIPS = ['Proveedores', 'Servicios', 'Personal', 'Mantenimiento', 'Limpieza', 'Varios'];
-    const CHIPS = hasEmployeeFeatures ? ALL_CHIPS : ALL_CHIPS.filter(c => c !== 'Personal');
+    // Chips (filter by plan)
+    const ALL_CHIPS = [
+        { id: 'PROVEEDORES', label: 'Proveedores', icon: ShoppingBag },
+        { id: 'SERVICIOS', label: 'Servicios', icon: CreditCard },
+        { id: 'PERSONAL', label: 'Personal', icon: Users },
+        { id: 'MANTENIMIENTO', label: 'Mantenim.', icon: Wrench },
+        { id: 'LIMPIEZA', label: 'Limpieza', icon: SprayCan },
+        { id: 'VARIOS', label: 'Varios', icon: MoreHorizontal }
+    ];
+    const CHIPS = hasEmployeeFeatures ? ALL_CHIPS : ALL_CHIPS.filter(c => c.id !== 'PERSONAL');
+
+    // [V4] Medios de pago — Efectivo, Transferencia, Pago Móvil
+    const MEDIOS = [
+        { id: 'CASH', label: 'Efectivo', icon: Wallet },
+        { id: 'TRANSFER', label: 'Transferencia', icon: CreditCard },
+        { id: 'PAGO_MOVIL', label: 'Pago Móvil', icon: Smartphone }
+    ];
 
     const handleMoneySubmit = async () => {
         if (!moneyData.monto || parseFloat(moneyData.monto) <= 0) {
@@ -100,8 +141,6 @@ export default function MoneyExpenseView({ onClose }) {
                 return;
             }
 
-            // 🛡️ VERIFICAR LIMITE DE SUELDO
-            // [FIX M3] Convertir VES->USD ANTES de validar capacidad
             let montoAdv = parseFloat(moneyData.monto);
             if (moneyData.moneda === 'VES' || moneyData.moneda === 'BS') {
                 const tasa = parseFloat(configuracion?.tasa) || 1;
@@ -111,7 +150,6 @@ export default function MoneyExpenseView({ onClose }) {
 
             if (!validacion.puede) {
                 const { sueldo, deudaActual, disponible } = validacion.detalles || {};
-
                 await Swal.fire({
                     title: 'Límite Excedido',
                     html: `
@@ -130,13 +168,12 @@ export default function MoneyExpenseView({ onClose }) {
                 return;
             }
 
-            // [FIX m1] Usar setter en vez de mutación directa del state
             let motivoFinal = moneyData.motivo;
-            if (motivoFinal.length < 5) motivoFinal = "Adelanto de Nómina";
+            if (motivoFinal.length < 3) motivoFinal = "Adelanto de Nómina";
             setIsSubmitting(true);
             result = await registrarAdelantoSueldo(targetEmployeeId, parseFloat(moneyData.monto), motivoFinal, moneyData.moneda);
         } else {
-            if (moneyData.motivo.length < 5) {
+            if (moneyData.motivo.length < 3) {
                 Swal.fire('Error', 'El motivo debe ser más detallado', 'warning');
                 return;
             }
@@ -146,28 +183,30 @@ export default function MoneyExpenseView({ onClose }) {
                 moneda: moneyData.moneda,
                 medio: moneyData.medio,
                 motivo: moneyData.motivo,
+                categoria: moneyData.categoria || 'GENERAL',
                 usuario
             });
         }
 
         setIsSubmitting(false);
         if (result.success) {
-            const audio = new Audio('/sounds/cash_register.mp3'); // Optional FX
-            audio.volume = 0.5;
-            audio.play().catch(e => { });
+            try {
+                const audio = new Audio('/sounds/cash_register.mp3');
+                audio.volume = 0.5;
+                audio.play().catch(() => { });
+            } catch (e) { }
 
             Swal.fire({ icon: 'success', title: 'Operación Exitosa', text: result.message || 'Registro completado', timer: 1500, showConfirmButton: false });
             onClose();
         } else {
-            console.error("❌ Error en MoneyExpenseView:", result);
             Swal.fire('Error', result.message || "Error desconocido", 'error');
         }
     };
 
-    // [FIX m3] Memoizar SidePanel para evitar re-mount en cada render
-    const sidePanel = useMemo(() => (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-            {/* 1. EMPLOYEE SELECTOR (If Adelanto) OR RECENT ACTIVITY */}
+    // Side Panel
+    const sidePanel = (
+        <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
+            {/* Employee Selector or Recent Activity */}
             {moneyData.esAdelanto ? (
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Empleado Solicitante</h3>
@@ -197,23 +236,39 @@ export default function MoneyExpenseView({ onClose }) {
                         <Clock size={12} /> Historial de Hoy
                     </h3>
                     {gastosRecientes.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-center py-6 opacity-60">
-                            <Clock size={28} className="text-slate-300 mb-2" />
-                            <p className="text-xs font-medium text-slate-400">Sin gastos registrados hoy</p>
+                        /* [V8] Better empty state */
+                        <div className="flex flex-col items-center justify-center text-center py-8">
+                            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-3">
+                                <Sparkles size={24} className="text-emerald-400" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-500">¡Día limpio!</p>
+                            <p className="text-[10px] text-slate-400 mt-1">Sin gastos registrados hoy</p>
                         </div>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             {gastosRecientes.map((g, i) => {
                                 const moneda = g.meta?.moneda || g.referencia || 'USD';
                                 const simbolo = moneda === 'VES' || moneda === 'BS' ? 'Bs' : '$';
                                 const monto = parseFloat(g.cantidad) || 0;
-                                // Tiempo relativo
                                 const mins = Math.round((Date.now() - new Date(g.fecha).getTime()) / 60000);
                                 const tiempoLabel = mins < 1 ? 'ahora' : mins < 60 ? `hace ${mins}m` : `hace ${Math.floor(mins / 60)}h`;
+
+                                // [V3] Category-based icon
+                                const categoria = g.meta?.categoria || 'GENERAL';
+                                const catConfig = CATEGORY_CONFIG[categoria] || CATEGORY_CONFIG.GENERAL;
+                                const CatIcon = catConfig.icon;
+
                                 return (
-                                    <div key={g.id || i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group">
-                                        <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center flex-shrink-0">
-                                            <DollarSign size={14} strokeWidth={3} />
+                                    <motion.div
+                                        key={g.id || i}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.05 }}
+                                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                                    >
+                                        {/* [V3] Category icon */}
+                                        <div className={`w-8 h-8 rounded-lg ${catConfig.bg} ${catConfig.color} flex items-center justify-center flex-shrink-0`}>
+                                            <CatIcon size={14} strokeWidth={2.5} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-bold text-slate-700 truncate">{g.detalle || 'Gasto'}</p>
@@ -222,18 +277,21 @@ export default function MoneyExpenseView({ onClose }) {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs font-black text-rose-600 flex-shrink-0">
+                                            {/* [V3] Color-coded amount */}
+                                            <span className={`text-xs font-black flex-shrink-0 ${getAmountColor(monto)}`}>
                                                 -{simbolo}{monto.toFixed(2)}
                                             </span>
-                                            <button
-                                                onClick={() => handleDeleteGasto(g)}
-                                                className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
-                                                title="Revertir este gasto"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            {canRevertGastos && (
+                                                <button
+                                                    onClick={() => handleDeleteGasto(g)}
+                                                    className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                                                    title="Revertir este gasto"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 );
                             })}
                         </div>
@@ -241,24 +299,41 @@ export default function MoneyExpenseView({ onClose }) {
                 </div>
             )}
 
-            {/* 2. QUICK MOTIVES */}
+            {/* Category Chips */}
             <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Motivos Frecuentes</h3>
-                <div className="flex flex-wrap gap-2">
-                    {CHIPS.map(chip => (
-                        <button
-                            key={chip}
-                            onClick={() => setMoneyData({ ...moneyData, motivo: chip + ': ' })}
-                            className="px-3 py-2 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-400 transition-all active:scale-95 shadow-sm"
-                        >
-                            {chip}
-                        </button>
-                    ))}
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Categoría de Gasto</h3>
+                <div className="grid grid-cols-3 gap-2">
+                    {CHIPS.map(chip => {
+                        const isActive = moneyData.categoria === chip.id;
+                        const ChipIcon = chip.icon;
+                        return (
+                            <button
+                                key={chip.id}
+                                onClick={() => {
+                                    const currentMotivo = moneyData.motivo.trim();
+                                    // Smart append — if user typed custom text, prepend category
+                                    const chipLabels = CHIPS.map(c => c.label);
+                                    const hasChipPrefix = chipLabels.some(l => currentMotivo.startsWith(l + ':'));
+                                    const newMotivo = !currentMotivo || hasChipPrefix
+                                        ? `${chip.label}: `
+                                        : `${chip.label}: ${currentMotivo}`;
+                                    setMoneyData({ ...moneyData, motivo: newMotivo, categoria: chip.id });
+                                }}
+                                className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all duration-200 ${isActive
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-600 ring-2 ring-indigo-500/20 scale-105'
+                                    : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                                    }`}
+                            >
+                                <ChipIcon size={16} strokeWidth={2} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">{chip.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* 3. CONFIRMATION FOOTER */}
-            <div className="mt-auto pt-6">
+            {/* Confirm Button */}
+            <div className="mt-auto pt-4">
                 <HoldToConfirmButton
                     onConfirm={handleMoneySubmit}
                     label="MANTENER PARA RETIRAR"
@@ -273,7 +348,7 @@ export default function MoneyExpenseView({ onClose }) {
                 <p className="text-center text-[10px] text-slate-400 mt-3 font-medium">Esta acción afectará la caja inmediatamente</p>
             </div>
         </div>
-    ), [moneyData, targetEmployeeId, gastosRecientes, usuarios, CHIPS, isSubmitting]);
+    );
 
     return (
         <FinancialLayout
@@ -283,8 +358,8 @@ export default function MoneyExpenseView({ onClose }) {
             color="indigo"
             sidePanel={sidePanel}
         >
-            <div className="space-y-8 max-w-xl mx-auto">
-                {/* 1. INPUT GIGANTE */}
+            <div className="space-y-6 md:space-y-8 max-w-xl mx-auto">
+                {/* 1. BIG INPUT */}
                 <BigCurrencyInput
                     value={moneyData.monto}
                     onChange={v => setMoneyData({ ...moneyData, monto: v })}
@@ -293,8 +368,10 @@ export default function MoneyExpenseView({ onClose }) {
                     conversionRate={configuracion.tasa}
                 />
 
-                {/* 2. TOGGLE ADELANTO — Only for plans with employee management */}
-                {hasEmployeeFeatures && (
+
+
+                {/* TOGGLE ADELANTO */}
+                {hasEmployeeFeatures && canDoAdelantos && (
                     <div
                         onClick={() => setMoneyData({ ...moneyData, esAdelanto: !moneyData.esAdelanto })}
                         className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center gap-4 group ${moneyData.esAdelanto ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-slate-300'}`}
@@ -312,13 +389,13 @@ export default function MoneyExpenseView({ onClose }) {
                     </div>
                 )}
 
-                {/* 3. INPUT MOTIVO */}
+                {/* MOTIVO INPUT */}
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Concepto / Detalle</label>
                     <textarea
                         value={moneyData.motivo}
                         onChange={e => setMoneyData({ ...moneyData, motivo: e.target.value })}
-                        className="w-full bg-slate-50 border-none rounded-2xl p-4 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all resize-none h-32 text-lg placeholder:text-slate-300"
+                        className="w-full bg-slate-50 border-none rounded-2xl p-4 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all resize-none h-28 md:h-32 text-base md:text-lg placeholder:text-slate-300"
                         placeholder="Ej: Pago de agua potable..."
                     />
                 </div>

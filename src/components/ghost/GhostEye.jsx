@@ -35,7 +35,7 @@ export const GhostEye = () => {
                 path: window.location.hash
             };
 
-            // 3. Log to Global Buffer
+            // 3. Log to Global Buffer (Ring Buffer — max 500)
             if (window.GhostBuffer) {
                 window.GhostBuffer.push({
                     type: 'USER_INTERACTION',
@@ -45,6 +45,10 @@ export const GhostEye = () => {
                     target: selector,
                     meta
                 });
+                // 🛡️ Prevent memory leak on long POS sessions
+                if (window.GhostBuffer.length > 500) {
+                    window.GhostBuffer = window.GhostBuffer.slice(-400);
+                }
             }
         };
 

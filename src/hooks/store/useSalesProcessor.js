@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Swal from 'sweetalert2';
 import { SalesService } from '../../services/pos/SalesService';
+import { useAnalyticsCache } from '../analytics/useAnalyticsCache';
 
 export const useSalesProcessor = (
     usuario,
@@ -18,6 +19,7 @@ export const useSalesProcessor = (
         setIsProcessing(true);
         try {
             await SalesService.anularVenta(id, motivo, usuario, transaccionAnulacion, actualizarBalances);
+            useAnalyticsCache.getState().invalidate(); // 🗑️ Cache bust on void
             if (playSound) playSound('TRASH');
         } catch (e) {
             console.error(e);
@@ -45,6 +47,7 @@ export const useSalesProcessor = (
             // UI Orchestration
             if (setCarrito) setCarrito([]);
             if (playSound) playSound('CASH_REGISTER');
+            useAnalyticsCache.getState().invalidate(); // 💡 Cache bust after sale
 
             // Persistence Verify (Debug)
             if (typeof window !== 'undefined') window.__LAST_VENTA_SAVED = nuevaVenta;

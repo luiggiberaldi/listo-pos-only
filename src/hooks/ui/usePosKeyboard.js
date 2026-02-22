@@ -300,23 +300,19 @@ export const usePosKeyboard = ({
     // D. SELECCIÓN (Enter)
     if (e.key === 'Enter') {
       e.preventDefault();
+      if (filtrados.length === 0) return;
 
-      // 1. Prioridad: Match exacto con el texto ingresado (Scanner Speed)
-      const exactMatch = filtrados.find(p => p.codigo?.toLowerCase() === busqueda.toLowerCase());
-      if (exactMatch) {
-        actions.prepararAgregar(exactMatch);
-        return;
-      }
-
-      // 2. Fallback: Selección por índice visual
+      // 1. Navegó con flechas → respetar selección visual
       if (selectedIndex !== -1) {
-        const productoIndex = filtrados[selectedIndex];
-        if (productoIndex) actions.prepararAgregar(productoIndex);
-      } else {
-        // En caso que le de Enter al input y NO hay exact match y no ha seleccionado nada:
-        // Puede que quieras que no haga nada, o que seleccione el Item 0
-        // Dejaremos que no haga nada por seguridad, así el Enter en el input es para buscar/escanear
+        const productoSeleccionado = filtrados[selectedIndex];
+        if (productoSeleccionado) {
+          actions.prepararAgregar(productoSeleccionado);
+          return;
+        }
       }
+
+      // 2. Sin flechas (Enter directo en barra) → primer producto filtrado
+      actions.prepararAgregar(filtrados[0]);
     }
   };
 

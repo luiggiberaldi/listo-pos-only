@@ -115,17 +115,17 @@ export const Assistant = ({ variant = 'floating' }) => {
             // 1. Sync Cloud Memory (Background)
             ghostService.syncCloudMemory().then(() => {
                 // Refresh local after cloud sync
-                db.ghost_history.orderBy('timestamp').reverse().limit(15).toArray().then(arr => {
+                ghostService.getHistory(15).then(arr => {
                     if (arr.length > 0) {
-                        setMessages(arr.reverse().map(m => ({ id: m.id, role: m.role, text: m.content })));
+                        setMessages(arr.map(m => ({ id: m.id, role: m.role, text: m.content || m.text })));
                     }
                 });
             });
 
             // 2. Initial Local Load (Fast)
-            const localArr = await db.ghost_history.orderBy('timestamp').reverse().limit(15).toArray();
+            const localArr = await ghostService.getHistory(15);
             if (localArr.length > 0) {
-                setMessages(localArr.reverse().map(m => ({ id: m.id, role: m.role, text: m.content })));
+                setMessages(localArr.map(m => ({ id: m.id, role: m.role, text: m.content || m.text })));
             }
         };
 
@@ -212,11 +212,8 @@ export const Assistant = ({ variant = 'floating' }) => {
 
     const handleClearConversation = async () => {
         try {
-            // Clear local IndexedDB
-            await db.ghost_history.clear();
-
-            // Clear cloud memory
-            await ghostService.clearCloudMemory();
+            // Clear memory (Local + Cloud wrapper handles per-user isolation)
+            await ghostService.clearMemory();
 
             // Reset to initial state
             setMessages([

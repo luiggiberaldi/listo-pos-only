@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { fixFloat, convertirABase } from '../../utils/mathUtils';
@@ -40,9 +41,10 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                 'SALIDA_VENTA',
                 'SALIDA_AJUSTE',
                 'PRODUCTO_ELIMINADO',
-                'CONSUMO_INTERNO' // 🆕 Added to fix missing visibility
+                'CONSUMO_INTERNO'
             )
             .reverse()
+            .limit(200) // 📦 Cache: only load latest 200 movement records into memory
             .toArray()
         , []) || [];
 
@@ -76,6 +78,15 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
 
     const agregarProducto = async (n) => {
         verify(PERMISSIONS.INVENTORY_MANAGE, 'Crear Producto');
+
+        // 🛡️ [MJ-8] Validar unicidad de código de producto
+        if (n.codigo && n.codigo.trim()) {
+            const existente = await db.productos.where('codigo').equals(n.codigo.trim()).first();
+            if (existente) {
+                throw new Error(`Ya existe un producto con el código "${n.codigo}". Use otro código.`);
+            }
+        }
+
         await db.transaction('rw', db.productos, db.logs, async () => {
             const stockBase = parseFloat(n.stock) || 0;
             const prod = { ...n, stock: fixFloat(stockBase), id: timeProvider.timestamp() };
@@ -314,6 +325,11 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                 const cantidadReduccion = parseFloat(item.cantidad) || 0;
                 const nuevoStock = fixFloat(stockAnterior - cantidadReduccion);
 
+                // 🛡️ [BUG-1 FIX] Validar que el stock no quede negativo
+                if (nuevoStock < 0) {
+                    throw new Error(`Stock insuficiente para "${prod.nombre}". Disponible: ${stockAnterior}, Solicitado: ${cantidadReduccion}`);
+                }
+
                 // ✅ Calculate diff safely
                 const diff = Math.abs(fixFloat(stockAnterior - nuevoStock));
                 const finalDiff = isNaN(diff) ? cantidadReduccion : diff; // Fallback
@@ -383,7 +399,8 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         });
     };
 
-    return {
+    // 🚀 [MJ-1] Memoizar retorno para evitar re-renders en cascada
+    return useMemo(() => ({
         productos,
         categorias,
         movimientos,
@@ -399,5 +416,6 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
         eliminarMovimientos,
         registrarConsumoInterno,
         revertirConsumoInterno
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [productos, categorias, movimientos]);
 };

@@ -266,6 +266,25 @@ export default function MainLayout() {
 
         <div className="p-3 border-t border-border-subtle flex-shrink-0 bg-surface-light dark:bg-surface-dark z-10 flex flex-col gap-1">
 
+          {/* 📡 NETWORK STATUS PILL */}
+          <div className={`flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg mb-1 transition-all duration-300 ${isOnline
+              ? 'bg-emerald-500/10 dark:bg-emerald-500/5'
+              : 'bg-amber-500/10 dark:bg-amber-500/5'
+            }`}>
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${isOnline
+                ? 'bg-emerald-500 shadow-[0_0_6px_1px_rgba(16,185,129,0.4)]'
+                : 'bg-amber-500 shadow-[0_0_6px_1px_rgba(245,158,11,0.4)] animate-pulse'
+              }`} />
+            {!isCollapsed && (
+              <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${isOnline
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-amber-600 dark:text-amber-400'
+                }`}>
+                {isOnline ? 'En Línea' : 'Sin Conexión'}
+              </span>
+            )}
+          </div>
+
           {/* 🕒 SYSTEM CLOCK — Componente aislado para no propagar re-renders */}
           <SystemClock isCollapsed={isCollapsed} />
 
@@ -283,7 +302,7 @@ export default function MainLayout() {
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-app-light dark:bg-app-dark">
-        {!isOnline && <div className="bg-amber-500 text-white text-xs font-bold text-center py-1 w-full z-50 shadow-md flex-shrink-0">⚠️ SIN CONEXIÓN A INTERNET</div>}
+        {/* Network status now shown in sidebar pill — no more invasive top banner */}
         <SecurityAdvisory />
         <SecurityReportPanel />
         <SecurityCriticalGate />

@@ -15,8 +15,8 @@ export const FinanceService = {
      * Registra un gasto monetario (Salida de Caja).
      * @param {Object} datos - { monto, moneda, medio, motivo, usuario }
      */
-    registrarGasto: async ({ monto, moneda, medio, motivo, usuario, cajaId = DEFAULT_CAJA }) => {
-        // Validaciones Bese
+    registrarGasto: async ({ monto, moneda, medio, motivo, categoria, usuario, cajaId = DEFAULT_CAJA }) => {
+        // Validaciones Base
         if (!monto || monto <= 0) throw new Error("Monto inválido");
         if (!usuario || !usuario.id) throw new Error("Usuario requerido");
 
@@ -26,7 +26,6 @@ export const FinanceService = {
             // 1. Validar Estado de Caja
             const currentSession = await db.caja_sesion.get(cajaId);
             if (!currentSession || !currentSession.isAbierta) {
-                // TODO: Permitir configuración para gastos con caja cerrada? Por ahora STRICT.
                 throw new Error("La caja está cerrada. Abre un turno desde Ventas para registrar movimientos.");
             }
 
@@ -62,6 +61,7 @@ export const FinanceService = {
                 meta: {
                     moneda,
                     medio,
+                    categoria: categoria || 'GENERAL', // [FIX ARQ-1] Categoría para reportes
                     tasaSnapshot: tasaActual, // 📸 SNAPSHOT HISTÓRICO
                     balanceSnapshot: newBalances // Snapshot útil para auditoría
                 }

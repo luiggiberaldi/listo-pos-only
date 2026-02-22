@@ -5,7 +5,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { fixFloat } from '../../utils/mathUtils';
-import { calcularKPIs } from '../../utils/reportUtils'; // 🟢 IMPORT AUDITED LOGIC
+import { calcularKPIs } from '../../utils/reportUtils';
+import { useAnalyticsCache } from './useAnalyticsCache';
 
 /**
  * useUnifiedAnalytics.js
@@ -13,6 +14,8 @@ import { calcularKPIs } from '../../utils/reportUtils'; // 🟢 IMPORT AUDITED L
  * Optimizado: Usa Cursores y Conteos para no cargar la DB en RAM.
  */
 export const useUnifiedAnalytics = () => {
+  // 🗃️ Shared cache — avoids full-history re-scan more than once per minute
+  const { historical, isStale, setHistorical, beginScan, scanning } = useAnalyticsCache();
 
   const stats = useLiveQuery(async () => {
     // 0. DEFINICIÓN DE RANGOS
@@ -128,17 +131,24 @@ export const useUnifiedAnalytics = () => {
     const kpisAyer = calcularKPIs(salesAyer, 16);
     const kpisMes = calcularKPIs(salesMes, 16);
 
-    // B. Consulta Separada para Histórico (Solo Sumas, sin objetos pesados)
-    // Legacy accumulation for history remains valid for speed, as exact profit per item 
-    // for ALL TIME history is too heavy to recalculate on every render.
+    // B. Historical totals — expensive full-scan, throttled via cache (60s TTL)
     let historicalTotal = 0;
     let historicalGanancia = 0;
 
-    await db.ventas.where('status').equals('COMPLETADA').each(v => {
-      historicalTotal += (parseFloat(v.total) || 0);
-      historicalGanancia += ((parseFloat(v.total) || 0) - (parseFloat(v.costoTotal) || 0));
-    });
-
+    if (isStale() && !scanning) {
+      // Only one instance runs the scan; others reuse the cached result
+      beginScan();
+      await db.ventas.where('status').equals('COMPLETADA').each(v => {
+        historicalTotal += (parseFloat(v.total) || 0);
+        historicalGanancia += ((parseFloat(v.total) || 0) - (parseFloat(v.costoTotal) || 0));
+      });
+      setHistorical({ total: historicalTotal, ganancia: historicalGanancia });
+    } else {
+      // Use cached value (fresh or scan in-flight — return last known good)
+      const cached = useAnalyticsCache.getState().historical;
+      historicalTotal = cached?.total ?? 0;
+      historicalGanancia = cached?.ganancia ?? 0;
+    }
 
     // 3. POST-PROCESAMIENTO Y ARREGLO DE DECIMALES
     const fix = (n) => fixFloat(n);

@@ -49,7 +49,7 @@ export default function InventarioPage() {
     // PERMISOS
     const showCosts = tienePermiso(PERMISOS.INV_VER_COSTOS);
     const canSeeStats = tienePermiso(PERMISOS.REP_VER_DASHBOARD);
-    const canManageAudit = tienePermiso(PERMISOS.ADMIN_AUDITORIA);
+    const canManageAudit = tienePermiso(PERMISOS.REP_VER_AUDITORIA); // [FIX PERM-1] was ADMIN_AUDITORIA (phantom)
 
     // ESTADOS MODALES
     const [mostrarModal, setMostrarModal] = useState(false);
@@ -160,7 +160,6 @@ export default function InventarioPage() {
     };
 
     const actions = {
-        // ... (existing actions)
         onEdit: (p) => { setProductoAEditar(p); setMostrarModal(true); },
         onDuplicate: (p) => {
             const copia = {
@@ -193,10 +192,6 @@ export default function InventarioPage() {
             handlePrintSingle(p, ctx);
         }
     };
-
-    // ... (modales helpers)
-
-    // ... (modales helpers)
 
     const abrirModalCrear = () => {
         setProductoAEditar(null); setMostrarModal(true);

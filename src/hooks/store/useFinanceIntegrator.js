@@ -115,43 +115,50 @@ export const useFinanceIntegrator = () => {
     }, [registrarDeuda, registrarConsumoInterno, usuario, usuarios]);
 
 
-    // 3️⃣ CIERRE DE NOMINA (Periodo -> Gasto Automático)
-    // [FIX M1] Ahora registra gasto de caja automáticamente al cerrar semana
+    // [FIX BUG-5] Wrap entire flow in a single transaction to prevent race conditions
     const cerrarSemanaConPago = useCallback(async () => {
         try {
-            // A. Calcular neto a pagar ANTES de cerrar
-            const empleadosActivos = usuarios.filter(u => u.activo && u.rol !== 'admin');
-            let totalSueldos = 0;
-            let totalDeudas = 0;
-            const detalleEmpleados = [];
+            // Atomic transaction: calculate + close + register expense
+            // [FIX] Build table list dynamically — periodos_nomina may not exist in older IDB versions
+            const tables = [db.empleados_finanzas, db.historial_nomina, db.nomina_ledger];
+            if (db.periodos_nomina) tables.push(db.periodos_nomina);
+            const result = await db.transaction('rw', ...tables, async () => {
+                // A. Calculate net payable (inside transaction = no race)
+                const todosEmp = await db.empleados_finanzas.toArray();
+                let totalSueldos = 0;
+                let totalDeudas = 0;
+                const detalleEmpleados = [];
 
-            for (const emp of empleadosActivos) {
-                const finanzas = await db.empleados_finanzas.get(emp.id);
-                if (finanzas) {
-                    const sueldo = finanzas.sueldoBase || 0;
-                    const deuda = finanzas.deudaAcumulada || 0;
+                for (const finanzas of todosEmp) {
+                    const sueldo = parseFloat(finanzas.sueldoBase) || 0;
+                    const deuda = parseFloat(finanzas.deudaAcumulada) || 0;
                     const neto = Math.max(0, sueldo - deuda);
                     totalSueldos += sueldo;
                     totalDeudas += deuda;
                     if (neto > 0) {
-                        detalleEmpleados.push(`${emp.nombre}: $${neto.toFixed(2)}`);
+                        // Try to find employee name from usuarios
+                        const emp = usuarios?.find(u => u.id == finanzas.userId);
+                        detalleEmpleados.push(`${emp?.nombre || finanzas.userId}: $${neto.toFixed(2)}`);
                     }
                 }
+
+                const netoAPagar = Math.max(0, totalSueldos - totalDeudas);
+
+                // B. Execute period closure
+                const resCierre = await cerrarPeriodoGlobal();
+                if (!resCierre.success) throw new Error(resCierre.message);
+
+                return { netoAPagar, totalSueldos, totalDeudas, detalleEmpleados, ...resCierre };
             }
+            );
 
-            const netoAPagar = Math.max(0, totalSueldos - totalDeudas);
-
-            // B. Ejecutar Cierre en DB (Snapshot de deudas, reset contadores)
-            const resCierre = await cerrarPeriodoGlobal();
-            if (!resCierre.success) throw new Error(resCierre.message);
-
-            // C. Registrar Gasto de Nómina en Caja (si hay monto)
-            if (netoAPagar > 0) {
+            // C. Register expense AFTER transaction (separate because registrarGasto has its own transaction)
+            if (result.netoAPagar > 0) {
                 const resGasto = await registrarGasto({
-                    monto: netoAPagar,
+                    monto: result.netoAPagar,
                     moneda: 'USD',
                     medio: 'CASH',
-                    motivo: `Pago Nómina Semanal: ${detalleEmpleados.join(' | ')}`,
+                    motivo: `Pago Nómina Semanal: ${result.detalleEmpleados.join(' | ')}`,
                     categoria: 'NOMINA'
                 });
                 if (!resGasto.success) {
@@ -161,8 +168,8 @@ export const useFinanceIntegrator = () => {
 
             return {
                 success: true,
-                message: `Semana cerrada. Neto pagado: $${netoAPagar.toFixed(2)}`,
-                data: { ...resCierre, netoAPagar, totalSueldos, totalDeudas, detalleEmpleados }
+                message: `Semana cerrada. Neto pagado: $${result.netoAPagar.toFixed(2)}`,
+                data: result
             };
 
         } catch (error) {

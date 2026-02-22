@@ -1,6 +1,23 @@
 import { useCartStore } from '../stores/useCartStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useInventoryStore } from '../stores/useInventoryStore';
+import { useConfigStore } from '../stores/useConfigStore';
+import { useAuthStore } from '../stores/useAuthStore';
+import { PERMISSIONS, ROLE_PERMISSIONS, ROLES } from '../config/permissions';
+
+/**
+ * 🔐 Permission check helper (outside React hooks)
+ */
+function _hasPermission(permission) {
+    const usuario = useAuthStore.getState().usuario;
+    if (!usuario) return false;
+    const role = usuario.roleId;
+    // Owner/Admin always passes
+    if (role === ROLES.OWNER || usuario.tipo === 'ADMIN' || usuario.id === 1) return true;
+    const rolePerms = ROLE_PERMISSIONS[role] || [];
+    const customPerms = usuario.customPermissions || [];
+    return [...rolePerms, ...customPerms].includes(permission);
+}
 
 /**
  * 🛠️ GHOST TOOLS DISPATCHER
@@ -79,28 +96,80 @@ export const GhostTools = {
         return { success: true, message: "🧹 Carrito vaciado." };
     },
 
-    // ⚙️ CONFIG ACTIONS
-    set_exchange_rate: async (rate) => {
+    // ⚙️ CONFIG ACTIONS — EXCHANGE RATE
+    /**
+     * set_exchange_rate — Enhanced with BCV, Euro, and rounding support
+     * @param {Object} params
+     * @param {number}  [params.rate]      — Manual rate value (e.g., 450)
+     * @param {string}  [params.source]    — 'manual' | 'bcv' (default: 'manual' if rate given, 'bcv' if not)
+     * @param {string}  [params.currency]  — 'USD' | 'EUR' (default: 'USD')
+     * @param {string}  [params.rounding]  — 'exacto' | 'multiplo5' | 'multiplo10' (default: 'exacto')
+     */
+    set_exchange_rate: async (params = {}) => {
         try {
-            const numericRate = parseFloat(rate);
-            if (isNaN(numericRate) || numericRate <= 0) {
-                return { success: false, message: "❌ Tasa inválida. Debe ser un número positivo." };
+            // 🔐 PERMISSION CHECK
+            if (!_hasPermission(PERMISSIONS.CONF_FINANZAS_EDITAR)) {
+                return {
+                    success: false,
+                    message: "🔒 No tienes permiso para cambiar la tasa. Necesitas el permiso de Finanzas."
+                };
             }
 
-            const configStore = useConfigStore.getState();
-            configStore.setConfiguracion({
-                ...configStore.configuracion,
-                tasa: numericRate,
-                fechaTasa: new Date().toISOString()
-            });
+            const { rate, source = 'manual', currency = 'USD', rounding = 'exacto' } = params;
 
-            return {
-                success: true,
-                message: `✅ Tasa actualizada a ${numericRate} Bs.`,
-                data: { rate: numericRate }
-            };
+            // === MODE 1: MANUAL RATE ===
+            if (source === 'manual') {
+                const numericRate = parseFloat(rate);
+                if (isNaN(numericRate) || numericRate <= 0) {
+                    return { success: false, message: "❌ Tasa inválida. Debe ser un número positivo." };
+                }
+
+                const configStore = useConfigStore.getState();
+                configStore.setConfiguracion({
+                    ...configStore.configuracion,
+                    tasa: numericRate,
+                    fechaTasa: new Date().toISOString(),
+                    fuenteTasa: 'Manual (Ghost)'
+                });
+
+                return {
+                    success: true,
+                    message: `✅ Tasa actualizada manualmente a ${numericRate} Bs.`,
+                    data: { rate: numericRate, source: 'manual' }
+                };
+            }
+
+            // === MODE 2: BCV AUTO-FETCH ===
+            if (source === 'bcv') {
+                const curr = currency.toUpperCase() === 'EUR' ? 'EUR' : 'USD';
+                const roundMode = rounding || 'exacto';
+
+                // Call the store's BCV fetcher (will show Swal loading)
+                const configStore = useConfigStore.getState();
+                const result = await configStore.obtenerTasaBCV(true, curr, roundMode);
+
+                if (result) {
+                    const currLabel = curr === 'EUR' ? 'Euro' : 'Dólar';
+                    const roundLabel = roundMode === 'multiplo5' ? ' (redondeado a múltiplos de 5)'
+                        : roundMode === 'multiplo10' ? ' (redondeado a múltiplos de 10)'
+                            : roundMode === 'entero' ? ' (redondeado al entero)' : ' (exacto)';
+
+                    return {
+                        success: true,
+                        message: `✅ Tasa ${currLabel} BCV actualizada a ${result} Bs${roundLabel}.`,
+                        data: { rate: result, source: 'bcv', currency: curr, rounding: roundMode }
+                    };
+                } else {
+                    return {
+                        success: false,
+                        message: "❌ No se pudo obtener la tasa BCV. Verifica tu conexión a internet e inténtalo nuevamente."
+                    };
+                }
+            }
+
+            return { success: false, message: "❌ Fuente no reconocida. Usa 'manual' o 'bcv'." };
         } catch (e) {
-            return { success: false, message: "Error al cambiar la tasa." };
+            return { success: false, message: "❌ Error al cambiar la tasa: " + e.message };
         }
     },
 
@@ -157,7 +226,7 @@ export const GhostTools = {
                 case 'open_modal': return await GhostTools.open_modal(params.modalName);
                 case 'navigate_to': return await GhostTools.navigate_to(params.path);
                 case 'clear_cart': return await GhostTools.clear_cart();
-                case 'set_exchange_rate': return await GhostTools.set_exchange_rate(params.rate);
+                case 'set_exchange_rate': return await GhostTools.set_exchange_rate(params);
                 default: return { success: false, message: "Acción no soportada por Dispatcher." };
             }
         } catch (e) {

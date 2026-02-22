@@ -1,8 +1,8 @@
 
 // 🧠 LISTO GHOST CORE: GROQ MULTI-KEY ROTATION SYSTEM
-// Capacidad: 8 Motores LPU (Language Processing Units)
+// Capacidad: 15 Motores LPU (Language Processing Units)
 // Estrategia: Round Robin con Penalización por Fallo
-// Objetivo: < 1% Tasa de Fallo
+// Objetivo: <1% Tasa de Fallo
 
 const GROQ_KEYS_CONFIG = [
     import.meta.env.VITE_GROQ_API_KEY_1,
@@ -14,7 +14,12 @@ const GROQ_KEYS_CONFIG = [
     import.meta.env.VITE_GROQ_API_KEY_7,
     import.meta.env.VITE_GROQ_API_KEY_8,
     import.meta.env.VITE_GROQ_API_KEY_9,
-    import.meta.env.VITE_GROQ_API_KEY_10
+    import.meta.env.VITE_GROQ_API_KEY_10,
+    import.meta.env.VITE_GROQ_API_KEY_11,
+    import.meta.env.VITE_GROQ_API_KEY_12,
+    import.meta.env.VITE_GROQ_API_KEY_13,
+    import.meta.env.VITE_GROQ_API_KEY_14,
+    import.meta.env.VITE_GROQ_API_KEY_15,
 ].filter(Boolean);
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';

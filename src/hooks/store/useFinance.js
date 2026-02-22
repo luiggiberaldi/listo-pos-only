@@ -61,7 +61,6 @@ export const useFinance = () => {
         editarMetodoPago,
         toggleMetodoPago,
         eliminarMetodoPago,
-        eliminarMetodoPago,
         registrarGasto,
         revertirGasto: FinanceService.revertirGasto,
         getReporteGastos: FinanceService.getReporteGastos

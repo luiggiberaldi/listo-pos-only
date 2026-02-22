@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import Swal from 'sweetalert2';
 import { Lock } from 'lucide-react';
-import { ROLES } from '../../config/permissions';
+import { ROLES, ROLE_PERMISSIONS } from '../../config/permissions';
 
 import { useMasterTelemetry } from '../../hooks/sync/useMasterTelemetry';
 
@@ -11,7 +11,7 @@ import { useMasterTelemetry } from '../../hooks/sync/useMasterTelemetry';
  * Envuelve un elemento clickable (botón, div, etc).
  * Al hacer click:
  * 1. Verifica si tengo permiso -> Ejecuta onClick directo.
- * 2. Si NO tengo permiso -> Pide PIN de Supervisor (MANAGER u OWNER).
+ * 2. Si NO tengo permiso -> Pide PIN de Supervisor que TENGA el permiso.
  * 3. Si el PIN es válido -> Ejecuta onClick (Elevación de un solo uso).
  */
 export const ActionGuard = ({
@@ -64,18 +64,18 @@ export const ActionGuard = ({
             });
 
             if (pinIngresado) {
-                // Buscamos QUIÉN está autorizando (necesita ser MANAGER o OWNER)
-                const supervisor = usuarios.find(u =>
-                    (u.roleId === ROLES.OWNER || u.roleId === ROLES.MANAGER || u.tipo === 'ADMIN') &&
-                    u.activo
-                );
-
-                // Aquí hay un detalle: necesitamos validar que el PIN corresponda a ALGÚN supervisor
-                // No sabemos cuál, así que probamos contra los supervisores encontrados
-                const supervisores = usuarios.filter(u =>
-                    u.activo &&
-                    (u.roleId === ROLES.OWNER || u.roleId === ROLES.MANAGER || u.tipo === 'ADMIN' || u.id === 1)
-                );
+                // [FIX PERM-2] Filtrar supervisores que TENGAN el permiso específico
+                // No basta con ser Manager/Owner — deben poseer el permiso solicitado
+                const supervisores = usuarios.filter(u => {
+                    if (!u.activo) return false;
+                    // Superuser override: userId 1 o ADMIN siempre puede autorizar
+                    if (u.id === 1 || u.tipo === 'ADMIN') return true;
+                    // Compute the supervisor's total permissions (role + custom)
+                    const rolePerms = ROLE_PERMISSIONS[u.roleId] || [];
+                    const customPerms = u.customPermissions || [];
+                    const totalPerms = new Set([...rolePerms, ...customPerms]);
+                    return totalPerms.has(permission);
+                });
 
                 let autorizado = false;
                 let autorizadorNombre = '';

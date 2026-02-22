@@ -13,12 +13,10 @@ import { ghostContext } from "./ghost/GhostContext";
 import { ghostPrompt } from "./ghost/GhostPrompt";
 
 import { secretsService } from "./config/SecretsService";
+import { GhostTools } from "./GhostTools";
 
 class GhostAIService {
     constructor() {
-        // Initial Load (Default Env)
-        this.loadKeys();
-
         this.currentKeyIndex = 0;
 
         // Providers
@@ -27,28 +25,9 @@ class GhostAIService {
         this.groqAvailable = null;
         this.groqService = groqService;
 
-        // Gemini Models - Initial placeholder
-        this.models = [];
-        this.initModels();
-
-        console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Gemini`);
+        console.log(`👻 Ghost Conciencia 6.0 (Modular). Priority: Groq → OpenRouter → Local RAG`);
         // 🚀 PERF: Provider checks deferred to first generateResponse() call
         this._providersChecked = false;
-    }
-
-    loadKeys() {
-        // Enforce Groq/OpenRouter only. Gemini is disabled.
-        this.keys = [];
-    }
-
-    initModels() {
-        // No Gemini models to init.
-        this.models = [];
-    }
-
-    reloadKeys() {
-        console.log("🔄 GhostAI: Reloading Keys (Groq/OpenRouter Only)...");
-        // No local keys to reload for Gemini. Providers like Groq handle their own keys via SecretsService.
     }
 
     /**
@@ -64,8 +43,9 @@ class GhostAIService {
     }
 
     // --- PROXY METHODS (Memory) ---
+    async getHistory(limit) { return await ghostMemory.getHistory(limit); }
     async syncCloudMemory() { return await ghostMemory.syncCloudMemory(); }
-    async clearCloudMemory() { return await ghostMemory.clearMemory(); }
+    async clearMemory() { return await ghostMemory.clearMemory(); }
     subscribeToRealtimeUpdates(cb) { return ghostMemory.subscribeToRealtimeUpdates(cb); }
 
     // --- AVAILABILITY CHECKS ---
@@ -87,10 +67,66 @@ class GhostAIService {
         }
     }
 
-    // --- FAILOVER LOGIC ---
-    // Deprecated for Gemini-less mode, kept for interface compatibility if needed
-    async withFailover(operation) {
-        throw new Error("GEMINI_DISABLED");
+    // --- INTENT DETECTION ---
+    /**
+     * Detects exchange rate change commands from natural language.
+     * Returns params object for GhostTools.set_exchange_rate, or null if no match.
+     *
+     * Supported patterns:
+     *   "cambia la tasa a 450"         → { rate: 450, source: 'manual' }
+     *   "pon la tasa en 38.50"         → { rate: 38.50, source: 'manual' }
+     *   "tasa a bcv"                   → { source: 'bcv', currency: 'USD', rounding: 'exacto' }
+     *   "tasa a dolar bcv"             → { source: 'bcv', currency: 'USD', rounding: 'exacto' }
+     *   "tasa a euro bcv"              → { source: 'bcv', currency: 'EUR', rounding: 'exacto' }
+     *   "tasa bcv multiplo de 10"      → { source: 'bcv', currency: 'USD', rounding: 'multiplo10' }
+     *   "tasa bcv redondeo de 5"       → { source: 'bcv', currency: 'USD', rounding: 'multiplo5' }
+     *   "tasa euro multiplo 10"        → { source: 'bcv', currency: 'EUR', rounding: 'multiplo10' }
+     */
+    _detectRateIntent(query) {
+        // Normalize: remove accents, lowercase, trim
+        const q = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+        // Must mention "tasa" somewhere
+        if (!q.includes('tasa')) return null;
+
+        // Must have an action verb (avoid matching informational queries like "cual es la tasa")
+        const hasActionVerb = /cambia|pon|actualiza|coloca|mete|sincroniza|sube|baja|ajusta|mueve|ponme|cambiar|actualizar|sincronizar/.test(q);
+        if (!hasActionVerb) return null;
+
+        // Pattern 1: Manual rate → action verb + "tasa" + a number
+        // Matches: "cambia la tasa a 450", "pon tasa en 38.50", "actualiza la tasa a 430"
+        const manualMatch = q.match(/tasa.*?(?:a|en|de)?\s*(\d+(?:[.,]\d+)?)\s*$/i)
+            || q.match(/(\d+(?:[.,]\d+)?)\s*(?:la\s+)?tasa/i);
+        if (manualMatch) {
+            const raw = manualMatch[1].replace(',', '.');
+            const rate = parseFloat(raw);
+            // Only treat as manual if > 20 (avoid confusing with rounding modes like 5/10)
+            if (rate > 20) {
+                console.log(`⚡ Ghost Intent: Manual rate → ${rate}`);
+                return { rate, source: 'manual' };
+            }
+        }
+
+        // Pattern 2: BCV rate (auto-fetch)
+        // If user says action verb + "tasa" without a number → fetch from BCV
+        // "bcv" keyword is optional — it's the only online source anyway
+
+        // Detect currency
+        const isEuro = /euro|eur(?!\w)/i.test(q);
+        const currency = isEuro ? 'EUR' : 'USD';
+
+        // Detect rounding
+        let rounding = 'exacto';
+        if (/multiplo.*10|redondeo.*10|redonde.*10/i.test(q)) {
+            rounding = 'multiplo10';
+        } else if (/multiplo.*5|redondeo.*5|redonde.*5/i.test(q)) {
+            rounding = 'multiplo5';
+        } else if (/entero|redondeado/i.test(q) && !/multiplo|de\s+\d/i.test(q)) {
+            rounding = 'entero';
+        }
+
+        console.log(`⚡ Ghost Intent: BCV rate → ${currency}, rounding: ${rounding}`);
+        return { source: 'bcv', currency, rounding };
     }
 
     // --- MAIN GENERATION FLOW ---
@@ -105,15 +141,21 @@ class GhostAIService {
         let chatHistory = await ghostMemory.getHistory(10);
 
         // 🧹 MEMORY CLEANUP: Clear stale context on greetings
-        // If query is a greeting and history is just [user greeting], clear previous.
-        // (Wait, getHistory returns chronological. If we just added 1, length is at least 1).
-        // The idea is: if I say "Hola", I don't want context from 3 days ago.
         const isGreeting = /^(hola|hi|hey|buenos días|buenas tardes|buenas noches)$/i.test(queryLower);
         if (isGreeting && chatHistory.length > 2) {
-            // Logic refinement: If greeting, usually reset. 
-            // But let's rely on user explicit clear or just keep the simplified flow.
-            // Simplification: We skip the auto-clear hack for now in favor of stability.
-            // Or we can impl: await ghostMemory.clearMemory(); await ghostMemory.addMessage('user', userQuery);
+            // User is starting fresh — clear old context to avoid confusion
+            await ghostMemory.clearMemory();
+            await ghostMemory.addMessage('user', userQuery);
+            chatHistory = [{ role: 'user', content: userQuery }];
+        }
+
+        // ⚡ INTENT DETECTION: Exchange rate commands (deterministic, skip LLM)
+        const rateIntent = this._detectRateIntent(queryLower);
+        if (rateIntent) {
+            const result = await GhostTools.set_exchange_rate(rateIntent);
+            const responseText = result.message;
+            await ghostMemory.addMessage('assistant', responseText);
+            return { text: responseText, action: null, provider: 'TOOL_DIRECT', model: 'intent' };
         }
 
         // 2. CONTEXT (Deep + Reactive)
@@ -215,6 +257,25 @@ class GhostAIService {
             const { action: parsedAction, cleanText } = extractActionFromResponse(responseText);
             action = parsedAction;
             if (cleanText) responseText = cleanText;
+
+            // 7.5 ACTION DISPATCH — Execute tool if LLM emitted an action
+            if (action && action.action && action.action !== 'none') {
+                try {
+                    console.log(`⚡ Ghost Tool Call: ${action.action}`, action);
+                    const toolResult = await GhostTools.dispatch(action.action, action);
+                    if (toolResult) {
+                        // Append tool result to response if there's meaningful text
+                        const toolMsg = toolResult.message || '';
+                        if (toolMsg) {
+                            responseText = responseText
+                                ? `${responseText}\n\n${toolMsg}`
+                                : toolMsg;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Ghost Tool dispatch failed:', e);
+                }
+            }
 
             // 8. MEMORY STORAGE (AI)
             await ghostMemory.addMessage('assistant', responseText);

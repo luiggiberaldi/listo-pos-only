@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { X, ArrowUpCircle, ArrowDownCircle, Save, Minus, Plus, Package, Box, Layers, Calendar } from 'lucide-react';
-import Swal from 'sweetalert2';
+
+// ⚡ [MJ-5] Lazy-load Swal para mejorar bundle splitting
+let _swal = null;
+const getSwal = async () => {
+  if (!_swal) _swal = (await import('sweetalert2')).default;
+  return _swal;
+};
 
 export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
   const [tipo, setTipo] = useState('entrada'); // 'entrada' | 'salida'
@@ -60,21 +66,7 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
     "Error de Conteo (-)"
   ];
 
-  const generarTextoMovimiento = () => {
-    if (producto?.tipoUnidad === 'peso') return `${cantidad.unidades} Kg`;
-
-    const b = parseInt(cantidad.bultos);
-    const p = parseInt(cantidad.paquetes);
-    const u = parseInt(cantidad.unidades);
-    const partes = [];
-
-    if (b > 0) partes.push(`${b} Bulto${b > 1 ? 's' : ''}`);
-    if (p > 0) partes.push(`${p} Paq${p > 1 ? 's' : ''}`);
-    if (u > 0) partes.push(`${u} Und${u > 1 ? 's' : ''}`);
-
-    if (partes.length === 0) return "0 Unds";
-    return partes.join(' + ');
-  };
+  // [BUG-3 FIX] Eliminada función muerta generarTextoMovimiento (duplicada dentro de handleGuardar)
 
   const getStockProyectadoLabel = () => {
     if (producto?.tipoUnidad === 'peso') return `${stockFinal.toFixed(3)} Kg`;
@@ -140,8 +132,9 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
     if (val === '' || /^[0-9\b]+$/.test(val)) setCantidad({ ...cantidad, [campo]: val });
   };
 
-  const handleGuardar = (e) => {
+  const handleGuardar = async (e) => {
     e.preventDefault();
+    const Swal = await getSwal();
 
     const esCambioFecha = nuevaFecha && nuevaFecha !== fechaActual;
     const esMovimientoStock = cantidadTotal > 0;

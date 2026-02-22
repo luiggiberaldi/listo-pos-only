@@ -5,7 +5,6 @@
 import React, { useState } from 'react';
 import { Eye, Trash2, RefreshCw, Ban } from 'lucide-react';
 import ModalDetalleVenta from '../ventas/ModalDetalleVenta';
-import { useStore } from '../../context/StoreContext';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,10 +12,17 @@ import { useNavigate } from 'react-router-dom';
 import { useSecureAction } from '../../hooks/security/useSecureAction';
 import { PERMISOS } from '../../hooks/store/useRBAC';
 
+// ⚡ ZUSTAND STORES (replaces legacy useStore bridge)
+import { useCartStore } from '../../stores/useCartStore';
+import { useStore } from '../../context/StoreContext';
+
 export default function CierreSalesTable({ ventasActivas }) {
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
-  const { limpiarCarrito, agregarAlCarrito, anularVenta, configuracion } = useStore();
+  // 🔄 Cart from ZUSTAND (source of truth for POS)
+  const { limpiarCarrito, agregarAlCarrito } = useCartStore();
+  // Legacy bridge only for anularVenta (still in context)
+  const { anularVenta, configuracion } = useStore();
 
   const navigate = useNavigate();
   const { ejecutarAccionSegura } = useSecureAction();

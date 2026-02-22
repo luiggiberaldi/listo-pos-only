@@ -110,7 +110,7 @@ const applySchema = (dbInstance) => {
     ghost_config: 'key'
   });
 
-  // 📝 V. 17: GHOST EPISODIC MEMORY
+  // 📝 V. 17: GHOST EPISODIC MEMORY (Legacy)
   dbInstance.version(17).stores({
     ghost_history: '++id, sessionId, role, content, timestamp'
   });
@@ -150,6 +150,24 @@ const applySchema = (dbInstance) => {
   // Date-indexed for efficient daily digest queries.
   dbInstance.version(19).stores({
     ghost_audit_log: '++id, category, date, timestamp'
+  });
+
+  // 📝 V. 20: GHOST EMPLOYEE ISOLATION
+  // Add userId to history to separate conversations per employee
+  // Migration assigns existing history to 1 (admin) as fallback
+  dbInstance.version(20).stores({
+    ghost_history: '++id, sessionId, userId, role, content, timestamp'
+  }).upgrade(tx => {
+    return tx.table('ghost_history').toCollection().modify(h => {
+      if (!h.userId) h.userId = 1;
+    });
+  });
+
+  // 📊 V. 21: PAYROLL COMPOUND INDICES
+  // [FIX BUG-4] Enable efficient period-filtered queries for nomina_ledger
+  // [FIX BUG-3] Enable efficient status updates by [empleadoId+status]
+  dbInstance.version(21).stores({
+    nomina_ledger: '++id, empleadoId, tipo, monto, fecha, periodoId, status, [empleadoId+periodoId], [empleadoId+status]'
   });
 };
 

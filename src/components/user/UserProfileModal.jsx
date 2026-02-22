@@ -144,7 +144,7 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                         >
                             {esDueño ? 'Mi Negocio' : 'Resumen'}
                         </button>
-                        {!esPlanBodega && (
+                        {!esPlanBodega && !esDueño && (
                             <button
                                 onClick={() => setActiveTab('finanzas')}
                                 className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'finanzas' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
