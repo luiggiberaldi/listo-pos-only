@@ -2,13 +2,33 @@
 // Archivo: src/components/pos/ModalEspera.jsx
 
 import React, { useState } from 'react';
-import { X, Clock, User, FileText, Trash2, ArrowRightCircle, Eye, EyeOff } from 'lucide-react';
+import { X, Clock, User, FileText, Trash2, ArrowRightCircle, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function ModalEspera({ tickets, onRecuperar, onEliminar, onClose }) {
   const [expandedId, setExpandedId] = useState(null);
 
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleEliminar = (ticket) => {
+    Swal.fire({
+      title: '¿Descartar Ticket?',
+      html: `Estás a punto de eliminar el ticket de <b>${ticket.cliente ? ticket.cliente.nombre : 'Cliente Genérico'}</b> por <b>$${(ticket.totalSnapshot || 0).toFixed(2)}</b>.<br/><br/><span class="text-sm text-red-500 font-bold">⚠️ Esta acción no se puede deshacer.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Sí, descartar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onEliminar(ticket.id);
+        const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2500 });
+        Toast.fire({ icon: 'success', title: 'Ticket descartado' });
+      }
+    });
   };
 
   return (
@@ -77,7 +97,7 @@ export default function ModalEspera({ tickets, onRecuperar, onEliminar, onClose 
                       </button>
 
                       <button
-                        onClick={() => onEliminar(t.id)}
+                        onClick={() => handleEliminar(t)}
                         className="p-2 text-content-secondary hover:text-status-danger hover:bg-status-dangerBg rounded-lg transition-colors border border-transparent hover:border-status-dangerBg"
                         title="Descartar"
                       >

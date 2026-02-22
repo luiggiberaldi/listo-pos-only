@@ -82,9 +82,10 @@ export default function ShortcutGuide({ isOpen, onClose }) {
 
                         {/* Carrito */}
                         <Section title="Edición de Cesta" icon={ShoppingCart} color="indigo">
-                            <Row keys={['+']} label="Aumentar cantidad item" />
-                            <Row keys={['-']} label="Disminuir cantidad item" />
-                            <Row keys={['Supr']} label="Eliminar último item" />
+                            <Row keys={['+', '-']} label="Ajustar cantidad" />
+                            <Row keys={['↑', '↓']} label="Navegar items en cesta" />
+                            <Row keys={['Supr']} label="Quitar item seleccionado" />
+                            <Row keys={['←', 'Enter']} label="Volver a buscador/productos" />
                             <Row keys={['*']} label="Multiplicar (Número + *)" />
                         </Section>
 
@@ -93,6 +94,7 @@ export default function ShortcutGuide({ isOpen, onClose }) {
                             <Row keys={['Enter']} label="Agregar / Procesar" />
                             <Row keys={['Esc']} label="Limpiar / Quitar foco" />
                             <Row keys={['↑', '↓', '←', '→']} label="Navegar entre productos" />
+                            <Row keys={['→']} label="Saltar a Cesta (Buscador Vacío)" />
                         </Section>
 
                         {/* Poderes Especiales */}

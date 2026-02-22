@@ -143,6 +143,28 @@ export const usePosKeyboard = ({
           } else {
             setCartSelectedIndex(Math.max(0, idx - 1)); // Seleccionar el anterior
           }
+          return;
+        }
+
+        // Salir del carrito
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchInputRef.current?.focus(); // Vuelve al buscador
+          return;
+        }
+
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          // Al pulsar izquierda desde el carrito, volvemos a la cuadrícula de productos
+          // Si no hay ninguno seleccionado, seleccionamos el primero
+          if (selectedIndex === -1) {
+            setSelectedIndex(0);
+          }
+          // Para que el grid reciba eventos, debe estar en modo typing o al menos no en carrito exclusivamente.
+          // Una forma de "activar" el grid es que no se intercepte como carrito, pero carrito siempre se intercepta si !isTyping.
+          // Para romper esto, basta devolver el foco al input pero manteniendo el selectedIndex
+          searchInputRef.current?.focus();
+          return;
         }
       }
 
