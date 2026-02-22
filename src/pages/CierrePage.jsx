@@ -1,6 +1,7 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 6.2 (DATA SOURCE FIX)
+// ✅ SYSTEM IMPLEMENTATION - V. 6.3 (GHOST SHIFT AI)
 // Archivo: src/pages/CierrePage.jsx
 // Objetivo: Pasar TODAS las ventas (incluyendo anuladas) a la tabla para permitir el reciclaje.
+// V6.3: Post-cierre Z modal con sugerencias AI via Groq.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
@@ -14,6 +15,7 @@ import { calcularKPIs, generarReporteZ, agruparPorMetodo } from '../utils/report
 import CierreSalesTable from '../components/cierre/CierreSalesTable';
 import ZCutHistory from '../components/cierre/ZCutHistory';
 import ReporteZUniversal from '../components/cierre/ReporteZUniversal';
+import GhostShiftModal from '../components/cierre/GhostShiftModal';
 import { useSecureAction } from '../hooks/security/useSecureAction';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
 import { timeProvider } from '../utils/TimeProvider';
@@ -27,6 +29,11 @@ export default function CierrePage() {
     const [activeTab, setActiveTab] = useState('turno');
     const [corteParaImprimir, setCorteParaImprimir] = useState(null);
     const ticketRef = useRef();
+
+    // 👻 Ghost Shift Modal state
+    const [ghostModalOpen, setGhostModalOpen] = useState(false);
+    const [ghostReport, setGhostReport] = useState(null);     // null = loading
+    const [ghostFailed, setGhostFailed] = useState(false);
 
     const handlePrint = useReactToPrint({
         contentRef: ticketRef,
@@ -145,6 +152,40 @@ export default function CierrePage() {
                             });
                         } catch { /* Ghost audit is non-critical */ }
 
+                        // 👻 GHOST SHIFT AI: Fire report in background (non-blocking)
+                        try {
+                            const metodosMap = agruparPorMetodo(ventasValidas).reduce((acc, m) => {
+                                acc[m.name] = m.count ?? m.ventas ?? 0;
+                                return acc;
+                            }, {});
+                            const apertura = estado?.timestampApertura ? Date.now() - new Date(estado.timestampApertura).getTime() : 0;
+
+                            setGhostReport(null);
+                            setGhostFailed(false);
+                            setGhostModalOpen(true);
+
+                            import('../services/ghost/ghostDigestService')
+                                .then(({ generateShiftReport }) => generateShiftReport({
+                                    cajaId: nuevoIdCorte,
+                                    totalVentas: resumen.totalVentas,
+                                    totalIngresos: resumen.ingresoReal,
+                                    ventasCount: ventasValidas.length,
+                                    anulaciones: ventasAnuladas.length,
+                                    metodosPago: metodosMap,
+                                    ticketPromedio: ventasValidas.length > 0 ? resumen.totalVentas / ventasValidas.length : 0,
+                                    creditoCount: ventasValidas.filter(v => (v.saldoPendiente || 0) > 0.01).length,
+                                    duracionMinutos: Math.round(apertura / 60000),
+                                }))
+                                .then(report => {
+                                    if (report) {
+                                        setGhostReport(report);
+                                    } else {
+                                        setGhostFailed(true);
+                                    }
+                                })
+                                .catch(() => setGhostFailed(true));
+                        } catch { /* Ghost shift AI is fully non-critical */ }
+
                         // SELLADO DE VENTAS
                         if (db && db.ventas) {
                             try {
@@ -177,6 +218,14 @@ export default function CierrePage() {
             <div style={{ display: 'none' }}>
                 <ReporteZUniversal ref={ticketRef} corte={corteParaImprimir} formato="ticket" />
             </div>
+
+            {/* 👻 Ghost Shift AI Modal */}
+            <GhostShiftModal
+                open={ghostModalOpen}
+                report={ghostReport}
+                failed={ghostFailed}
+                onClose={() => { setGhostModalOpen(false); setGhostReport(null); setGhostFailed(false); }}
+            />
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>

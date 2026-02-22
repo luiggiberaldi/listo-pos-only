@@ -152,6 +152,93 @@ function _countPaymentMethods(saleEvents) {
     return counts;
 }
 
+// ─── SHIFT REPORT (Per Corte Z) ───
+/**
+ * Analyze a specific closed shift and return AI suggestions.
+ * Called directly from CierrePage after cerrarCaja().
+ * Non-blocking: returns null on failure instead of throwing.
+ *
+ * @param {object} corteData - Data from the closed shift
+ * @returns {Promise<object|null>} Structured suggestions or null on failure
+ */
+export async function generateShiftReport(corteData) {
+    const {
+        cajaId = 'Z-??????',
+        totalVentas = 0,
+        totalIngresos = 0,
+        ventasCount = 0,
+        anulaciones = 0,
+        metodosPago = {},
+        ticketPromedio = 0,
+        creditoCount = 0,
+        duracionMinutos = 0,
+    } = corteData || {};
+
+    const metodosStr = Object.entries(metodosPago)
+        .map(([m, c]) => `${m}: ${c}`)
+        .join(', ') || 'No registrado';
+
+    const dataSummary = `
+TURNO: ${cajaId}
+VENTAS: ${ventasCount} transacciones, $${totalVentas.toFixed(2)} fiscal, $${totalIngresos.toFixed(2)} en caja
+TICKET PROMEDIO: $${ticketPromedio.toFixed(2)}
+MÉTODOS DE PAGO: ${metodosStr}
+CRÉDITOS: ${creditoCount} ventas a crédito
+ANULACIONES: ${anulaciones}
+DURACIÓN: ${duracionMinutos} minutos
+`.trim();
+
+    const systemPrompt = `Eres un asesor operativo experto para un pequeño negocio venezolano (bodega/tienda) con sistema POS llamado LISTO.
+Acabas de recibir el resumen de un turno de trabajo (Cierre Z) que acaba de cerrarse.
+
+INSTRUCCIONES:
+1. Da máximo 3 sugerencias concretas y accionables para mejorar el negocio.
+2. Detecta si hay anomalías (muchas anulaciones, bajo ticket, sin diversidad de pagos, etc.)
+3. Asigna un score de salud del turno de 0 a 100.
+4. Sé breve y directo, el cajero está cerrando su turno.
+
+TIPOS VÁLIDOS para cada sugerencia: "inventario", "credito", "finanzas", "operacion"
+PRIORIDADES: "alta", "media", "baja"
+ACCIONES VÁLIDAS: "inventario", "cuentas", "finanzas", null
+
+RESPONDE SOLO JSON puro (sin markdown, sin backticks):
+{
+  "resumen": "Resumen en 1 oración del turno.",
+  "score": 82,
+  "sugerencias": [
+    {
+      "prioridad": "alta",
+      "tipo": "inventario",
+      "emoji": "📦",
+      "titulo": "Título corto (máx 6 palabras)",
+      "detalle": "Explicación breve en 1 oración.",
+      "accion": "inventario"
+    }
+  ],
+  "alerta": null
+}`;
+
+    const userMessage = `Datos del turno cerrado:\n${dataSummary}`;
+
+    try {
+        const result = await groqService.generateResponse(
+            [{ role: 'user', content: userMessage }],
+            systemPrompt
+        );
+
+        const text = result.text.trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return { ...parsed, cajaId, generatedAt: Date.now() };
+        }
+        return null;
+    } catch (e) {
+        console.warn('👻 [ShiftReport] Groq no disponible:', e.message);
+        return null;
+    }
+}
+
 // ─── AI DIGEST (Groq) ───
 async function _generateAIDigest(metrics, events, dateKey) {
     // Build a concise data summary for the prompt (minimize tokens)
