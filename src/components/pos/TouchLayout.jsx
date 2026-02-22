@@ -51,7 +51,7 @@ const TouchCategoryPills = ({ categorias, categoriaActiva, setCategoriaActiva })
     );
 };
 
-const TouchProductCard = ({ producto, onSelect, tasa }) => {
+const TouchProductCard = React.memo(({ producto, onSelect, tasa }) => {
     const precioUSD = parseFloat(producto.precio) || 0;
     const precioBS = precioUSD * tasa;
     const hasStock = producto.stock > 0 || producto.tipoUnidad === 'servicio';
@@ -94,9 +94,9 @@ const TouchProductCard = ({ producto, onSelect, tasa }) => {
             )}
         </button>
     );
-};
+});
 
-const TouchTicketItem = ({ item, idx, onAdd, onSub, onRemove, tasa }) => {
+const TouchTicketItem = React.memo(({ item, idx, onAdd, onSub, onRemove, tasa }) => {
     return (
         <div className="bg-white rounded-xl p-3 mb-3 border border-slate-100 shadow-sm flex items-center gap-3">
             <div className="flex-1 min-w-0">
@@ -137,7 +137,7 @@ const TouchTicketItem = ({ item, idx, onAdd, onSub, onRemove, tasa }) => {
             </button>
         </div>
     );
-};
+});
 
 export default function TouchLayout({
     // Only imperative refs remain as props

@@ -5,7 +5,9 @@ const CartItem = memo(({
     item,
     realIndex,
     lastAddedIndex,
-    calculos,
+    totalItemBs, // 🆕
+    tasa, // 🆕
+    isExceeded, // 🆕
     viewMode,
     isProcessing,
     onRemoveItem,
@@ -14,7 +16,6 @@ const CartItem = memo(({
     onChangeUnit, // 🆕
     getStep,
     getMinQty,
-    carrito, // Necesario para calcular stock "consumido" por items duplicados
     isKeyboardSelected, // 🆕 Focus Zone highlighting
     onFocusItem // 🆕 Click-to-focus manually
 }) => {
@@ -38,7 +39,6 @@ const CartItem = memo(({
 
     const precioItem = parseFloat(item.precio) || 0;
     const totalItem = precioItem * (parseFloat(item.cantidad) || 0);
-    const totalItemBs = calculos.carritoBS[realIndex] || (totalItem * calculos.tasa);
 
     // Logic from hook helpers
     const step = getStep(item.tipoUnidad);
@@ -50,17 +50,7 @@ const CartItem = memo(({
     const isHighValue = totalItem > 100;
     const isSuspicious = isHighQty || isHighValue;
 
-    // Stock Logic
-    const stockActual = parseFloat(item.stock) || 0;
-    const itemsMismoId = carrito.filter(i => i.id === item.id);
-    let totalConsumo = 0;
-    itemsMismoId.forEach(i => {
-        let f = 1;
-        if (i.unidadVenta === 'bulto') f = parseFloat(i.jerarquia?.bulto?.contenido || 1);
-        else if (i.unidadVenta === 'paquete') f = parseFloat(i.jerarquia?.paquete?.contenido || 1);
-        totalConsumo += (i.cantidad * f);
-    });
-    const isExceeded = item.tipoUnidad !== 'peso' && totalConsumo > stockActual;
+    // isExceeded Logic is now handled by parent CartSidebar
 
     // Solo aplicar borde azul suave si está seleccionado por teclado (o clic manual en este nuevo modo interactivo)
     const kbBorder = isKeyboardSelected ? 'border-primary ring-2 ring-primary/40 shadow-md ring-offset-1 bg-primary/5 dark:bg-primary/10 transition-colors' : '';
@@ -176,14 +166,18 @@ const CartItem = memo(({
     // 🚀 PERFORMANCE: Only re-render if data actually changed.
     // Callbacks (onRemoveItem, handleQtyChangeSafe, etc.) are new refs every render
     // so we must not compare them.
-    return prev.item === next.item &&
+    return prev.item?.id === next.item?.id &&
         prev.item?.cantidad === next.item?.cantidad &&
         prev.item?.unidadVenta === next.item?.unidadVenta &&
+        prev.item?.precio === next.item?.precio &&
+        prev.item?.stock === next.item?.stock &&
         prev.realIndex === next.realIndex &&
         prev.viewMode === next.viewMode &&
         prev.isProcessing === next.isProcessing &&
         prev.isKeyboardSelected === next.isKeyboardSelected &&
-        prev.calculos?.tasa === next.calculos?.tasa;
+        prev.isExceeded === next.isExceeded &&
+        prev.totalItemBs === next.totalItemBs &&
+        prev.tasa === next.tasa;
 });
 
 export default CartItem;

@@ -33,7 +33,7 @@ const getBrandStyles = (name, type) => {
 /**
  * ✅ SUB-COMPONENTE: INPUT DE PAGO INTELIGENTE
  */
-const InputPago = React.forwardRef(({ label, icon: Icon, value, onChange, onAutoFill, moneda, onKeyDown, disabled, requiereRef, refPago, onChangeRef, tasa, isTouch, onFocus, isSelected, onFocusRef }, ref) => {
+const InputPago = React.memo(React.forwardRef(({ label, icon: Icon, value, onChange, onAutoFill, moneda, onKeyDown, disabled, requiereRef, refPago, onChangeRef, tasa, isTouch, onFocus, isSelected, onFocusRef }, ref) => {
 
   const equivalenciaUSD = (moneda === 'BS' && value && tasa > 0)
     ? (parseFloat(value) / tasa).toFixed(2)
@@ -206,6 +206,16 @@ const InputPago = React.forwardRef(({ label, icon: Icon, value, onChange, onAuto
       </div>
     </div>
   );
+}), (prev, next) => {
+  // 🚀 PERFORMANCE: Avoid re-rendering all payment inputs when user types in one.
+  // We ignore function props because they are recreated inline by the parent.
+  return prev.value === next.value &&
+    prev.refPago === next.refPago &&
+    prev.isSelected === next.isSelected &&
+    prev.disabled === next.disabled &&
+    prev.tasa === next.tasa &&
+    prev.isTouch === next.isTouch &&
+    prev.requiereRef === next.requiereRef;
 });
 
 export default function PaymentForm({

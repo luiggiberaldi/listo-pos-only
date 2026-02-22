@@ -25,10 +25,8 @@ const CartSidebar = ({
   const totalUSD = usePosCalcStore(s => s.totalUSD);
   const totalBS = usePosCalcStore(s => s.totalBS);
   const tasaInvalida = usePosCalcStore(s => s.tasaInvalida);
+  const tasa = usePosCalcStore(s => s.tasa); // 🆕
   const carritoBS = usePosCalcStore(s => s.carritoBS);
-
-  // Build calculos object for CartItem compatibility
-  const calculos = { subtotalBase, totalUSD, totalBS, carritoBS };
 
   // Actions
   const eliminarItem = usePosActionsStore(s => s.eliminarItem);
@@ -102,13 +100,31 @@ const CartSidebar = ({
           filteredCart.map((item) => {
             const realIndex = carrito.indexOf(item);
 
+            // Stock Logic
+            const stockActual = parseFloat(item.stock) || 0;
+            const itemsMismoId = carrito.filter(i => i.id === item.id);
+            let totalConsumo = 0;
+            itemsMismoId.forEach(i => {
+              let f = 1;
+              if (i.unidadVenta === 'bulto') f = parseFloat(i.jerarquia?.bulto?.contenido || 1);
+              else if (i.unidadVenta === 'paquete') f = parseFloat(i.jerarquia?.paquete?.contenido || 1);
+              totalConsumo += (i.cantidad * f);
+            });
+            const isExceeded = item.tipoUnidad !== 'peso' && totalConsumo > stockActual;
+
+            const precioItem = parseFloat(item.precio) || 0;
+            const totalItem = precioItem * (parseFloat(item.cantidad) || 0);
+            const totalItemBs = carritoBS[realIndex] || (totalItem * tasa);
+
             return (
               <CartItem
                 key={`${item.id}-${realIndex}`}
                 item={item}
                 realIndex={realIndex}
                 lastAddedIndex={lastAddedIndex}
-                calculos={calculos}
+                totalItemBs={totalItemBs}
+                tasa={tasa}
+                isExceeded={isExceeded}
                 viewMode={viewMode}
                 isProcessing={isProcessing}
                 onRemoveItem={eliminarItem}
@@ -117,7 +133,6 @@ const CartSidebar = ({
                 onChangeUnit={cambiarUnidad}
                 getStep={getStep}
                 getMinQty={getMinQty}
-                carrito={carrito}
                 isKeyboardSelected={realIndex === cartSelectedIndex}
                 onFocusItem={() => focusCartItem && focusCartItem(realIndex)}
               />
