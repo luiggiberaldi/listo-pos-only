@@ -66,7 +66,7 @@ const UserCard = ({ user, index, onClick, messageCount }) => {
                         {/* 🟢 NOTIFICATION BUBBLE */}
                         {messageCount > 0 && (
                             <div className="absolute -top-3 -right-3 z-50 animate-bounce">
-                                <div className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.6)] border border-red-400 flex items-center gap-1">
+                                <div className="bg-status-danger text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.6)] border border-red-400 flex items-center gap-1">
                                     <MessageSquare size={12} className="fill-current text-white" />
                                     <span>{messageCount}</span>
                                 </div>
@@ -105,13 +105,13 @@ const UserCard = ({ user, index, onClick, messageCount }) => {
                                             backgroundImage: 'linear-gradient(180deg, rgb(0, 183, 255), rgb(255, 48, 255))',
                                             animation: 'rotBGimg 3s linear infinite',
                                         }} />
-                                        <div className="relative z-20 bg-slate-900 rounded-2xl">
+                                        <div className="relative z-20 bg-surface-dark rounded-2xl">
                                             <LoginAvatar user={user} className="relative z-10 transition-all duration-300 shadow-none ring-0" />
                                         </div>
                                     </div>
                                 ) : (
                                     <div className={`relative z-10 p-[4px] rounded-2xl overflow-hidden flex justify-center items-center bg-gradient-to-br ${roleColors.gradient} shadow-lg ${roleColors.shadow} transition-all duration-300`}>
-                                        <div className="relative z-20 bg-slate-900 rounded-2xl">
+                                        <div className="relative z-20 bg-surface-dark rounded-2xl">
                                             <LoginAvatar user={user} className="relative z-10 transition-all duration-300 shadow-none ring-0" />
                                         </div>
                                     </div>

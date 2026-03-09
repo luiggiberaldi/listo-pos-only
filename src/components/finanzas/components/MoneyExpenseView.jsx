@@ -26,20 +26,20 @@ const getLocalDayBounds = () => {
 
 // [V3] Category icons for visual distinction
 const CATEGORY_CONFIG = {
-    'PROVEEDORES': { icon: ShoppingBag, color: 'text-amber-500', bg: 'bg-amber-50' },
-    'SERVICIOS': { icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50' },
+    'PROVEEDORES': { icon: ShoppingBag, color: 'text-status-warning', bg: 'bg-status-warningBg' },
+    'SERVICIOS': { icon: CreditCard, color: 'text-primary', bg: 'bg-primary-light' },
     'PERSONAL': { icon: Users, color: 'text-violet-500', bg: 'bg-violet-50' },
-    'MANTENIMIENTO': { icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-50' },
+    'MANTENIMIENTO': { icon: Wrench, color: 'text-status-warning', bg: 'bg-status-warningBg' },
     'LIMPIEZA': { icon: SprayCan, color: 'text-teal-500', bg: 'bg-teal-50' },
-    'VARIOS': { icon: MoreHorizontal, color: 'text-slate-500', bg: 'bg-slate-50' },
-    'GENERAL': { icon: DollarSign, color: 'text-rose-500', bg: 'bg-rose-50' },
+    'VARIOS': { icon: MoreHorizontal, color: 'text-content-secondary', bg: 'bg-app-light' },
+    'GENERAL': { icon: DollarSign, color: 'text-status-danger', bg: 'bg-status-dangerBg' },
 };
 
 // [V3] Color-code amounts by magnitude
 const getAmountColor = (amount) => {
-    if (amount <= 5) return 'text-emerald-600';
-    if (amount <= 20) return 'text-amber-600';
-    return 'text-rose-600';
+    if (amount <= 5) return 'text-status-success';
+    if (amount <= 20) return 'text-status-warning';
+    return 'text-status-danger';
 };
 
 export default function MoneyExpenseView({ onClose }) {
@@ -208,8 +208,8 @@ export default function MoneyExpenseView({ onClose }) {
         <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
             {/* Employee Selector or Recent Activity */}
             {moneyData.esAdelanto ? (
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Empleado Solicitante</h3>
+                <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700">
+                    <h3 className="text-xs font-bold text-content-secondary uppercase tracking-widest mb-3">Empleado Solicitante</h3>
                     <div className="grid grid-cols-2 gap-2">
                         {usuarios
                             .filter(u => u.activo && u.rol !== 'admin')
@@ -217,32 +217,32 @@ export default function MoneyExpenseView({ onClose }) {
                                 <button
                                     key={u.id}
                                     onClick={() => setTargetEmployeeId(u.id)}
-                                    className={`p-3 rounded-xl flex items-center gap-3 transition-all text-left ${targetEmployeeId == u.id ? 'bg-indigo-50 border border-indigo-200 shadow-sm' : 'hover:bg-slate-50 border border-transparent'}`}
+                                    className={`p-3 rounded-xl flex items-center gap-3 transition-all text-left ${targetEmployeeId == u.id ? 'bg-primary-light border border-primary/30 shadow-sm' : 'hover:bg-app-light border border-transparent'}`}
                                 >
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${targetEmployeeId == u.id ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${targetEmployeeId == u.id ? 'bg-primary text-content-inverse' : 'bg-slate-200 text-content-secondary'}`}>
                                         {u.nombre.charAt(0)}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className={`text-xs font-bold truncate ${targetEmployeeId == u.id ? 'text-indigo-900' : 'text-slate-700'}`}>{u.nombre}</p>
-                                        <p className="text-[10px] text-slate-400">{u.rol}</p>
+                                        <p className={`text-xs font-bold truncate ${targetEmployeeId == u.id ? 'text-primary' : 'text-content-main dark:text-content-inverse'}`}>{u.nombre}</p>
+                                        <p className="text-[10px] text-content-secondary">{u.rol}</p>
                                     </div>
                                 </button>
                             ))}
                     </div>
                 </div>
             ) : (
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 max-h-52 overflow-y-auto">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700 max-h-52 overflow-y-auto">
+                    <h3 className="text-xs font-bold text-content-secondary uppercase tracking-widest mb-3 flex items-center gap-2">
                         <Clock size={12} /> Historial de Hoy
                     </h3>
                     {gastosRecientes.length === 0 ? (
                         /* [V8] Better empty state */
                         <div className="flex flex-col items-center justify-center text-center py-8">
-                            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-3">
-                                <Sparkles size={24} className="text-emerald-400" />
+                            <div className="w-14 h-14 bg-status-successBg rounded-2xl flex items-center justify-center mb-3">
+                                <Sparkles size={24} className="text-status-success" />
                             </div>
-                            <p className="text-xs font-bold text-slate-500">¡Día limpio!</p>
-                            <p className="text-[10px] text-slate-400 mt-1">Sin gastos registrados hoy</p>
+                            <p className="text-xs font-bold text-content-secondary">¡Día limpio!</p>
+                            <p className="text-[10px] text-content-secondary mt-1">Sin gastos registrados hoy</p>
                         </div>
                     ) : (
                         <div className="space-y-1.5">
@@ -264,16 +264,16 @@ export default function MoneyExpenseView({ onClose }) {
                                         initial={{ opacity: 0, x: 10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: i * 0.05 }}
-                                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-app-light dark:hover:bg-app-dark transition-colors group"
                                     >
                                         {/* [V3] Category icon */}
                                         <div className={`w-8 h-8 rounded-lg ${catConfig.bg} ${catConfig.color} flex items-center justify-center flex-shrink-0`}>
                                             <CatIcon size={14} strokeWidth={2.5} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-slate-700 truncate">{g.detalle || 'Gasto'}</p>
-                                            <p className="text-[10px] text-slate-400">
-                                                {tiempoLabel} • <span className="text-slate-300">{moneda}</span>
+                                            <p className="text-xs font-bold text-content-main dark:text-content-inverse truncate">{g.detalle || 'Gasto'}</p>
+                                            <p className="text-[10px] text-content-secondary">
+                                                {tiempoLabel} • <span className="text-content-secondary/50">{moneda}</span>
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function MoneyExpenseView({ onClose }) {
                                             {canRevertGastos && (
                                                 <button
                                                     onClick={() => handleDeleteGasto(g)}
-                                                    className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                                                    className="p-1.5 rounded-lg text-content-secondary/50 hover:text-status-danger hover:bg-status-dangerBg opacity-0 group-hover:opacity-100 transition-all"
                                                     title="Revertir este gasto"
                                                 >
                                                     <Trash2 size={14} />
@@ -301,7 +301,7 @@ export default function MoneyExpenseView({ onClose }) {
 
             {/* Category Chips */}
             <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Categoría de Gasto</h3>
+                <h3 className="text-xs font-bold text-content-secondary uppercase tracking-widest mb-3">Categoría de Gasto</h3>
                 <div className="grid grid-cols-3 gap-2">
                     {CHIPS.map(chip => {
                         const isActive = moneyData.categoria === chip.id;
@@ -320,8 +320,8 @@ export default function MoneyExpenseView({ onClose }) {
                                     setMoneyData({ ...moneyData, motivo: newMotivo, categoria: chip.id });
                                 }}
                                 className={`p-2.5 rounded-xl border flex flex-col items-center gap-1.5 transition-all duration-200 ${isActive
-                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-600 ring-2 ring-indigo-500/20 scale-105'
-                                    : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                                    ? 'bg-primary-light border-primary/30 text-primary ring-2 ring-primary/20 scale-105'
+                                    : 'bg-surface-light dark:bg-surface-dark border-border-subtle text-content-secondary hover:border-primary/20 hover:text-content-main'
                                     }`}
                             >
                                 <ChipIcon size={16} strokeWidth={2} />
@@ -345,7 +345,7 @@ export default function MoneyExpenseView({ onClose }) {
                         (moneyData.esAdelanto && !targetEmployeeId)
                     }
                 />
-                <p className="text-center text-[10px] text-slate-400 mt-3 font-medium">Esta acción afectará la caja inmediatamente</p>
+                <p className="text-center text-[10px] text-content-secondary mt-3 font-medium">Esta acción afectará la caja inmediatamente</p>
             </div>
         </div>
     );
@@ -374,16 +374,16 @@ export default function MoneyExpenseView({ onClose }) {
                 {hasEmployeeFeatures && canDoAdelantos && (
                     <div
                         onClick={() => setMoneyData({ ...moneyData, esAdelanto: !moneyData.esAdelanto })}
-                        className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center gap-4 group ${moneyData.esAdelanto ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500/20' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                        className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center gap-4 group ${moneyData.esAdelanto ? 'bg-primary-light border-primary/30 ring-2 ring-primary/20' : 'bg-surface-light dark:bg-surface-dark border-border-subtle hover:border-primary/20'}`}
                     >
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${moneyData.esAdelanto ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${moneyData.esAdelanto ? 'bg-primary text-content-inverse' : 'bg-app-light text-content-secondary'}`}>
                             <Banknote size={24} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
-                            <h4 className={`text-sm font-black ${moneyData.esAdelanto ? 'text-indigo-900' : 'text-slate-600'}`}>¿Es Adelanto de Nómina?</h4>
-                            <p className="text-xs text-slate-400">Se descontará del pago del empleado.</p>
+                            <h4 className={`text-sm font-black ${moneyData.esAdelanto ? 'text-primary' : 'text-content-main dark:text-content-inverse'}`}>¿Es Adelanto de Nómina?</h4>
+                            <p className="text-xs text-content-secondary">Se descontará del pago del empleado.</p>
                         </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${moneyData.esAdelanto ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${moneyData.esAdelanto ? 'border-primary bg-primary' : 'border-slate-300'}`}>
                             {moneyData.esAdelanto && <motion.div layoutId="check" className="w-2 h-2 bg-white rounded-full" />}
                         </div>
                     </div>
@@ -391,11 +391,11 @@ export default function MoneyExpenseView({ onClose }) {
 
                 {/* MOTIVO INPUT */}
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Concepto / Detalle</label>
+                    <label className="text-[10px] font-bold text-content-secondary uppercase tracking-widest pl-1">Concepto / Detalle</label>
                     <textarea
                         value={moneyData.motivo}
                         onChange={e => setMoneyData({ ...moneyData, motivo: e.target.value })}
-                        className="w-full bg-slate-50 border-none rounded-2xl p-4 text-slate-700 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all resize-none h-28 md:h-32 text-base md:text-lg placeholder:text-slate-300"
+                        className="w-full bg-app-light dark:bg-app-dark border-none rounded-2xl p-4 text-content-main dark:text-content-inverse font-medium focus:bg-surface-light focus:ring-2 focus:ring-primary/10 transition-all resize-none h-28 md:h-32 text-base md:text-lg placeholder:text-content-secondary/40"
                         placeholder="Ej: Pago de agua potable..."
                     />
                 </div>

@@ -53,7 +53,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
   else if (f.margen < 30) margenColor = 'text-orange-600 bg-orange-50 border-orange-100';
 
   return (
-    <tr className={`group transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : ''}`}>
+    <tr className={`group transition-all hover:bg-app-light/80 dark:hover:bg-slate-800/40 ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : ''}`}>
 
       {/* CHECKBOX */}
       <td className="px-4 py-5 align-top text-center w-10">
@@ -61,7 +61,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
           type="checkbox"
           checked={isSelected || false}
           onChange={onToggleSelect}
-          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer mt-3"
+          className="w-4 h-4 rounded border-border-subtle text-blue-600 focus:ring-blue-500 cursor-pointer mt-3"
         />
       </td>
 
@@ -69,21 +69,21 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
       <td className="px-4 py-5 align-top">
         <div className="flex items-start gap-4">
           {/* AVATAR (POS 2.0) */}
-          <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex-shrink-0 relative overflow-hidden group/img">
+          <div className="w-10 h-10 rounded-lg bg-surface-light dark:bg-slate-800 border border-border-subtle dark:border-slate-700 shadow-sm flex-shrink-0 relative overflow-hidden group/img">
             {p.imagen ? (
               <img src={p.imagen} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" alt="" loading="lazy" />
             ) : (
-              <div className="w-full h-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-[10px] font-black text-slate-300 dark:text-slate-500">
+              <div className="w-full h-full bg-app-light dark:bg-slate-700 flex items-center justify-center text-[10px] font-black text-content-secondary dark:text-slate-500">
                 {p.nombre ? p.nombre.substring(0, 2).toUpperCase() : 'NA'}
               </div>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-bold text-slate-800 dark:text-white text-sm leading-tight group-hover:text-blue-600 transition-colors">
+            <span className="font-bold text-content-main dark:text-white text-sm leading-tight group-hover:text-blue-600 transition-colors">
               {p.nombre}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono tracking-wider bg-slate-100 dark:bg-slate-800 w-fit px-1.5 py-0.5 rounded uppercase">
+            <span className="text-[10px] text-content-secondary font-mono tracking-wider bg-app-light dark:bg-slate-800 w-fit px-1.5 py-0.5 rounded uppercase">
               {p.codigo || 'S/C'}
             </span>
           </div>
@@ -92,7 +92,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
 
       {/* CATEGORÍA / ESTADO */}
       <td className="px-6 py-5 align-top">
-        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-white border border-slate-200 text-slate-600 shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-surface-light border border-border-subtle text-content-main shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
           {p.categoria}
         </span>
       </td>
@@ -101,13 +101,13 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
       <td className="px-6 py-5 align-top">
         <div className="flex flex-col gap-1.5">
           {!esPeso && vistas.length > 1 && (
-            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 w-fit border border-slate-200 dark:border-slate-700">
+            <div className="flex bg-app-light dark:bg-slate-800 rounded-lg p-0.5 w-fit border border-border-subtle dark:border-slate-700">
               {vistas.map(v => (
-                <button key={v.id} onClick={() => setVistaActual(v.id)} className={`px-2 py-0.5 text-[9px] uppercase font-bold rounded-md transition-all ${vistaActual === v.id ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{v.label}</button>
+                <button key={v.id} onClick={() => setVistaActual(v.id)} className={`px-2 py-0.5 text-[9px] uppercase font-bold rounded-md transition-all ${vistaActual === v.id ? 'bg-surface-light dark:bg-slate-600 text-indigo-600 dark:text-white shadow-sm' : 'text-content-secondary hover:text-content-main'}`}>{v.label}</button>
               ))}
             </div>
           )}
-          <div className="font-mono font-bold text-slate-800 dark:text-white text-base tracking-tight">
+          <div className="font-mono font-bold text-content-main dark:text-white text-base tracking-tight">
             ${f.precio.toFixed(2)}
           </div>
           <div className="text-[10px] font-bold text-emerald-600/80">
@@ -120,7 +120,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
       {showCosts && (
         <>
           <td className="px-6 py-5 align-top">
-            <div className="font-mono text-xs text-slate-500 dark:text-slate-400">
+            <div className="font-mono text-xs text-content-secondary dark:text-slate-400">
               ${f.costo.toFixed(2)}
             </div>
           </td>
@@ -141,7 +141,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
       <td className="px-6 py-5 text-right align-middle">
         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0">
           <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={() => actions.onDuplicate(p)} actionName="Duplicar Producto">
-            <button className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Duplicar"><Copy size={16} /></button>
+            <button className="p-2 text-content-secondary hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Duplicar"><Copy size={16} /></button>
           </ActionGuard>
           {/* 🆕 */}
           <button
@@ -169,13 +169,13 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
           </button>
 
           <ActionGuard permission={PERMISSIONS.INVENTORY_ADJUST} onClick={() => actions.onAdjust(p)} actionName="Ajustar Stock">
-            <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ajustar Stock"><ArrowRightLeft size={16} /></button>
+            <button className="p-2 text-content-secondary hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ajustar Stock"><ArrowRightLeft size={16} /></button>
           </ActionGuard>
           <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={() => actions.onEdit(p)} actionName="Editar Producto">
-            <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Pencil size={16} /></button>
+            <button className="p-2 text-content-secondary hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Pencil size={16} /></button>
           </ActionGuard>
           <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={() => actions.onDelete(p)} actionName="Eliminar Producto">
-            <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 size={16} /></button>
+            <button className="p-2 text-content-secondary hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 size={16} /></button>
           </ActionGuard>
         </div>
       </td>

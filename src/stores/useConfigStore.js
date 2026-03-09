@@ -61,6 +61,10 @@ export const useConfigStore = create(
         (set, get) => ({
             configuracion: DEFAULTS,
 
+            // 🔌 OFFLINE MODE (for multi-caja secondary when server is down)
+            offlineMode: false,
+            setOfflineMode: (val) => set({ offlineMode: val }),
+
             // 🛡️ DEMO SHIELD STATE (read from Firebase via useLicenseGuard → localStorage)
             license: {
                 quotaLimit: parseInt(localStorage.getItem('listo_quotaLimit')) || 100,
@@ -95,15 +99,7 @@ export const useConfigStore = create(
 
             loadConfig: async () => {
                 try {
-                    // Try DB first (General override)
-                    const dbConf = await db.config.get('general');
-
-                    // Merge strategies: DEFAULTS -> localStorage (via persist) -> DB
-                    // Zustand persist handles localStorage automatically. 
-                    // We just need to apply DB overrides if any specific needed.
-                    // For now, let's assume persist matches 'listo-config'.
-
-                    // 🛡️ SYNC DEMO SHIELD
+                    // ✅ PERF H-3: Usar import top-level de db, no dynamic import
                     const { getLifetimeSales } = await import('../db');
                     const usageCount = await getLifetimeSales();
                     const { license } = get();

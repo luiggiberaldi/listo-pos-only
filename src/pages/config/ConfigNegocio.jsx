@@ -68,17 +68,17 @@ export default function ConfigNegocio({ form, handleChange, handleGuardar, readO
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
 
             {/* 1. HERO SECTION COMPACTO */}
-            <div className="relative overflow-hidden rounded-[2rem] shadow-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700 p-8 text-white flex items-center gap-6">
+            <div className="relative overflow-hidden rounded-[2rem] shadow-xl bg-gradient-to-r from-surface-dark via-slate-800 to-surface-dark border border-border-subtle dark:border-slate-700 p-8 text-white flex items-center gap-6">
                 <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
                     <span className="text-2xl font-black">{getInitials()}</span>
                 </div>
-                <div>
-                    <h1 className="text-3xl font-black tracking-tight">{form.nombre || 'TU COMERCIO'}</h1>
-                    <p className="text-slate-400 font-medium text-sm flex items-center gap-2">
-                        <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-emerald-500/30">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl font-black tracking-tight truncate">{form.nombre || 'TU COMERCIO'}</h1>
+                    <p className="text-slate-300 font-medium text-sm flex items-center gap-2 mt-1.5">
+                        <span className="bg-status-successBg/40 text-status-success px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-status-success/30 shrink-0">
                             Sede Principal
                         </span>
-                        {form.rif || 'J-00000000-0'}
+                        <span className="truncate">{form.rif || 'J-00000000-0'}</span>
                     </p>
                 </div>
             </div>
@@ -86,14 +86,14 @@ export default function ConfigNegocio({ form, handleChange, handleGuardar, readO
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                 {/* 2. FORMULARIO PRINCIPAL (Grid Rule Support) */}
-                <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-xl border border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
-                        <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                <div className="lg:col-span-7 bg-surface-light dark:bg-surface-dark rounded-[2rem] p-8 shadow-xl border border-border-subtle dark:border-slate-800">
+                    <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border-subtle dark:border-slate-800">
+                        <div className="p-2.5 rounded-xl bg-primary text-content-inverse shadow-lg shadow-primary/20">
                             <Store size={20} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-slate-800 dark:text-white">Datos del Negocio</h3>
-                            <p className="text-xs text-slate-500 font-medium">Información visible en facturas y reportes</p>
+                            <h3 className="font-bold text-lg text-content-main dark:text-content-inverse">Datos del Negocio</h3>
+                            <p className="text-xs text-content-secondary font-medium">Información visible en facturas y reportes</p>
                         </div>
                     </div>
 
@@ -141,26 +141,26 @@ export default function ConfigNegocio({ form, handleChange, handleGuardar, readO
 
                         {/* FILA 3: DIRECCIÓN (ANCHO COMPLETO) */}
                         <div className="relative group">
-                            <div className="absolute top-6 left-4 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none z-10">
+                            <div className="absolute top-6 left-4 text-content-secondary group-focus-within:text-primary transition-colors pointer-events-none z-10">
                                 <MapPin size={20} />
                             </div>
                             {readOnly ? (
-                                <div className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-400 font-medium min-h-[80px] flex items-center">
+                                <div className="w-full p-4 pl-12 bg-app-light dark:bg-slate-950/50 rounded-2xl border border-border-subtle dark:border-slate-800 text-sm text-content-secondary font-medium min-h-[80px] flex items-center">
                                     {form.direccion || 'Sin dirección registrada'}
                                 </div>
                             ) : (
                                 <div className="relative">
                                     <textarea
-                                        className="w-full px-4 pt-6 pb-2 pl-12 bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-bold resize-none min-h-[100px] peer"
+                                        className="w-full px-4 pt-6 pb-2 pl-12 bg-app-light dark:bg-slate-950 border-2 border-border-subtle dark:border-slate-800 rounded-2xl text-content-main dark:text-content-inverse placeholder:text-content-secondary focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-sm font-bold resize-none min-h-[100px] peer"
                                         name="direccion"
                                         value={form.direccion || ''}
                                         onChange={handleChange}
                                         placeholder=" " // Espacio para activar peer-placeholder-shown
                                     />
                                     <label className={`
-                                absolute left-12 top-2 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all duration-200 pointer-events-none
-                                peer-placeholder-shown:text-sm peer-placeholder-shown:font-medium peer-placeholder-shown:normal-case peer-placeholder-shown:top-6 peer-placeholder-shown:text-slate-400
-                                peer-focus:top-2 peer-focus:text-[10px] peer-focus:font-black peer-focus:uppercase peer-focus:text-blue-500
+                                absolute left-12 top-2 text-[10px] font-black uppercase tracking-widest text-content-secondary transition-all duration-200 pointer-events-none
+                                peer-placeholder-shown:text-sm peer-placeholder-shown:font-medium peer-placeholder-shown:normal-case peer-placeholder-shown:top-6 peer-placeholder-shown:text-content-secondary
+                                peer-focus:top-2 peer-focus:text-[10px] peer-focus:font-black peer-focus:uppercase peer-focus:text-primary
                                 ${form.direccion ? 'top-2 text-[10px] font-black uppercase' : ''}
                             `}>
                                         Dirección Fiscal
@@ -244,7 +244,7 @@ export default function ConfigNegocio({ form, handleChange, handleGuardar, readO
                 <div className="fixed bottom-6 right-6 z-50">
                     <button
                         onClick={preGuardar}
-                        className="pl-6 pr-8 py-4 bg-emerald-500 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-2xl shadow-emerald-500/40 hover:-translate-y-1 hover:shadow-emerald-500/50 transition-all flex items-center gap-3 active:scale-95 border-2 border-white/10"
+                        className="pl-6 pr-8 py-4 bg-primary text-content-inverse rounded-full font-black text-sm uppercase tracking-widest shadow-2xl shadow-primary/40 hover:-translate-y-1 hover:shadow-primary/50 transition-all flex items-center gap-3 active:scale-95 border-2 border-white/10"
                     >
                         <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
                             <Save size={18} className="text-white" />
@@ -290,11 +290,11 @@ const VinculacionAppCard = () => {
     const isError = lastSyncStatus === 'error';
 
     return (
-        <div className="bg-slate-900 rounded-[2rem] p-6 shadow-2xl shadow-emerald-500/10 border border-slate-800 relative z-0 overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/20 blur-[60px] rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+        <div className="bg-surface-dark rounded-[2rem] p-6 shadow-2xl shadow-status-success/10 border border-slate-800 relative z-0 overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-status-success/20 blur-[60px] rounded-full -mr-16 -mt-16 pointer-events-none"></div>
 
             <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400">
+                <div className="p-3 bg-status-success/20 rounded-xl text-status-success">
                     <Phone size={24} />
                 </div>
                 <div>
@@ -320,8 +320,8 @@ const VinculacionAppCard = () => {
             </div>
 
             <div className="mt-4 flex items-center justify-between">
-                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${isError ? 'text-red-400' : 'text-emerald-400'}`}>
-                    <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-emerald-500 animate-ping' : isError ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${isError ? 'text-status-danger' : 'text-status-success'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-status-success animate-ping' : isError ? 'bg-status-danger' : 'bg-status-success'}`}></span>
                     {isSyncing ? 'Sincronizando...' : isError ? 'Error de Sync' : 'En Línea'}
                 </div>
                 <button onClick={copyToClipboard} className="text-xs font-bold text-slate-500 hover:text-white transition-colors">
@@ -343,13 +343,13 @@ const FloatingInput = ({
         <div className="relative group">
             {/* Input Container */}
             <div className={`
-                relative flex items-center bg-slate-50 dark:bg-slate-950 border-2 rounded-2xl transition-all duration-300
-                ${isFilled ? 'border-slate-200 dark:border-slate-800' : 'border-slate-100 dark:border-slate-800'}
-                focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:bg-white dark:focus-within:bg-slate-900
+                relative flex items-center bg-app-light dark:bg-slate-950 border-2 rounded-2xl transition-all duration-300
+                ${isFilled ? 'border-border-subtle dark:border-slate-800' : 'border-slate-100 dark:border-slate-800'}
+                focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 focus-within:bg-surface-light dark:focus-within:bg-slate-900
             `}>
 
                 {/* Icon Wrapper */}
-                <div className="pl-4 pr-3 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                <div className="pl-4 pr-3 text-content-secondary group-focus-within:text-primary transition-colors">
                     <Icon size={20} />
                 </div>
 
@@ -362,17 +362,17 @@ const FloatingInput = ({
                         onChange={onChange}
                         readOnly={readOnly}
                         disabled={readOnly}
-                        className="w-full bg-transparent outline-none text-slate-800 dark:text-white font-bold text-sm placeholder:text-transparent peer"
+                        className="w-full bg-transparent outline-none text-content-main dark:text-content-inverse font-bold text-sm placeholder:text-transparent peer"
                         placeholder="space" // Trick for peer-placeholder-shown
                     />
 
                     {/* Floating Label */}
                     <label className={`
-                        absolute left-0 top-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all duration-200 pointer-events-none
-                        peer-placeholder-shown:text-sm peer-placeholder-shown:font-medium peer-placeholder-shown:normal-case peer-placeholder-shown:top-6 peer-placeholder-shown:text-slate-400
-                        peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:font-black peer-focus:uppercase peer-focus:text-blue-500
+                        absolute left-0 top-1.5 text-[10px] font-black uppercase tracking-widest text-content-secondary transition-all duration-200 pointer-events-none
+                        peer-placeholder-shown:text-sm peer-placeholder-shown:font-medium peer-placeholder-shown:normal-case peer-placeholder-shown:top-6 peer-placeholder-shown:text-content-secondary
+                        peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:font-black peer-focus:uppercase peer-focus:text-primary
                     `}>
-                        {label} {required && <span className="text-red-500">*</span>}
+                        {label} {required && <span className="text-status-danger">*</span>}
                     </label>
 
                     {/* Hint/Mask Placeholder (Visible only when focused and empty) */}
@@ -389,14 +389,14 @@ const FloatingInput = ({
                         <button
                             type="button"
                             onClick={() => onCopy(value, name)}
-                            className="p-2 rounded-xl text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-emerald-500 transition-all opacity-0 group-hover:opacity-100"
+                            className="p-2 rounded-xl text-content-secondary hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-status-success transition-all opacity-0 group-hover:opacity-100"
                             title="Copiar"
                         >
-                            {copiedField === name ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                            {copiedField === name ? <CheckCircle2 size={18} className="text-status-success" /> : <Copy size={18} />}
                         </button>
                     )}
                     {required && !isFilled && !readOnly && (
-                        <span className="text-amber-500 p-2 animate-pulse"><AlertCircle size={18} /></span>
+                        <span className="text-status-warning p-2 animate-pulse"><AlertCircle size={18} /></span>
                     )}
                 </div>
             </div>

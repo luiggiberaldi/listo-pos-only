@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Swal from 'sweetalert2';
+import { usePosActionsStore } from '../../stores/usePosActionsStore';
 
 export const useSaleFinalizer = ({
     carrito, calculos, registrarVenta, limpiarCarrito, prefereciasTicket, playSound, generarCorrelativo, recuperarDeEspera, cerrarPago, cerrarEspera, searchInputRef,
@@ -8,7 +9,9 @@ export const useSaleFinalizer = ({
     setCarrito // 🆕 Needed to restore items
 }) => {
     const [ticketData, setTicketData] = useState(null);
-    const [ventaExitosa, setVentaExitosa] = useState(false);
+    // ✅ FIX: Usar el store directamente — antes era useState local que nunca se conectaba
+    // con el ventaExitosa que DesktopLayout/TouchLayout leen del store.
+    const setVentaExitosa = usePosActionsStore.getState().setVentaExitosa;
 
     const handlePrint = useReactToPrint({
         contentRef: ticketRef,
@@ -126,7 +129,6 @@ export const useSaleFinalizer = ({
 
     return {
         ticketData, setTicketData,
-        ventaExitosa, setVentaExitosa,
         ticketRef, ticketSaldoRef,
         finalizarVenta,
         handlePrint,

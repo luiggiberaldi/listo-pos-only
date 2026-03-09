@@ -30,11 +30,11 @@ const NumericPad = ({ onValueChange, activeValue, onNext, onClear, onFillBalance
             onClick={onClick || (() => handlePress(value))}
             className={`
         flex items-center justify-center p-5 rounded-2xl font-bold text-2xl transition-all active:scale-95 shadow-sm
-        ${variant === 'default' ? 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 active:bg-slate-100' : ''}
-        ${variant === 'action' ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 active:bg-blue-800' : ''}
-        ${variant === 'danger' ? 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-100 active:bg-red-200' : ''}
-        ${variant === 'secondary' ? 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-slate-300' : ''}
-        ${variant === 'success' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 active:bg-emerald-800' : ''}
+        ${variant === 'default' ? 'bg-surface-light dark:bg-surface-dark text-content-main dark:text-content-inverse hover:bg-app-light border border-border-subtle active:bg-app-light/80' : ''}
+        ${variant === 'action' ? 'bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 active:bg-primary/80' : ''}
+        ${variant === 'danger' ? 'bg-status-dangerBg text-status-danger hover:bg-red-100 border border-red-100 active:bg-red-200' : ''}
+        ${variant === 'secondary' ? 'bg-app-light dark:bg-app-dark text-content-secondary hover:bg-border-subtle active:bg-slate-300' : ''}
+        ${variant === 'success' ? 'bg-status-success text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 active:bg-emerald-800' : ''}
         ${className}
       `}
         >
@@ -43,24 +43,24 @@ const NumericPad = ({ onValueChange, activeValue, onNext, onClear, onFillBalance
     );
 
     return (
-        <div className="flex flex-col gap-6 p-6 bg-slate-50/80 backdrop-blur-xl border-l border-slate-200 w-full sm:w-80 h-full animate-in slide-in-from-right-4 select-none">
+        <div className="flex flex-col gap-6 p-6 bg-app-light/80 dark:bg-app-dark/80 backdrop-blur-xl border-l border-border-subtle w-full sm:w-80 h-full animate-in slide-in-from-right-4 select-none">
             {/* Display / Header */}
             <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Numeric Pad</span>
-                    <span className="text-[9px] font-bold text-blue-500 uppercase">Express Input</span>
+                    <span className="text-[10px] font-black text-content-secondary uppercase tracking-[0.2em]">Numeric Pad</span>
+                    <span className="text-[9px] font-bold text-primary uppercase">Express Input</span>
                 </div>
-                <button onClick={onClear} className="text-slate-300 hover:text-red-500 transition-all p-2 active:scale-75"><XCircle size={24} /></button>
+                <button onClick={onClear} className="text-content-secondary/50 hover:text-status-danger transition-all p-2 active:scale-75"><XCircle size={24} /></button>
             </div>
 
             {/* Smart Shortcuts */}
             {pendingAmount > 0 && (
                 <button
                     onClick={onFillBalance}
-                    className="w-full py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl flex flex-col items-center justify-center gap-1 group active:scale-95 transition-all animate-in zoom-in-95"
+                    className="w-full py-4 bg-status-successBg border-2 border-emerald-100 rounded-2xl flex flex-col items-center justify-center gap-1 group active:scale-95 transition-all animate-in zoom-in-95"
                 >
                     <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest opacity-60">Pagar Restante</span>
-                    <div className="flex items-center gap-2 text-emerald-600">
+                    <div className="flex items-center gap-2 text-status-success">
                         <Zap size={18} fill="currentColor" />
                         <span className="text-2xl font-black font-numbers">${pendingAmount.toFixed(2)}</span>
                     </div>
@@ -82,9 +82,9 @@ const NumericPad = ({ onValueChange, activeValue, onNext, onClear, onFillBalance
             </div>
 
             <div className="pt-2 text-center">
-                <div className="inline-flex items-center gap-1 px-3 py-1 bg-slate-200/50 rounded-full">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">Vínculo Táctil Activo</span>
+                <div className="inline-flex items-center gap-1 px-3 py-1 bg-app-light/50 dark:bg-app-dark/50 rounded-full">
+                    <div className="w-1 h-1 rounded-full bg-status-success animate-pulse"></div>
+                    <span className="text-[9px] text-content-secondary font-bold uppercase tracking-tighter">Vínculo Táctil Activo</span>
                 </div>
             </div>
         </div>

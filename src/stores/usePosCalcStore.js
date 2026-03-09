@@ -17,32 +17,28 @@ function computeCalcState(carrito, configuracion) {
     const ivaGlobal = configuracion.ivaActivo
         ? new Decimal(configuracion.porcentajeIva || 0)
         : new Decimal(0);
+    const ivaDivisor = ivaGlobal.div(100);
 
-    let totalBS_Sum = d(0);
-    const carritoBS = [];
-
-    const subtotalUSD = carrito.reduce((sum, item, index) => {
+    // ✅ PERF H-6: Una sola iteración en lugar de dos .reduce() separados
+    const { subtotalUSD, totalImpuestoUSD, carritoBS, totalBS_Sum } = carrito.reduce((acc, item, index) => {
         const precioUnitario = d(item.precio);
         const cantidad = d(item.cantidad);
         const subtotalItemUSD = precioUnitario.times(cantidad);
 
         let impuestoItemUSD = d(0);
         if (!item.exento && item.aplicaIva !== false) {
-            impuestoItemUSD = subtotalItemUSD.times(ivaGlobal.div(100));
+            impuestoItemUSD = subtotalItemUSD.times(ivaDivisor);
         }
 
         const totalItemUSD = subtotalItemUSD.plus(impuestoItemUSD).toDecimalPlaces(4);
         const totalItemBS = totalItemUSD.times(tasa).toDecimalPlaces(2);
-        carritoBS[index] = totalItemBS.toNumber();
-        totalBS_Sum = totalBS_Sum.plus(totalItemBS);
+        acc.carritoBS[index] = totalItemBS.toNumber();
 
-        return sum.plus(subtotalItemUSD);
-    }, d(0));
-
-    const totalImpuestoUSD = carrito.reduce((sum, item) => {
-        if (item.exento || item.aplicaIva === false) return sum;
-        return sum.plus(d(item.precio).times(d(item.cantidad)).times(ivaGlobal.div(100)));
-    }, d(0));
+        acc.subtotalUSD = acc.subtotalUSD.plus(subtotalItemUSD);
+        acc.totalImpuestoUSD = acc.totalImpuestoUSD.plus(impuestoItemUSD);
+        acc.totalBS_Sum = acc.totalBS_Sum.plus(totalItemBS);
+        return acc;
+    }, { subtotalUSD: d(0), totalImpuestoUSD: d(0), carritoBS: [], totalBS_Sum: d(0) });
 
     const totalRawUSD = subtotalUSD.plus(totalImpuestoUSD);
 

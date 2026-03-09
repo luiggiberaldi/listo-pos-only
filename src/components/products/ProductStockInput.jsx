@@ -101,21 +101,21 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900/30 p-6 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+    <div className="bg-app-light dark:bg-slate-900/30 p-6 rounded-3xl border-2 border-dashed border-border-subtle dark:border-slate-800">
 
       <div className="flex justify-between items-end mb-6">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400">
+          <div className="p-2 bg-surface-light dark:bg-slate-800 rounded-lg border border-border-subtle dark:border-slate-700 text-content-secondary">
             <Archive size={20} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">Inventario Inicial</h3>
-            <p className="text-xs text-slate-400">Ingrese la cantidad física disponible</p>
+            <h3 className="text-sm font-bold text-content-main dark:text-slate-200">Inventario Inicial</h3>
+            <p className="text-xs text-content-secondary">Ingrese la cantidad física disponible</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{productoEditar ? 'Stock Actual' : 'Stock Inicial'}</div>
-          <div className="text-xl font-mono font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-1">{productoEditar ? 'Stock Actual' : 'Stock Inicial'}</div>
+          <div className="text-xl font-mono font-bold text-content-main dark:text-white bg-surface-light dark:bg-slate-800 px-3 py-1 rounded-lg border border-border-subtle dark:border-slate-700 shadow-sm">
             {renderTotalJerarquico(calcularStockTotal())}
           </div>
         </div>
@@ -124,12 +124,12 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
       {form.tipoUnidad === 'unidad' ? (
         <div className="grid grid-cols-3 gap-4">
           {form.jerarquia?.bulto?.activo && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-surface-light dark:bg-slate-800 p-3 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
               <label className="text-[10px] font-bold text-purple-500 uppercase block mb-2 text-center">Bultos</label>
               <input
                 type="number"
                 onWheel={preventScroll}
-                className="w-full text-center text-2xl font-bold text-slate-700 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
+                className="w-full text-center text-2xl font-bold text-content-main dark:text-white bg-transparent outline-none placeholder:text-content-secondary/30"
                 placeholder="0"
                 value={ingreso.bultos}
                 onChange={e => handleChange(e.target.value, 'bultos')}
@@ -139,12 +139,12 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
             </div>
           )}
           {form.jerarquia?.paquete?.activo && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="bg-surface-light dark:bg-slate-800 p-3 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
               <label className="text-[10px] font-bold text-blue-500 uppercase block mb-2 text-center">Paquetes</label>
               <input
                 type="number"
                 onWheel={preventScroll}
-                className="w-full text-center text-2xl font-bold text-slate-700 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
+                className="w-full text-center text-2xl font-bold text-content-main dark:text-white bg-transparent outline-none placeholder:text-content-secondary/30"
                 placeholder="0"
                 value={ingreso.paquetes}
                 onChange={e => handleChange(e.target.value, 'paquetes')}
@@ -154,12 +154,12 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
             </div>
           )}
           {(form.jerarquia?.unidad?.activo || (!form.jerarquia?.bulto?.activo && !form.jerarquia?.paquete?.activo)) && (
-            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-2 text-center">Unidades</label>
+            <div className="bg-surface-light dark:bg-slate-800 p-3 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
+              <label className="text-[10px] font-bold text-content-secondary uppercase block mb-2 text-center">Unidades</label>
               <input
                 type="number"
                 onWheel={preventScroll}
-                className="w-full text-center text-2xl font-bold text-slate-700 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
+                className="w-full text-center text-2xl font-bold text-content-main dark:text-white bg-transparent outline-none placeholder:text-content-secondary/30"
                 placeholder="0"
                 value={ingreso.unidades}
                 onChange={e => handleChange(e.target.value, 'unidades')}
@@ -170,13 +170,13 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <label className="text-xs font-bold text-slate-500 uppercase block mb-2 text-center">Peso Total (Kilogramos)</label>
+        <div className="bg-surface-light dark:bg-slate-800 p-4 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
+          <label className="text-xs font-bold text-content-secondary uppercase block mb-2 text-center">Peso Total (Kilogramos)</label>
           <input
             type="number"
             step="0.001"
             onWheel={preventScroll}
-            className="w-full text-center text-3xl font-bold text-slate-800 dark:text-white bg-transparent outline-none placeholder:text-slate-200"
+            className="w-full text-center text-3xl font-bold text-content-main dark:text-white bg-transparent outline-none placeholder:text-content-secondary/30"
             placeholder="0.000"
             value={ingreso.unidades}
             onChange={e => handleChange(e.target.value, 'unidades')}

@@ -286,7 +286,8 @@ export const useCartStore = create(
             setCarrito: (newCarrito) => set({ carrito: newCarrito })
         }),
         {
-            name: 'listo-carrito-storage', // name of the item in the storage (must be unique)
+            name: 'listo-carrito-storage',
+            partialize: (s) => ({ carrito: s.carrito }), // ✅ PERF H-7: Solo serializar el carrito
         }
     ), 'CartStore')
 );

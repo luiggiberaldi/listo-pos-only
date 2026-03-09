@@ -45,9 +45,14 @@ export const usePosActionsStore = create(ghostMiddleware((set, get) => ({
             nombreAccion: 'Vaciar Cesta Completa',
             accion: () => {
                 Swal.fire({
-                    title: '¿Vaciar Cesta?', text: 'Se eliminarán todos los productos.',
-                    icon: 'warning', showCancelButton: true,
-                    confirmButtonColor: '#d33', confirmButtonText: 'Sí, vaciar'
+                    title: '¿Vaciar cesta?',
+                    text: `Se eliminarán ${carrito.length} producto(s).`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Sí, vaciar',
+                    cancelButtonText: 'Cancelar',
                 }).then((r) => { if (r.isConfirmed) useCartStore.getState().limpiarCarrito(); });
             }
         });

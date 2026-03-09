@@ -157,11 +157,11 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-50 dark:bg-slate-950">
-      <aside className="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-sm">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3 text-slate-800 dark:text-white">
-            <div className="p-2 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20"><Settings2 size={20} /></div>
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-app-light dark:bg-app-dark">
+      <aside className="w-72 bg-surface-light dark:bg-surface-dark border-r border-border-subtle dark:border-slate-700/60 flex flex-col shadow-sm">
+        <div className="p-6 border-b border-border-subtle dark:border-slate-700/60">
+          <div className="flex items-center gap-3 text-content-main dark:text-content-inverse">
+            <div className="p-2 bg-primary text-content-inverse rounded-lg shadow-lg shadow-primary/25"><Settings2 size={20} /></div>
             <h1 className="text-lg font-black tracking-tight">Preferencias</h1>
           </div>
         </div>
@@ -169,11 +169,11 @@ export default function ConfigPage() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
           {menuGroups.map(group => (
             <div key={group.id} className="space-y-2">
-              <h3 className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{group.label}</h3>
+              <h3 className="px-3 text-[10px] font-black uppercase tracking-widest text-content-secondary dark:text-slate-500">{group.label}</h3>
               <div className="space-y-1">
                 {group.items.map(item => {
                   if (item.perm && !tienePermiso(item.perm)) return null;
-                  if (item.feature && !hasFeature(currentPlan, item.feature)) return null; // 🆕 Feature Check
+                  if (item.feature && !hasFeature(currentPlan, item.feature)) return null;
                   return (
                     <button
                       key={item.id}
@@ -181,12 +181,12 @@ export default function ConfigPage() {
                       className={`
                           w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition-all group
                           ${activeTab === item.id
-                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-r-4 border-blue-600'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200'}
+                          ? 'bg-primary-light dark:bg-primary/20 text-primary border-r-4 border-primary'
+                          : 'text-content-secondary hover:bg-app-light dark:hover:bg-slate-800/50 hover:text-content-main dark:hover:text-content-inverse'}
                         `}
                     >
                       <div className="flex items-center gap-3">
-                        <item.icon size={18} className={`${activeTab === item.id ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-500'}`} />
+                        <item.icon size={18} className={`${activeTab === item.id ? 'text-primary' : 'text-content-secondary group-hover:text-content-main'}`} />
                         <span>{item.label}</span>
                       </div>
                       {activeTab === item.id && <ChevronRight size={14} className="animate-in slide-in-from-left-2" />}
@@ -199,27 +199,26 @@ export default function ConfigPage() {
         </nav>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 custom-scrollbar p-8">
+      <main className="flex-1 overflow-y-auto bg-app-light dark:bg-app-dark custom-scrollbar p-8">
         <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-8 flex items-center gap-4">
-            <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-              {activeTab === 'negocio' && <Building2 className="text-blue-500" size={32} />}
-              {activeTab === 'finanzas' && <Coins className="text-emerald-500" size={32} />}
-              {activeTab === 'inventario' && <Box className="text-orange-500" size={32} />}
-              {activeTab === 'salud' && <Database className="text-indigo-500" size={32} />}
-              {activeTab === 'ticket' && <Receipt className="text-cyan-500" size={32} />}
-              {activeTab === 'apariencia' && <Palette className="text-pink-500" size={32} />}
-              {activeTab === 'seguridad' && <ShieldCheck className="text-emerald-600" size={32} />}
-              {activeTab === 'actualizaciones' && <RefreshCw className="text-indigo-600" size={32} />}
-              {activeTab === 'multicaja' && <Cable className="text-cyan-500" size={32} />}
-
+            <div className="p-4 bg-surface-light dark:bg-surface-dark rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700/60">
+              {activeTab === 'negocio' && <Building2 className="text-primary" size={32} />}
+              {activeTab === 'finanzas' && <Coins className="text-status-success" size={32} />}
+              {activeTab === 'inventario' && <Box className="text-status-warning" size={32} />}
+              {activeTab === 'salud' && <Database className="text-primary" size={32} />}
+              {activeTab === 'ticket' && <Receipt className="text-primary" size={32} />}
+              {activeTab === 'apariencia' && <Palette className="text-primary" size={32} />}
+              {activeTab === 'seguridad' && <ShieldCheck className="text-status-success" size={32} />}
+              {activeTab === 'actualizaciones' && <RefreshCw className="text-primary" size={32} />}
+              {activeTab === 'multicaja' && <Cable className="text-primary" size={32} />}
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white capitalize">
+              <h2 className="text-2xl font-black text-content-main dark:text-content-inverse capitalize">
                 {activeTab.replace('negocio', 'Información del Negocio')}
               </h2>
               {readOnly && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wide mt-1">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-app-light dark:bg-app-dark text-content-secondary text-[10px] font-bold uppercase tracking-wide mt-1">
                   <Lock size={10} /> Solo Lectura
                 </span>
               )}

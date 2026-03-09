@@ -13,7 +13,7 @@ const SecurityCriticalGate = () => {
   const { usuario } = useStore();
   const { iniciarMigracion, isUpgrading } = usePinUpgrade();
   const { registrarEventoSeguridad } = useSecurityAudit();
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [blockedAction, setBlockedAction] = useState(null);
 
@@ -30,7 +30,7 @@ const SecurityCriticalGate = () => {
         subTipo: 'MIGRATION_GATE_ACTIVATED',
         usuarioId: usuario?.id,
         contexto: 'CRITICAL_RISK_BLOCK',
-        metadata: { 
+        metadata: {
           action: actionName,
           reason: 'MANDATORY_UPGRADE_PENDING'
         }
@@ -43,11 +43,11 @@ const SecurityCriticalGate = () => {
 
   const handleUpgrade = async () => {
     // Ocultamos temporalmente este modal para mostrar el SweetAlert de upgrade
-    setIsOpen(false); 
-    
+    setIsOpen(false);
+
     // Iniciamos flujo Fase 4.0
     await iniciarMigracion();
-    
+
     // Nota: Si el upgrade es exitoso, el estado global cambia y este componente ya no se activa.
     // Si cancela el upgrade, la próxima acción crítica volverá a disparar este gate.
   };
@@ -61,9 +61,9 @@ const SecurityCriticalGate = () => {
   if (!isOpen || isUpgrading) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border-2 border-red-600 ring-4 ring-red-500/20 transform scale-100 transition-all">
-        
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-dark/90 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-surface-light dark:bg-surface-dark w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border-2 border-status-danger ring-4 ring-red-500/20 transform scale-100 transition-all">
+
         {/* Header de Bloqueo */}
         <div className="bg-red-600 px-6 py-6 flex items-center gap-4">
           <div className="p-3 bg-white/20 rounded-full animate-pulse">
@@ -94,27 +94,27 @@ const SecurityCriticalGate = () => {
           </div>
 
           <div className="space-y-4 mb-8">
-            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+            <h3 className="text-sm font-bold text-content-main dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
               <LockKeyhole size={16} /> Requerimiento Inmediato
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed text-justify">
+            <p className="text-sm text-content-secondary dark:text-slate-400 leading-relaxed text-justify">
               Para proteger la integridad financiera del negocio, el sistema requiere que actualices tu credencial a un <strong>PIN de 6 dígitos</strong> ahora mismo. No podrás continuar con esta operación hasta hacerlo.
             </p>
           </div>
 
           {/* Botones de Acción - SIN "MÁS TARDE" */}
           <div className="flex flex-col gap-3">
-            <button 
+            <button
               onClick={handleUpgrade}
               className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-base shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
             >
               <ArrowUpCircle size={20} />
               ACTUALIZAR Y CONTINUAR
             </button>
-            
-            <button 
+
+            <button
               onClick={handleCancel}
-              className="w-full py-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg"
+              className="w-full py-3 text-content-secondary hover:text-content-main dark:hover:text-slate-300 font-bold text-xs transition-colors border border-transparent hover:border-border-subtle dark:hover:border-slate-700 rounded-lg"
             >
               CANCELAR OPERACIÓN
             </button>

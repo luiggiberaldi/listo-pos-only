@@ -75,12 +75,12 @@ export default function HoldToConfirmButton({ onConfirm, label = 'MANTENER PARA 
                 onTouchEnd={stopHold}
                 onTouchCancel={stopHold}
                 className={`w-full h-full rounded-2xl relative overflow-hidden transition-all duration-300 ${disabled
-                        ? 'bg-slate-100 cursor-not-allowed opacity-70'
-                        : isCompleted
-                            ? `${theme.bg} shadow-2xl ${theme.shadow} scale-[0.98] ring-4 ${theme.ring}`
-                            : isHolding
-                                ? `${theme.bg} shadow-2xl ${theme.shadow} scale-[0.97]`
-                                : `${theme.bg} shadow-xl ${theme.shadow} hover:shadow-2xl hover:scale-[1.01] cursor-pointer active:scale-[0.98]`
+                    ? 'bg-app-light dark:bg-app-dark cursor-not-allowed opacity-70'
+                    : isCompleted
+                        ? `${theme.bg} shadow-2xl ${theme.shadow} scale-[0.98] ring-4 ${theme.ring}`
+                        : isHolding
+                            ? `${theme.bg} shadow-2xl ${theme.shadow} scale-[0.97]`
+                            : `${theme.bg} shadow-xl ${theme.shadow} hover:shadow-2xl hover:scale-[1.01] cursor-pointer active:scale-[0.98]`
                     }`}
             >
                 {/* [V6] Shimmer gradient progress (replaces flat white overlay) */}
@@ -97,7 +97,7 @@ export default function HoldToConfirmButton({ onConfirm, label = 'MANTENER PARA 
                 {/* Content */}
                 <div className="relative z-10 flex items-center justify-center gap-3 text-white h-full">
                     {disabled ? (
-                        <div className="text-slate-300 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+                        <div className="text-content-secondary font-bold text-xs uppercase tracking-widest flex items-center gap-2">
                             <Lock size={16} /> Completar Datos
                         </div>
                     ) : isCompleted ? (

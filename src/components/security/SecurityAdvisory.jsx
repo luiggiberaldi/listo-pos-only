@@ -49,7 +49,7 @@ const SecurityAdvisory = () => {
 
   return (
     <div className="absolute top-4 right-4 z-[60] w-full max-w-sm animate-in slide-in-from-right fade-in duration-700">
-      <div className={`bg-white border-l-4 ${style.color} shadow-2xl rounded-r-xl p-4 flex items-start gap-3 ring-1 ring-black/5`}>
+      <div className={`bg-surface-light border-l-4 ${style.color} shadow-2xl rounded-r-xl p-4 flex items-start gap-3 ring-1 ring-black/5`}>
 
         <div className={`p-2 rounded-full ${style.bg} ${style.iconColor} shrink-0 mt-3`}>
           {riskLevel === 'HIGH' ? <ShieldAlert size={20} /> : <Info size={20} />}
@@ -57,23 +57,23 @@ const SecurityAdvisory = () => {
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
-            <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-1">
+            <h4 className="text-xs font-black text-content-main uppercase tracking-wider mb-1">
               {style.title}
             </h4>
           </div>
 
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <p className="text-xs text-content-secondary leading-relaxed">
             Se han detectado <strong>{legacyPinUsage}</strong> operaciones realizadas con credenciales heredadas (4 dígitos).
           </p>
 
-          <p className="text-[10px] text-slate-400 mt-2 font-medium">
+          <p className="text-[10px] text-content-secondary/70 mt-2 font-medium">
             Recomendación: Actualice a PINs de 6 dígitos.
           </p>
         </div>
 
         <button
           onClick={handleDismiss}
-          className="text-slate-300 hover:text-slate-500 transition-colors p-1"
+          className="text-content-secondary/50 hover:text-content-secondary transition-colors p-1"
           aria-label="Cerrar aviso"
         >
           <X size={16} />

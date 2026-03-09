@@ -6,6 +6,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { useShallow } from 'zustand/react/shallow'; // ✅ PERF H-2: Correcto para Zustand v5
 
 // --- STORES ---
 import { useCartStore } from '../stores/useCartStore';
@@ -58,8 +59,7 @@ export default function PosPage() {
   useEffect(() => {
     useInventoryStore.getState().loadProductos();
     useConfigStore.getState().loadConfig();
-    // Trigger initial calc
-    setTimeout(() => usePosCalcStore.getState()._recalc(), 100);
+    // _recalc se dispara automáticamente vía suscripción reactiva en usePosCalcStore
   }, []);
 
   // --- CAJA ---
@@ -90,18 +90,17 @@ export default function PosPage() {
     (newCart) => useCartStore.getState().setCarrito(newCart)
   );
 
-  const _subtotalBase = usePosCalcStore(s => s.subtotalBase);
-  const _totalImpuesto = usePosCalcStore(s => s.totalImpuesto);
-  const _totalUSD = usePosCalcStore(s => s.totalUSD);
-  const _totalBS = usePosCalcStore(s => s.totalBS);
-  const _carritoBS = usePosCalcStore(s => s.carritoBS);
-  const _tasa = usePosCalcStore(s => s.tasa);
-  const _ivaGlobal = usePosCalcStore(s => s.ivaGlobal);
-  const calculos = React.useMemo(() => ({
-    subtotalBase: _subtotalBase, totalImpuesto: _totalImpuesto,
-    totalUSD: _totalUSD, totalBS: _totalBS,
-    carritoBS: _carritoBS, tasa: _tasa, ivaGlobal: _ivaGlobal
-  }), [_subtotalBase, _totalImpuesto, _totalUSD, _totalBS, _carritoBS, _tasa, _ivaGlobal]);
+  // ✅ PERF H-2: useShallow en lugar de 7 suscripciones independientes
+  // useShallow envuelve el selector estabilizando la referencia del objeto resultado
+  const calculos = usePosCalcStore(useShallow(s => ({
+    subtotalBase: s.subtotalBase,
+    totalImpuesto: s.totalImpuesto,
+    totalUSD: s.totalUSD,
+    totalBS: s.totalBS,
+    carritoBS: s.carritoBS,
+    tasa: s.tasa,
+    ivaGlobal: s.ivaGlobal,
+  })));
   const ticketsEspera = useTicketStore(s => s.ticketsEspera);
   const recuperarDeEspera = useTicketStore(s => s.recuperarDeEspera);
   const activeModal = useUIStore(s => s.activeModal);

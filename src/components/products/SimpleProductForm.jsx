@@ -98,33 +98,33 @@ export default function SimpleProductForm({
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900/50 p-6 gap-6">
+        <div className="flex flex-col h-full bg-app-light dark:bg-slate-900/50 p-6 gap-6">
 
             {/* HEADER IN-FORM: Título Grande */}
-            <div className="text-center pb-2 border-b border-slate-200 dark:border-slate-800">
-                <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200">
+            <div className="text-center pb-2 border-b border-border-subtle dark:border-slate-800">
+                <h2 className="text-xl font-bold text-content-main dark:text-slate-200">
                     {productoEditar ? 'Edición Rápida' : 'Nuevo Producto (Bodega)'}
                 </h2>
                 <div className="flex justify-center items-center gap-2 mt-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <p className="text-xs text-slate-400 font-medium">Modo Simplificado</p>
+                    <span className="w-2 h-2 rounded-full bg-status-success animate-pulse"></span>
+                    <p className="text-xs text-content-secondary font-medium">Modo Simplificado</p>
                 </div>
             </div>
 
             {/* 1. IDENTIDAD */}
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col gap-4">
+            <div className="bg-surface-light dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700 flex flex-col gap-4">
                 <div className="flex gap-3">
                     <div className="flex-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Código de Barras</label>
+                        <label className="text-xs font-bold text-content-secondary uppercase mb-1 block">Código de Barras</label>
                         <div className="relative">
-                            <Scan className="absolute left-3 top-3 text-slate-400" size={18} />
+                            <Scan className="absolute left-3 top-3 text-content-secondary" size={18} />
                             <input
                                 ref={barcodeInputRef}
                                 type="text"
                                 value={form.codigo}
                                 onChange={(e) => updateField('codigo', e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(e, nameInputRef)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 font-mono text-lg"
+                                className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-primary font-mono text-lg"
                                 placeholder="Escanear..."
                             />
                         </div>
@@ -144,7 +144,7 @@ export default function SimpleProductForm({
                             updateField('nombre', titleCased);
                         }}
                         onKeyDown={(e) => handleKeyDown(e, priceInputRef)}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold placeholder:normal-case"
+                        className="w-full px-4 py-3 bg-surface-light dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-primary text-lg font-bold placeholder:normal-case"
                         placeholder="Ej: Harina PAN 1kg"
                     />
                 </div>
@@ -152,7 +152,7 @@ export default function SimpleProductForm({
                 <div>
                     <div className="flex justify-between items-center mb-1">
                         <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
-                        <button onClick={handleQuickCategory} className="text-blue-500 text-xs font-bold hover:underline">+ Crear</button>
+                        <button onClick={handleQuickCategory} className="text-primary text-xs font-bold hover:underline">+ Crear</button>
                     </div>
                     {/* CATEGORY SELECTOR (SMART) */}
                     <SmartCategorySelector
@@ -176,7 +176,7 @@ export default function SimpleProductForm({
                     className={`flex-1 p-3 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all
                         ${!isPesaje
                             ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}
+                            : 'border-border-subtle dark:border-slate-700 text-content-secondary hover:border-slate-300'}`}
                 >
                     <Package size={18} />
                     Por Unidad
@@ -193,7 +193,7 @@ export default function SimpleProductForm({
                     className={`flex-1 p-3 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all
                         ${isPesaje
                             ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-500'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}
+                            : 'border-border-subtle dark:border-slate-700 text-content-secondary hover:border-slate-300'}`}
                 >
                     <Scale size={18} />
                     Por Peso (Kg)
@@ -207,15 +207,15 @@ export default function SimpleProductForm({
                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between group
                     ${hasBulto
                             ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/20 dark:border-blue-500'
-                            : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700 hover:border-blue-300'
+                            : 'bg-surface-light border-border-subtle dark:bg-slate-800 dark:border-slate-700 hover:border-blue-300'
                         }`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${hasBulto ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'}`}>
+                        <div className={`p-2 rounded-lg ${hasBulto ? 'bg-blue-500 text-white' : 'bg-app-light text-content-secondary dark:bg-slate-700'}`}>
                             <Box size={24} />
                         </div>
                         <div>
-                            <h3 className={`font-bold ${hasBulto ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                            <h3 className={`font-bold ${hasBulto ? 'text-blue-700 dark:text-blue-400' : 'text-content-main dark:text-slate-400'}`}>
                                 {hasBulto ? 'Venta por Bulto/Caja ACTIVADA' : '¿Se vende también por Caja/Bulto?'}
                             </h3>
                             {hasBulto && <p className="text-xs text-blue-600/70 dark:text-blue-400/60">Configura el contenido y precio de la caja</p>}
@@ -280,12 +280,12 @@ export default function SimpleProductForm({
                 )}
 
                 {/* UNIDAD CARD (Siempre visible) */}
-                <div className={`p-4 rounded-xl border transition-all ${hasBulto ? 'col-span-1 bg-white border-slate-200' : 'col-span-2 bg-emerald-50 border-emerald-200'}`}>
-                    <label className={`text-xs font-bold uppercase mb-1 block ${isPesaje ? 'text-amber-700' : hasBulto ? 'text-slate-500' : 'text-emerald-700'}`}>
+                <div className={`p-4 rounded-xl border transition-all ${hasBulto ? 'col-span-1 bg-surface-light border-border-subtle' : 'col-span-2 bg-emerald-50 border-emerald-200'}`}>
+                    <label className={`text-xs font-bold uppercase mb-1 block ${isPesaje ? 'text-amber-700' : hasBulto ? 'text-content-secondary' : 'text-emerald-700'}`}>
                         {isPesaje ? 'Precio por Kg ($)' : hasBulto ? 'Precio Unidad ($)' : 'Precio Venta ($)'}
                     </label>
                     <div className="relative">
-                        <DollarSign className={`absolute left-3 top-3 ${hasBulto ? 'text-slate-400' : 'text-emerald-500'}`} size={20} />
+                        <DollarSign className={`absolute left-3 top-3 ${hasBulto ? 'text-content-secondary' : 'text-emerald-500'}`} size={20} />
                         <input
                             ref={priceInputRef}
                             type="number"
@@ -302,7 +302,7 @@ export default function SimpleProductForm({
 
                     {/* BS DISPLAY */}
                     <div className="text-right mt-1">
-                        <span className="text-xs font-bold text-slate-400">
+                        <span className="text-xs font-bold text-content-secondary">
                             Bs {((parseFloat(form.precio) || 0) * (tasa || 0)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
@@ -315,14 +315,14 @@ export default function SimpleProductForm({
                 </div>
 
                 {/* COSTO UNITARIO (Si no es Bulto, ocupa espacio, si es Bulto se alinea) */}
-                <div className={`p-4 rounded-xl border border-slate-200 bg-white dark:bg-slate-800 ${hasBulto ? 'col-span-1' : 'col-span-2'}`}>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Costo Unitario ($)</label>
+                <div className={`p-4 rounded-xl border border-border-subtle bg-surface-light dark:bg-slate-800 ${hasBulto ? 'col-span-1' : 'col-span-2'}`}>
+                    <label className="text-xs font-bold text-content-secondary uppercase mb-1 block">Costo Unitario ($)</label>
                     <input
                         type="number"
                         step="0.01"
                         value={form.costo}
                         onChange={(e) => updateField('costo', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-mono"
+                        className="w-full px-3 py-2 bg-app-light dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-mono"
                         placeholder="0.00"
                     />
                 </div>
@@ -330,8 +330,8 @@ export default function SimpleProductForm({
             </div>
 
             {/* 4. STOCK INTELIGENTE */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <label className="text-xs font-bold text-slate-500 uppercase mb-3 block flex items-center gap-2">
+            <div className="bg-surface-light dark:bg-slate-800 p-4 rounded-2xl border border-border-subtle dark:border-slate-700">
+                <label className="text-xs font-bold text-content-secondary uppercase mb-3 block flex items-center gap-2">
                     {isPesaje ? <><Scale size={14} /> Stock en Kg</> : <><Package size={14} /> Inventario Inicial</>}
                 </label>
 
@@ -348,28 +348,28 @@ export default function SimpleProductForm({
                                 placeholder="0"
                             />
                         </div>
-                        <div className="flex items-center justify-center pb-3 text-slate-300 font-bold">+</div>
+                        <div className="flex items-center justify-center pb-3 text-content-secondary/50 font-bold">+</div>
                         <div className="flex-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Unidades Sueltas</label>
+                            <label className="text-[10px] font-bold text-content-secondary uppercase mb-1">Unidades Sueltas</label>
                             <input
                                 type="number"
                                 min="0"
                                 value={stockUnidades}
                                 onChange={(e) => updateStock(stockCajas, parseFloat(e.target.value) || 0)}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600"
+                                className="w-full px-3 py-2 bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-700 rounded-lg text-content-main"
                                 placeholder="0"
                             />
                         </div>
                         <div className="flex flex-col justify-end pb-2 text-right">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">Total Unidades</span>
-                            <span className="text-xl font-black text-slate-700 dark:text-slate-200">{stockTotal}</span>
+                            <span className="text-[10px] text-content-secondary font-bold uppercase">Total Unidades</span>
+                            <span className="text-xl font-black text-content-main dark:text-slate-200">{stockTotal}</span>
                         </div>
                     </div>
                 ) : (
                     <div className="relative">
                         {isPesaje
                             ? <Scale className="absolute left-3 top-2.5 text-amber-500" size={18} />
-                            : <Package className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                            : <Package className="absolute left-3 top-2.5 text-content-secondary" size={18} />
                         }
                         <input
                             type="number"
@@ -377,7 +377,7 @@ export default function SimpleProductForm({
                             step={isPesaje ? '0.001' : '1'}
                             value={form.stock || ''}
                             onChange={(e) => updateField('stock', e.target.value)}
-                            className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-lg font-bold"
+                            className="w-full pl-10 pr-3 py-2 bg-app-light dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-lg font-bold"
                             placeholder={isPesaje ? '0.000' : '0'}
                         />
                         {isPesaje && (
@@ -388,8 +388,8 @@ export default function SimpleProductForm({
             </div>
 
             {/* 5. STOCK MÍNIMO */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block flex items-center gap-2">
+            <div className="bg-surface-light dark:bg-slate-800 p-4 rounded-2xl border border-border-subtle dark:border-slate-700">
+                <label className="text-xs font-bold text-content-secondary uppercase mb-2 block flex items-center gap-2">
                     <AlertTriangle size={14} /> {isPesaje ? 'Stock Mínimo (Kg)' : 'Stock Mínimo'}
                 </label>
                 <input
@@ -398,10 +398,10 @@ export default function SimpleProductForm({
                     step={isPesaje ? '0.1' : '1'}
                     value={form.stockMinimo || ''}
                     onChange={(e) => updateField('stockMinimo', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-mono"
+                    className="w-full px-3 py-2 bg-app-light dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg font-mono"
                     placeholder={isPesaje ? '1.0' : '5'}
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Recibirás alerta cuando el stock baje de este nivel</p>
+                <p className="text-[10px] text-content-secondary mt-1">Recibirás alerta cuando el stock baje de este nivel</p>
             </div>
 
             <div className="flex-1"></div> {/* Spacer */}

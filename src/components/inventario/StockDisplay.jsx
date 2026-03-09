@@ -11,8 +11,8 @@ export default function StockDisplay({ p }) {
   // MODO PESO
   if (p.tipoUnidad === 'peso') {
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold ${stockTotal <= 5 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
-        <div className={`w-2 h-2 rounded-full ${stockTotal <= 5 ? 'bg-red-500' : 'bg-slate-400'}`}></div>
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold ${stockTotal <= 5 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-app-light text-content-main border-border-subtle'}`}>
+        <div className={`w-2 h-2 rounded-full ${stockTotal <= 5 ? 'bg-red-500' : 'bg-content-secondary'}`}></div>
         {stockTotal.toFixed(3)} Kg
       </div>
     );
@@ -35,8 +35,8 @@ export default function StockDisplay({ p }) {
   return (
     <div className="flex flex-wrap gap-2 items-center">
       {partes.map((parte, i) => {
-        let estilo = "bg-white text-slate-600 border-slate-200";
-        let dotColor = "bg-slate-400";
+        let estilo = "bg-surface-light text-content-main border-border-subtle";
+        let dotColor = "bg-content-secondary";
 
         const lowerParte = parte.toLowerCase();
         if (lowerParte.includes('bulto')) { estilo = "bg-purple-50 text-purple-700 border-purple-100"; dotColor = "bg-purple-500"; }

@@ -34,7 +34,7 @@ const PaymentLeftColumn = ({
     onFinishSelection
 }) => {
     return (
-        <div className={`${isTouch ? 'lg:w-[30%]' : 'lg:w-1/3'} bg-slate-50 border-r border-slate-200 flex flex-col overflow-hidden`}>
+        <div className={`${isTouch ? 'lg:w-[30%]' : 'lg:w-1/3'} bg-app-light dark:bg-app-dark border-r border-border-subtle dark:border-slate-700 flex flex-col overflow-hidden`}>
 
             {/* 📌 MODULO 1: RESUMEN DE TRANSACCIÓN (Sticky Header) */}
             <TransactionSummary
@@ -66,8 +66,8 @@ const PaymentLeftColumn = ({
 
                 <div className="space-y-2">
                     <div className={`flex justify-between items-center px-2 ${isTouch ? 'text-sm' : 'text-[11px]'}`}>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter">Monto Pagado:</span>
-                        <span className="text-emerald-600 font-extrabold font-numbers">${totalPagadoGlobalUSD.toFixed(2)}</span>
+                        <span className="text-content-secondary font-bold uppercase tracking-tighter">Monto Pagado:</span>
+                        <span className="text-status-success font-extrabold font-numbers">${totalPagadoGlobalUSD.toFixed(2)}</span>
                     </div>
 
                     {/* 🛡️ LAYOUT SHIFT FIX: FIXED HEIGHT PROTOCOL */}
@@ -78,12 +78,12 @@ const PaymentLeftColumn = ({
                             ? 'opacity-100 scale-100 translate-y-0 z-10 pointer-events-auto'
                             : 'opacity-0 scale-95 translate-y-4 z-0 pointer-events-none'
                             }`}>
-                            <div className={`h-full flex flex-col justify-center items-center text-center ${isTouch ? 'p-5' : 'p-3'} rounded-xl border-2 border-slate-200 bg-white text-slate-600 shadow-sm`}>
+                            <div className={`h-full flex flex-col justify-center items-center text-center ${isTouch ? 'p-5' : 'p-3'} rounded-xl border-2 border-border-subtle dark:border-slate-700 bg-surface-light dark:bg-surface-dark text-content-main dark:text-content-inverse shadow-sm`}>
                                 <p className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Falta por Pagar</p>
-                                <p className={`${isTouch ? 'text-5xl' : 'text-3xl'} font-black font-numbers text-slate-800 my-2 tracking-tight`}>
+                                <p className={`${isTouch ? 'text-5xl' : 'text-3xl'} font-black font-numbers text-content-main dark:text-content-inverse my-2 tracking-tight`}>
                                     ${faltaPorPagar.toFixed(2)}
                                 </p>
-                                <div className={`${isTouch ? 'text-xl' : 'text-base'} font-bold text-slate-400 font-numbers`}>
+                                <div className={`${isTouch ? 'text-xl' : 'text-base'} font-bold text-content-secondary font-numbers`}>
                                     Bs {math.round(faltaPorPagar * tasaSegura).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                                 </div>
                             </div>
@@ -109,7 +109,7 @@ const PaymentLeftColumn = ({
                             ? 'opacity-100 scale-100 translate-y-0 z-10 pointer-events-auto'
                             : 'opacity-0 scale-95 translate-y-4 z-0 pointer-events-none'
                             }`}>
-                            <div className={`h-full flex flex-col justify-center items-center text-center ${isTouch ? 'p-6' : 'p-4'} rounded-xl border-2 border-orange-200 bg-orange-50 text-orange-800 shadow-sm`}>
+                            <div className={`h-full flex flex-col justify-center items-center text-center ${isTouch ? 'p-6' : 'p-4'} rounded-xl border-2 border-status-warning/30 bg-status-warningBg text-orange-800 shadow-sm`}>
                                 <p className="text-[10px] font-bold uppercase opacity-70">Queda Debiendo</p>
                                 <p className={`${isTouch ? 'text-5xl' : 'text-4xl'} font-extrabold font-numbers my-2`}>
                                     ${deudaCliente.toFixed(2)}

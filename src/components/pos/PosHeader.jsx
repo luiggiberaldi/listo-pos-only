@@ -21,6 +21,7 @@ const PosHeader = React.forwardRef(({ onKeyDown }, ref) => {
   const tasa = usePosCalcStore(s => s.tasa);
   const tasaCaida = usePosCalcStore(s => s.tasaCaida);
   const tasaReferencia = useConfigStore(s => s.configuracion?.tasaReferencia || 0);
+  const offlineMode = useConfigStore(s => s.offlineMode);
 
   // ⚡ ENFOQUE INICIAL ÚNICO
   useEffect(() => {
@@ -61,6 +62,11 @@ const PosHeader = React.forwardRef(({ onKeyDown }, ref) => {
             <div className="bg-red-100 text-red-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-200 whitespace-nowrap animate-pulse flex items-center gap-1 mt-1">
               <AlertTriangle size={8} /> MENOR A BCV ({tasaReferencia})
             </div>
+          )}
+          {offlineMode && (
+            <span className="text-[10px] bg-orange-500 text-white font-black px-2 py-0.5 rounded animate-pulse mt-1">
+              OFFLINE
+            </span>
           )}
         </div>
       </div>

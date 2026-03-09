@@ -16,7 +16,7 @@ export default function ModalGasto({ isOpen, onClose }) {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-sm transition-all">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-surface-dark/60 backdrop-blur-sm transition-all">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -35,7 +35,7 @@ export default function ModalGasto({ isOpen, onClose }) {
                                     key={tab.id}
                                     onClick={() => setMode(tab.id)}
                                     className={`px-4 md:px-6 py-2 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-black tracking-wide flex items-center gap-1.5 md:gap-2 transition-all duration-200 ${mode === tab.id
-                                        ? 'bg-white text-slate-900 shadow-xl scale-105'
+                                        ? 'bg-white text-content-main shadow-xl scale-105'
                                         : 'text-white/70 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >

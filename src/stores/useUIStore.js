@@ -4,24 +4,39 @@ import { ghostMiddleware } from '../utils/ghost/ghostMiddleware';
 // Sound System (Global Audio Context)
 import { useConfigStore } from './useConfigStore';
 
-// Sound System (Global Audio Context)
+// ✅ PERF: Singleton AudioContext — creado una sola vez, reutilizado siempre
+let _sharedAudioCtx = null;
+const getAudioCtx = () => {
+    try {
+        if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            _sharedAudioCtx = new AC();
+        }
+        if (_sharedAudioCtx.state === 'suspended') {
+            _sharedAudioCtx.resume();
+        }
+        return _sharedAudioCtx;
+    } catch (e) {
+        return null;
+    }
+};
+
 const playAudio = (type) => {
     // 1. VERIFICAR CONFIGURACIÓN GLOBAL (MUTE)
     try {
         const config = useConfigStore.getState().configuracion;
         if (config && (config.sonidoBeep === false || config.mutearSonidos === true)) {
-            // console.log('🔇 [GlobalSound] MUTEADO por configuración');
             return;
         }
     } catch (e) { console.warn('Error reading config check', e); }
 
-    console.log(`🔊 [GlobalSound] PLAYING: ${type}`);
+    if (import.meta.env.DEV) console.log(`🔊 [GlobalSound] PLAYING: ${type}`);
 
     // Web Audio API logic (Premium)
     try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioCtx();
+        if (!ctx) return;
 
         // --- SONIDOS PREMIUM V2.0 ---
 

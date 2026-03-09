@@ -114,10 +114,10 @@ export default function ConfigConexionLAN({ onConfigChange }) {
         <div className="space-y-6">
             {/* TÍTULO */}
             <div className="flex items-center gap-3">
-                <Cable className="text-blue-500" size={24} />
+                <Cable className="text-primary" size={24} />
                 <div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Conexión Multi-Caja</h3>
-                    <p className="text-sm text-slate-500">Sincroniza inventario entre PCs por cable de red (100% offline)</p>
+                    <h3 className="text-lg font-bold text-content-main dark:text-content-inverse">Conexión Multi-Caja</h3>
+                    <p className="text-sm text-content-secondary">Sincroniza inventario entre PCs por cable de red (100% offline)</p>
                 </div>
             </div>
 
@@ -127,16 +127,16 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                 <button
                     onClick={() => setRole('principal')}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${role === 'principal'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-200'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
+                        ? 'border-primary bg-primary-light dark:bg-primary/20 ring-2 ring-primary/30'
+                        : 'border-border-subtle dark:border-slate-700 hover:border-primary/30'
                         }`}
                 >
                     <div className="flex items-center gap-3 mb-3">
-                        <Monitor size={28} className={role === 'principal' ? 'text-blue-600' : 'text-slate-400'} />
-                        <span className="font-bold text-lg">Caja Principal</span>
-                        {role === 'principal' && <CheckCircle size={20} className="text-blue-500 ml-auto" />}
+                        <Monitor size={28} className={role === 'principal' ? 'text-primary' : 'text-content-secondary'} />
+                        <span className="font-bold text-lg text-content-main dark:text-content-inverse">Caja Principal</span>
+                        {role === 'principal' && <CheckCircle size={20} className="text-primary ml-auto" />}
                     </div>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-content-secondary">
                         Esta PC es el <strong>servidor</strong>. Los productos se gestionan aquí y se envían a las demás cajas.
                     </p>
                 </button>
@@ -145,16 +145,16 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                 <button
                     onClick={() => setRole('secundaria')}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${role === 'secundaria'
-                        ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 ring-2 ring-orange-200'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-orange-200'
+                        ? 'border-status-warning bg-status-warningBg dark:bg-yellow-900/20 ring-2 ring-status-warning/30'
+                        : 'border-border-subtle dark:border-slate-700 hover:border-status-warning/30'
                         }`}
                 >
                     <div className="flex items-center gap-3 mb-3">
-                        <MonitorSmartphone size={28} className={role === 'secundaria' ? 'text-orange-600' : 'text-slate-400'} />
-                        <span className="font-bold text-lg">Caja Secundaria</span>
-                        {role === 'secundaria' && <CheckCircle size={20} className="text-orange-500 ml-auto" />}
+                        <MonitorSmartphone size={28} className={role === 'secundaria' ? 'text-status-warning' : 'text-content-secondary'} />
+                        <span className="font-bold text-lg text-content-main dark:text-content-inverse">Caja Secundaria</span>
+                        {role === 'secundaria' && <CheckCircle size={20} className="text-status-warning ml-auto" />}
                     </div>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-content-secondary">
                         Esta PC <strong>recibe</strong> el inventario de la Caja Principal. Puede vender pero no editar productos.
                     </p>
                 </button>
@@ -162,18 +162,18 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
             {/* INFO PARA PRINCIPAL */}
             {role === 'principal' && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
+                <div className="bg-primary-light dark:bg-primary/15 border border-primary/30 dark:border-primary/40 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-3">
-                        <Wifi className="text-blue-600" size={22} />
-                        <span className="font-bold text-blue-800 dark:text-blue-200">Servidor activo</span>
+                        <Wifi className="text-primary" size={22} />
+                        <span className="font-bold text-primary">Servidor activo</span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+                    <p className="text-sm text-content-secondary mb-3">
                         Las otras cajas deben conectarse a esta dirección:
                     </p>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl px-4 py-3 font-mono text-lg font-bold text-center text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-slate-700">
+                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl px-4 py-3 font-mono text-lg font-bold text-center text-primary border border-border-subtle dark:border-slate-700">
                         {localIP}
                     </div>
-                    <p className="text-xs text-slate-500 mt-3 text-center">
+                    <p className="text-xs text-content-secondary mt-3 text-center">
                         Puerto: 3847 • Conecta ambas PCs con un cable Ethernet al mismo router
                     </p>
                 </div>
@@ -181,14 +181,14 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
             {/* CONFIG PARA SECUNDARIA */}
             {role === 'secundaria' && (
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-6 space-y-4">
+                <div className="bg-status-warningBg dark:bg-yellow-900/20 border border-status-warning/30 dark:border-yellow-800 rounded-2xl p-6 space-y-4">
                     <div className="flex items-center gap-3 mb-1">
-                        <WifiOff className="text-orange-600" size={22} />
-                        <span className="font-bold text-orange-800 dark:text-orange-200">Conectar a Caja Principal</span>
+                        <WifiOff className="text-status-warning" size={22} />
+                        <span className="font-bold text-status-warning">Conectar a Caja Principal</span>
                     </div>
 
                     <div>
-                        <label className="text-sm font-bold text-slate-600 dark:text-slate-300 block mb-2">
+                        <label className="text-sm font-bold text-content-secondary block mb-2">
                             IP de la Caja Principal:
                         </label>
                         <div className="flex gap-3">
@@ -197,14 +197,14 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                 value={targetIP}
                                 onChange={(e) => setTargetIP(e.target.value)}
                                 placeholder="Ej: 192.168.1.100"
-                                className="flex-1 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-center text-lg focus:ring-2 focus:ring-orange-300 outline-none"
+                                className="flex-1 px-4 py-3 bg-surface-light dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl font-mono text-center text-lg focus:ring-2 focus:ring-status-warning/40 outline-none text-content-main dark:text-content-inverse"
                             />
 
                             {/* BOTON PROBAR */}
                             <button
                                 onClick={handleTestConnection}
                                 disabled={!targetIP || testStatus === 'testing'}
-                                className="px-5 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-bold rounded-xl transition-all flex items-center gap-2"
+                                className="px-5 py-3 bg-status-warning hover:brightness-110 disabled:bg-slate-300 text-content-inverse font-bold rounded-xl transition-all flex items-center gap-2"
                             >
                                 {testStatus === 'testing' ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                                 Probar
@@ -216,11 +216,9 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                             <button
                                 onClick={async () => {
                                     setTestStatus('testing');
-                                    // Lógica simple de escaneo (misma que useLanSync pero inline para evitar props drilling complejo hoy)
                                     const baseIP = localIP.split('.').slice(0, 3).join('.');
                                     let found = null;
 
-                                    // Barrido rápido .1 a .20
                                     const scan = async (ip) => {
                                         try {
                                             const c = new AbortController();
@@ -231,7 +229,6 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                         return null;
                                     };
 
-                                    // [FIX M2] Escanear en lotes de 20 (evita saturar la red)
                                     for (let i = 1; i < 255 && !found; i += 20) {
                                         const batch = [];
                                         for (let j = 0; j < 20 && (i + j) < 255; j++) {
@@ -244,21 +241,18 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                     if (found) {
                                         setTargetIP(found);
                                         setTestStatus('success');
-                                        // Auto-fetch info + capturar token
                                         const r = await fetch(`http://${found}:3847/api/ping`);
                                         const info = await r.json();
                                         setServerInfo(info);
-                                        // [FIX C1] Guardar token del handshake
                                         if (info.lanToken) {
                                             try { localStorage.setItem('listo-lan-auth-token', info.lanToken); } catch { /**/ }
                                         }
                                     } else {
                                         setTestStatus('error');
-                                        // [FIX m1] No usar alert() bloqueante
                                         console.warn("No se encontró ninguna Caja Principal en la red.");
                                     }
                                 }}
-                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                className="text-sm text-primary hover:underline flex items-center gap-1"
                             >
                                 <RefreshCw size={14} /> Auto-detectar servidor
                             </button>
@@ -267,11 +261,11 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
                     {/* Resultado del test */}
                     {testStatus === 'success' && serverInfo && (
-                        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                            <CheckCircle className="text-green-600" size={20} />
+                        <div className="flex items-center gap-3 p-4 bg-status-successBg dark:bg-status-success/10 border border-status-success/30 rounded-xl">
+                            <CheckCircle className="text-status-success" size={20} />
                             <div>
-                                <p className="font-bold text-green-700 dark:text-green-300">¡Conexión exitosa!</p>
-                                <p className="text-sm text-green-600">
+                                <p className="font-bold text-status-success">¡Conexión exitosa!</p>
+                                <p className="text-sm text-content-secondary">
                                     {serverInfo.negocio} • {serverInfo.productos} productos
                                 </p>
                             </div>
@@ -279,11 +273,11 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                     )}
 
                     {testStatus === 'error' && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                            <XCircle className="text-red-600" size={20} />
+                        <div className="flex items-center gap-3 p-4 bg-status-dangerBg dark:bg-status-danger/10 border border-status-danger/30 rounded-xl">
+                            <XCircle className="text-status-danger" size={20} />
                             <div>
-                                <p className="font-bold text-red-700 dark:text-red-300">No se pudo conectar</p>
-                                <p className="text-sm text-red-600">
+                                <p className="font-bold text-status-danger">No se pudo conectar</p>
+                                <p className="text-sm text-content-secondary">
                                     Verifica estar en la misma red WiFi/Cable.
                                 </p>
                             </div>
@@ -296,16 +290,16 @@ export default function ConfigConexionLAN({ onConfigChange }) {
             <button
                 onClick={handleSave}
                 disabled={saving || (role === 'secundaria' && !targetIP)}
-                className="w-full py-4 bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white font-bold rounded-2xl transition-all text-lg flex items-center justify-center gap-3"
+                className="w-full py-4 bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed text-content-inverse font-bold rounded-2xl transition-all text-lg flex items-center justify-center gap-3"
             >
                 {saving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
                 Guardar Configuración
             </button>
 
             {/* INSTRUCTIVO */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
-                <p className="font-bold text-sm text-slate-700 dark:text-slate-300 mb-3">📋 Cómo configurar Multi-Caja:</p>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-slate-500">
+            <div className="bg-app-light dark:bg-app-dark rounded-2xl p-5 border border-border-subtle dark:border-slate-700">
+                <p className="font-bold text-sm text-content-main dark:text-content-inverse mb-3">📋 Cómo configurar Multi-Caja:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-content-secondary">
                     <li>Conecta ambas PCs al mismo router con cables Ethernet</li>
                     <li>En la <strong>PC principal</strong>, selecciona "Caja Principal" y anota la IP</li>
                     <li>En la <strong>PC secundaria</strong>, selecciona "Caja Secundaria" e ingresa la IP</li>

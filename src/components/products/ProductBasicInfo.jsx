@@ -110,9 +110,9 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
 
       {/* ZONA DE IMAGEN (POS 2.0) */}
       <div className="w-full md:w-1/3 flex flex-col gap-2">
-        <label className="text-xs font-bold text-slate-500 mb-1 block">Imagen del Producto</label>
+        <label className="text-xs font-bold text-content-secondary mb-1 block">Imagen del Producto</label>
         <div
-          className={`aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden transition-all bg-slate-50 dark:bg-slate-900 group ${dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-700'}`}
+          className={`aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden transition-all bg-app-light dark:bg-slate-900 group ${dragActive ? 'border-primary bg-primary/5 dark:bg-blue-900/20' : 'border-slate-300 dark:border-slate-700'}`}
           onDragEnter={onDrag}
           onDragLeave={onDrag}
           onDragOver={onDrag}
@@ -122,7 +122,7 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
             <>
               <img src={form.imagen} className="w-full h-full object-cover" alt="Preview" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
-                <label className="p-2 bg-white rounded-full cursor-pointer hover:scale-110 transition-transform shadow-lg text-slate-700">
+                <label className="p-2 bg-surface-light rounded-full cursor-pointer hover:scale-110 transition-transform shadow-lg text-content-main">
                   <Upload size={18} />
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
                 </label>
@@ -137,13 +137,13 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
           ) : (
             <>
               <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
-              <div className={`p-4 rounded-full mb-3 transition-colors ${dragActive ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+              <div className={`p-4 rounded-full mb-3 transition-colors ${dragActive ? 'bg-primary/10 text-primary' : 'bg-app-light dark:bg-slate-800 text-content-secondary'}`}>
                 {processing ? <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /> : <ImageIcon size={32} />}
               </div>
-              <p className="text-xs font-bold text-slate-500 text-center px-4">
+              <p className="text-xs font-bold text-content-secondary text-center px-4">
                 {processing ? 'Comprimiendo...' : 'Arrastra o haz clic'}
               </p>
-              <p className="text-[10px] text-slate-400 mt-1">Soporta Ctrl+V</p>
+              <p className="text-[10px] text-content-secondary/70 mt-1">Soporta Ctrl+V</p>
             </>
           )}
         </div>
@@ -154,8 +154,8 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
           onClick={handleSearchImage}
           disabled={processing}
           className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg ${processing
-              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-indigo-500/30'
+            ? 'bg-app-light text-content-secondary cursor-not-allowed'
+            : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-indigo-500/30'
             }`}
         >
           {processing ? (
@@ -173,11 +173,11 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
 
         {/* Fallback Preview */}
         {!form.imagen && form.nombre && (
-          <div className="flex items-center gap-2 justify-center p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 opacity-60">
+          <div className="flex items-center gap-2 justify-center p-2 bg-app-light dark:bg-slate-800 rounded-lg border border-border-subtle dark:border-slate-700 opacity-60">
             <div className="w-6 h-6 rounded bg-orange-100 text-orange-500 flex items-center justify-center text-[10px] font-black">
               {form.nombre.substring(0, 2).toUpperCase()}
             </div>
-            <span className="text-[10px] text-slate-400">Vista previa del Avatar</span>
+            <span className="text-[10px] text-content-secondary">Vista previa del Avatar</span>
           </div>
         )}
       </div>
@@ -186,11 +186,11 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
       <div className="w-full md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-5" onPaste={handlePaste}>
 
         <div className="col-span-2 group">
-          <label className="text-xs font-bold text-slate-500 mb-1.5 block group-focus-within:text-blue-600 transition-colors">Nombre del Producto</label>
+          <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">Nombre del Producto</label>
           <div className="relative">
-            <Type size={18} className="absolute left-3.5 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <Type size={18} className="absolute left-3.5 top-3.5 text-content-secondary group-focus-within:text-primary transition-colors" />
             <input
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400"
+              className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium text-content-main dark:text-white placeholder:text-content-secondary"
               value={form.nombre}
               onChange={handleNameChange}
               autoFocus
@@ -200,11 +200,11 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
         </div>
 
         <div className="group">
-          <label className="text-xs font-bold text-slate-500 mb-1.5 block group-focus-within:text-blue-600 transition-colors">Código / SKU</label>
+          <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">Código / SKU</label>
           <div className="relative">
             <Barcode size={18} className="absolute left-3.5 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             <input
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono text-sm text-slate-900 dark:text-white"
+              className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono text-sm text-content-main dark:text-white"
               value={form.codigo}
               onChange={e => onChange('codigo', e.target.value)}
               placeholder="AUTOGENERADO"
@@ -213,23 +213,23 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
         </div>
 
         <div className="group">
-          <label className="text-xs font-bold text-slate-500 mb-1.5 block group-focus-within:text-blue-600 transition-colors">Categoría</label>
+          <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">Categoría</label>
           <div className="relative">
             <Tag size={18} className="absolute left-3.5 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             <select
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none text-slate-900 dark:text-white cursor-pointer"
+              className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none text-content-main dark:text-white cursor-pointer"
               value={form.categoria}
               onChange={e => onChange('categoria', e.target.value)}
             >
               {categorias.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <div className="absolute right-3.5 top-4 pointer-events-none text-slate-400 text-[10px]">▼</div>
+            <div className="absolute right-3.5 top-4 pointer-events-none text-content-secondary text-[10px]">▼</div>
           </div>
         </div>
 
         {form.tipoUnidad !== 'peso' && (
           <div className="col-span-2 md:col-span-1 group">
-            <label className="text-xs font-bold text-slate-500 mb-1.5 block group-focus-within:text-blue-600 transition-colors">
+            <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">
               Vencimiento (Opcional)
             </label>
 

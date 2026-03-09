@@ -36,7 +36,7 @@ export default function LoginPinModal({
                     initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
                     animate={{ opacity: 1, backdropFilter: 'blur(10px)' }}
                     exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-                    className="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-50 bg-surface-dark/80 flex items-center justify-center p-4"
                     onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
                 >
                     <motion.div
@@ -48,7 +48,7 @@ export default function LoginPinModal({
                         {/* 🟢 CLOSE BUTTON */}
                         <button
                             onClick={onClose}
-                            className="absolute -top-12 right-0 text-slate-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full hover:bg-white/20 z-50"
+                            className="absolute -top-12 right-0 text-content-secondary hover:text-white transition-colors bg-white/10 p-2 rounded-full hover:bg-white/20 z-50"
                             tabIndex={-1}
                         >
                             <X size={20} />
@@ -193,7 +193,7 @@ export default function LoginPinModal({
                                         exit={{ opacity: 0 }}
                                         className="absolute -bottom-16 left-0 w-full"
                                     >
-                                        <div className="bg-slate-950 border border-red-500 text-red-500 text-sm font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-xl">
+                                        <div className="bg-surface-dark border border-status-danger text-status-danger text-sm font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-xl">
                                             <AlertCircle size={18} />
                                             <span>CREDENCIALES INCORRECTAS</span>
                                         </div>
@@ -202,8 +202,8 @@ export default function LoginPinModal({
                             </form>
 
                             <div className="mt-8 flex justify-center">
-                                <p className="text-xs text-slate-400 flex items-center gap-2 font-medium">
-                                    <Lock size={12} /> Presiona <strong className="text-white bg-slate-700 px-1.5 rounded text-[10px] tracking-wider border border-slate-600">ESC</strong> para cambiar de usuario
+                                <p className="text-xs text-content-secondary flex items-center gap-2 font-medium">
+                                    <Lock size={12} /> Presiona <strong className="text-white bg-content-secondary/30 px-1.5 rounded text-[10px] tracking-wider border border-content-secondary/50">ESC</strong> para cambiar de usuario
                                 </p>
                             </div>
                         </div>

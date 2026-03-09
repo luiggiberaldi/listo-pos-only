@@ -48,9 +48,14 @@ if (typeof window !== 'undefined') {
 
 /**
  * GhostObserver Middleware for Zustand
- * Intercepts state changes and logs them to window.GhostBuffer
+ * ✅ PERF H-5: En producción es un no-op de cero costo.
+ * Solo intercepta estado en DEV para auditoría y debugging.
  */
 export const ghostMiddleware = (config, storeName) => (set, get, api) => {
+    // Short-circuit en producción: pasa directo sin envoltura
+    if (import.meta.env.PROD) {
+        return config(set, get, api);
+    }
     return config(
         (args) => {
             const oldState = get();

@@ -51,10 +51,10 @@ export default function ToolsMenu({
                 className={`flex items-center gap-2 px-4 py-3.5 rounded-xl border transition-all shadow-sm font-bold
           ${isOpen
                         ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-700 dark:border-slate-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
+                        : 'bg-surface-light text-content-main border-border-subtle hover:bg-app-light dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
                     }`}
             >
-                <Settings size={20} className={isOpen ? 'text-blue-400' : 'text-slate-400'} />
+                <Settings size={20} className={isOpen ? 'text-blue-400' : 'text-content-secondary'} />
                 <span className="hidden sm:inline">Herramientas</span>
                 <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -66,15 +66,15 @@ export default function ToolsMenu({
                         animate="visible"
                         exit="exit"
                         variants={menuVariants}
-                        className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden ring-1 ring-black/5"
+                        className="absolute right-0 mt-2 w-64 bg-surface-light dark:bg-slate-800 rounded-2xl shadow-xl border border-border-subtle dark:border-slate-700 overflow-hidden ring-1 ring-black/5"
                     >
                         <div className="p-1.5 flex flex-col gap-0.5" onClick={() => setIsOpen(false)}>
 
                             {/* SECCIÓN 1: DATOS EXTERNOS */}
-                            <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Gestión de Datos</div>
+                            <div className="px-3 py-2 text-xs font-bold text-content-secondary uppercase tracking-wider">Gestión de Datos</div>
 
                             <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={onImportClick} actionName="Importar Excel">
-                                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors text-sm font-medium text-left">
+                                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-content-main hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors text-sm font-medium text-left">
                                     <FileSpreadsheet size={18} />
                                     Importar Excel
                                 </button>
@@ -82,7 +82,7 @@ export default function ToolsMenu({
 
                             <button
                                 onClick={onExportCatalog}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-50 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors text-sm font-medium text-left"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-blue-50 text-content-main hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors text-sm font-medium text-left"
                             >
                                 <Download size={18} />
                                 Guardar Respaldo
@@ -90,20 +90,20 @@ export default function ToolsMenu({
 
                             <button
                                 onClick={onImportCatalog}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-orange-50 text-slate-600 hover:text-orange-600 dark:text-slate-300 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 transition-colors text-sm font-medium text-left"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-orange-50 text-content-main hover:text-orange-600 dark:text-slate-300 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 transition-colors text-sm font-medium text-left"
                             >
                                 <Upload size={18} />
                                 Restaurar Respaldo
                             </button>
 
-                            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2"></div>
+                            <div className="h-px bg-border-subtle dark:bg-slate-700 my-1 mx-2"></div>
 
                             {/* SECCIÓN 2: ETIQUETAS E IMPRESIÓN */}
-                            <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Etiquetas</div>
+                            <div className="px-3 py-2 text-xs font-bold text-content-secondary uppercase tracking-wider">Etiquetas</div>
 
                             <button
                                 onClick={onOpenLabelStudio}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors text-sm font-medium text-left"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-indigo-50 text-content-main hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors text-sm font-medium text-left"
                             >
                                 <Tag size={18} />
                                 Diseñador de Etiquetas
@@ -111,7 +111,7 @@ export default function ToolsMenu({
 
                             <button
                                 onClick={onPrintAllClick}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors text-sm font-medium text-left justify-between"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-indigo-50 text-content-main hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors text-sm font-medium text-left justify-between"
                             >
                                 <div className="flex items-center gap-3">
                                     <List size={18} />
@@ -124,7 +124,7 @@ export default function ToolsMenu({
                                 )}
                             </button>
 
-                            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2"></div>
+                            <div className="h-px bg-border-subtle dark:bg-slate-700 my-1 mx-2"></div>
 
                             {/* SECCIÓN 3: PELIGRO */}
                             <ActionGuard permission={PERMISSIONS.SETTINGS_DB_RESET} onClick={onResetDatabase} actionName="Vaciado de Emergencia">

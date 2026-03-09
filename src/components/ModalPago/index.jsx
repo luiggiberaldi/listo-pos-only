@@ -278,7 +278,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-surface-dark/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in zoom-in duration-200">
             <div className={`bg-surface-light dark:bg-surface-dark w-full ${isTouch ? 'max-w-7xl' : 'max-w-5xl'} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]`}>
 
                 <PaymentHeader isTouch={isTouch} modo={modo} setModo={setModo} onClose={onClose} />
@@ -303,7 +303,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                         />
 
                         {/* 🟢 COLUMNA DERECHA: INPUTS DE PAGO */}
-                        <div className="flex-1 flex flex-col bg-white overflow-hidden">
+                        <div className="flex-1 flex flex-col bg-surface-light dark:bg-surface-dark overflow-hidden">
                             <div className={`flex-1 overflow-y-auto ${isTouch ? 'p-8' : 'p-6'}`}>
                                 <WalletSection
                                     isTouch={isTouch} cliente={clientes.find(cli => cli.id === clienteSeleccionado)}
@@ -334,7 +334,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                     </div>
 
                     {isTouch && (
-                        <div className="w-80 shrink-0 border-l border-slate-200 bg-white">
+                        <div className="w-80 shrink-0 border-l border-border-subtle dark:border-slate-700 bg-surface-light dark:bg-surface-dark">
                             <NumericPad
                                 activeValue={activeInputId ? (
                                     activeInputType === 'amount' ? pagos[activeInputId] :

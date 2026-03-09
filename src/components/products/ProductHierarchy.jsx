@@ -66,7 +66,7 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
     };
 
     return (
-        <div className={`p-5 rounded-2xl border mb-4 transition-all relative overflow-hidden ${colorBorder} bg-white dark:bg-slate-900 shadow-sm`}>
+        <div className={`p-5 rounded-2xl border mb-4 transition-all relative overflow-hidden ${colorBorder} bg-surface-light dark:bg-slate-900 shadow-sm`}>
 
             {/* Badge de Factor */}
             <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-[10px] font-bold ${colorBg} ${colorText}`}>
@@ -87,7 +87,7 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
                                     {seVende && <CheckSquare size={10} className="text-white dark:text-slate-900" />}
                                 </div>
                                 <input type="checkbox" className="hidden" checked={seVende} onChange={() => updateJerarquia(nivel, 'seVende', !seVende)} />
-                                <span className={`text-[10px] font-bold ${seVende ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 line-through'}`}>Vender en Caja</span>
+                                <span className={`text-[10px] font-bold ${seVende ? 'text-content-main dark:text-slate-300' : 'text-content-secondary line-through'}`}>Vender en Caja</span>
                             </label>
                         )}
                     </div>
@@ -98,34 +98,34 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
                 {/* Columna Izquierda: Contenido */}
                 {nivel !== 'unidad' && (
                     <div className="w-24">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5 text-center">Contiene</label>
+                        <label className="text-[10px] uppercase font-bold text-content-secondary block mb-1.5 text-center">Contiene</label>
                         <div className="flex flex-col items-center">
                             <input
                                 type="number"
                                 onWheel={preventScroll}
-                                className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center font-bold text-lg dark:bg-slate-800 dark:text-white outline-none focus:border-blue-400 transition-colors"
+                                className="w-full p-2 rounded-lg border border-border-subtle dark:border-slate-700 text-center font-bold text-lg dark:bg-slate-800 dark:text-white outline-none focus:border-primary transition-colors"
                                 value={datosNivel.contenido || ''}
                                 onChange={e => handleCantidadChange(e.target.value)}
                             />
-                            <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase">{nivel === 'bulto' && form.jerarquia?.paquete?.activo ? 'Paquetes' : 'Unidades'}</span>
+                            <span className="text-[9px] font-bold text-content-secondary mt-1 uppercase">{nivel === 'bulto' && form.jerarquia?.paquete?.activo ? 'Paquetes' : 'Unidades'}</span>
                         </div>
                     </div>
                 )}
 
                 {/* Separador Visual */}
-                {nivel !== 'unidad' && <div className="h-16 w-px bg-slate-100 dark:bg-slate-800 mt-2"></div>}
+                {nivel !== 'unidad' && <div className="h-16 w-px bg-border-subtle dark:bg-slate-800 mt-2"></div>}
 
                 {/* Columna Central: Costo Ref */}
                 <div className="flex-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Costo Ref.</label>
-                    <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                        <span className="font-bold text-slate-600 dark:text-slate-400 text-sm">${costoVisual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">Bs {(costoVisual * tasa).toFixed(2)}</span>
+                    <label className="text-[10px] uppercase font-bold text-content-secondary block mb-1.5">Costo Ref.</label>
+                    <div className="bg-app-light dark:bg-slate-950 p-2.5 rounded-xl border border-border-subtle dark:border-slate-800 flex justify-between items-center">
+                        <span className="font-bold text-content-main dark:text-slate-400 text-sm">${costoVisual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-[10px] text-content-secondary font-mono">Bs {(costoVisual * tasa).toFixed(2)}</span>
                     </div>
                 </div>
 
                 {/* Icono Flecha */}
-                <div className="mt-7 text-slate-300">
+                <div className="mt-7 text-content-secondary/50">
                     <ArrowRight size={16} />
                 </div>
 
@@ -143,7 +143,7 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
                             </div>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <span className="absolute left-2.5 top-2.5 text-slate-400 text-[10px] font-bold">$</span>
+                                    <span className="absolute left-2.5 top-2.5 text-content-secondary text-[10px] font-bold">$</span>
                                     <input
                                         type="number"
                                         step="any"
@@ -155,12 +155,12 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
                                     />
                                 </div>
                                 <div className="relative flex-1">
-                                    <span className="absolute left-2.5 top-2.5 text-slate-300 text-[10px] font-bold">Bs</span>
+                                    <span className="absolute left-2.5 top-2.5 text-content-secondary/50 text-[10px] font-bold">Bs</span>
                                     <input
                                         type="number"
                                         step="any"
                                         onWheel={preventScroll}
-                                        className="w-full pl-6 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-500 outline-none focus:border-slate-400 transition-all"
+                                        className="w-full pl-6 p-2 rounded-lg border border-border-subtle dark:border-slate-700 bg-app-light dark:bg-slate-800 text-sm font-bold text-content-main outline-none focus:border-content-secondary transition-all"
                                         value={precioBs}
                                         onChange={e => handleBsChange(e.target.value)}
                                         placeholder="0.00"
@@ -172,8 +172,8 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
                             </div>
                         </div>
                     ) : (
-                        <div className="h-[66px] flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">No Disponible en Venta</span>
+                        <div className="h-[66px] flex items-center justify-center border border-dashed border-border-subtle dark:border-slate-700 rounded-xl bg-app-light dark:bg-slate-800/50">
+                            <span className="text-[10px] font-bold text-content-secondary uppercase tracking-wide">No Disponible en Venta</span>
                         </div>
                     )}
                 </div>
@@ -209,15 +209,15 @@ export default function ProductHierarchy({ form, updateJerarquia, tasa, getFacto
 
             {/* 🆕 SMART SCAN SELECTOR (Solo visible si hay > 1 opción vendible) */}
             {activeOptionsCount > 1 && (
-                <div className="bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative overflow-hidden group animate-in fade-in">
+                <div className="bg-gradient-to-r from-app-light to-surface-light dark:from-slate-900 dark:to-slate-950 p-4 rounded-xl border border-border-subtle dark:border-slate-800 relative overflow-hidden group animate-in fade-in">
 
                     <div className="flex items-center gap-3 mb-3 relative z-10">
                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
                             <Scan size={18} />
                         </div>
                         <div>
-                            <h4 className="font-bold text-sm text-slate-800 dark:text-white">Acción al Escanear</h4>
-                            <p className="text-[10px] text-slate-500 font-medium">Define qué sucede al leer el código de barras</p>
+                            <h4 className="font-bold text-sm text-content-main dark:text-white">Acción al Escanear</h4>
+                            <p className="text-[10px] text-content-secondary font-medium">Define qué sucede al leer el código de barras</p>
                         </div>
                     </div>
 

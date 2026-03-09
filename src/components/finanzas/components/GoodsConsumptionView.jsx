@@ -324,9 +324,9 @@ export default function GoodsConsumptionView({ onClose }) {
             {/* Header + Consumer Selector — compact */}
             <div className="shrink-0 space-y-3 mb-3">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Carrito de Salida</h3>
+                    <h3 className="text-xs font-bold text-content-secondary uppercase tracking-widest">Carrito de Salida</h3>
                     {cartCount > 0 && (
-                        <div className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                        <div className="bg-status-successBg text-status-success px-2 py-0.5 rounded-full text-[10px] font-bold">
                             {cartCount} items
                         </div>
                     )}
@@ -356,10 +356,10 @@ export default function GoodsConsumptionView({ onClose }) {
             </div>
 
             {/* Footer — compact */}
-            <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 shrink-0">
+            <div className="mt-3 pt-3 border-t border-border-subtle dark:border-slate-700 space-y-2 shrink-0">
                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Total</span>
-                    <span className="text-xl font-black text-slate-800">${cartTotal.toFixed(2)}</span>
+                    <span className="text-[10px] font-bold text-content-secondary uppercase">Total</span>
+                    <span className="text-xl font-black text-content-main dark:text-content-inverse">${cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                     {CHIPS.map(chip => (
@@ -367,8 +367,8 @@ export default function GoodsConsumptionView({ onClose }) {
                             key={chip}
                             onClick={() => setGlobalMotivo(chip)}
                             className={`text-[9px] px-1.5 py-0.5 rounded-md border transition-all font-bold uppercase ${globalMotivo === chip
-                                ? "bg-slate-800 border-slate-800 text-white"
-                                : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
+                                ? "bg-surface-dark border-surface-dark text-content-inverse"
+                                : "bg-surface-light dark:bg-surface-dark border-border-subtle text-content-secondary hover:border-primary/20"
                                 }`}
                         >
                             {chip}
@@ -380,7 +380,7 @@ export default function GoodsConsumptionView({ onClose }) {
                     placeholder="Motivo del consumo..."
                     value={globalMotivo}
                     onChange={e => setGlobalMotivo(e.target.value)}
-                    className="w-full bg-slate-50 border-none rounded-lg p-2 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-slate-400 text-slate-700"
+                    className="w-full bg-app-light dark:bg-app-dark border-none rounded-lg p-2 text-xs font-medium focus:bg-surface-light focus:ring-2 focus:ring-status-success/10 transition-all placeholder:text-content-secondary text-content-main dark:text-content-inverse"
                 />
                 <HoldToConfirmButton
                     onConfirm={handleBatchSubmit}

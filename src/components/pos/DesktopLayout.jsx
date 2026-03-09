@@ -3,6 +3,7 @@
 // Antes: 40+ props passthrough. Ahora: hijos se conectan directamente a stores.
 
 import React, { useCallback, Suspense, lazy } from 'react';
+import { usePowerStatus } from '../../hooks/usePowerStatus';
 import { Trash2, Clock, HelpCircle } from 'lucide-react';
 import Ticket from '../Ticket';
 import TicketSaldoFavor from '../TicketSaldoFavor';
@@ -69,6 +70,7 @@ export default function DesktopLayout({
 
     const { isCajaAbierta, abrirCaja } = useCajaEstado();
     const cajaAbierta = isCajaAbierta();
+    const onBattery = usePowerStatus();
 
     // Handlers
     const onRefreshTasa = useCallback(() => obtenerTasaBCV(true), [obtenerTasaBCV]);
@@ -182,6 +184,14 @@ export default function DesktopLayout({
                             <div className="mx-4 mb-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs font-bold animate-in fade-in">
                                 <span>⚠️ La tasa tiene más de 24h sin actualizarse</span>
                                 <button onClick={onRefreshTasa} className="underline hover:text-amber-900 dark:hover:text-amber-300 transition-colors">Actualizar Ahora</button>
+                            </div>
+                        )}
+
+                        {/* 🔋 BATTERY WARNING BANNER */}
+                        {onBattery && (
+                            <div className="mx-4 mb-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg border border-red-300 flex items-center gap-2 text-xs font-bold animate-pulse">
+                                <span>🔋</span>
+                                <span>Sistema en batería — Riesgo de pérdida de datos. Conecta a corriente o UPS.</span>
                             </div>
                         )}
 

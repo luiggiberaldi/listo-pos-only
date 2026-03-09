@@ -327,6 +327,10 @@ export default function TouchLayout({
                     >
                         {tasaInvalida ? <div className="flex flex-col items-center leading-none"><span className="text-sm">BLOQUEADO</span><span className="text-[10px] opacity-80 font-normal">Tasa = 0</span></div> : <><CheckCircle2 size={28} /> COBRAR ORDEN</>}
                     </button>
+
+                    <div className="text-center text-[9px] text-slate-400 opacity-60 px-2 pb-1 leading-tight">
+                        ⚠️ LISTO POS es una herramienta de gestión interna. No sustituye la facturación fiscal SENIAT.
+                    </div>
                 </div>
             </div>
 

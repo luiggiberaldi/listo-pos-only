@@ -146,10 +146,10 @@ export default function LicenseGate({ children }) {
             console.error('❌ [MULTI-CAJA] Error:', err);
             setMultiCajaStatus('error');
             setMultiCajaError(
-                err.name === 'TimeoutError' || err.name === 'AbortError'
-                    ? 'No se pudo conectar. Verifica la IP y que PC1 esté encendida.'
-                    : err.message || 'Error de conexión'
+                'Servidor no disponible. Activando modo offline — las ventas se sincronizarán al reconectar.'
             );
+            // Activar flag de modo offline en store
+            useConfigStore.getState().setOfflineMode(true);
         }
     };
 

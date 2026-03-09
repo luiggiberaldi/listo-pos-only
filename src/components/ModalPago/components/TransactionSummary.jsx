@@ -12,9 +12,9 @@ const TransactionSummary = ({
     // Optimization: Memoized display to prevent flicker
 
     return (
-        <div className={`${isTouch ? 'p-4 pb-2' : 'p-4 pb-1'} shrink-0 bg-slate-50 z-20 shadow-sm relative`}>
+        <div className={`${isTouch ? 'p-4 pb-2' : 'p-4 pb-1'} shrink-0 bg-app-light dark:bg-app-dark z-20 shadow-sm relative`}>
             <div className={`text-center ${isTouch ? 'p-4' : 'p-3'} bg-app-dark text-white rounded-2xl shadow-lg relative overflow-hidden group`}>
-                <p className="text-slate-200 text-[9px] font-bold uppercase tracking-wider mb-0.5 opacity-60">Total a Pagar</p>
+                <p className="text-content-inverse/60 text-[9px] font-bold uppercase tracking-wider mb-0.5">Total a Pagar</p>
 
                 <div className="flex flex-col items-center">
                     <div className={`${isTouch ? 'text-4xl' : 'text-3xl'} font-extrabold tracking-tight font-numbers text-white`}>
@@ -22,11 +22,11 @@ const TransactionSummary = ({
                     </div>
 
                     <div className="flex items-center gap-2 mt-0.5">
-                        <div className={`${isTouch ? 'text-sm' : 'text-[11px]'} font-bold text-emerald-400 font-numbers`}>
+                        <div className={`${isTouch ? 'text-sm' : 'text-[11px]'} font-bold text-status-success font-numbers`}>
                             Bs {math.round(totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </div>
                         {totalImpuesto > 0 && (
-                            <span className="text-[10px] text-blue-300/60 font-medium">
+                            <span className="text-primary-light/60 text-[10px] font-medium">
                                 (IVA: ${totalImpuesto.toFixed(2)})
                             </span>
                         )}
@@ -35,7 +35,7 @@ const TransactionSummary = ({
 
                 {montoIGTF > 0 && (
                     <div className="mt-2 pt-2 border-t border-white/5 flex justify-between items-center animate-in slide-in-from-bottom-1">
-                        <span className="text-[9px] font-bold text-orange-400/80 flex items-center gap-1 uppercase">
+                        <span className="text-[9px] font-bold text-status-warning/80 flex items-center gap-1 uppercase">
                             <AlertTriangle size={10} /> IGTF
                         </span>
                         <span className={`${isTouch ? 'text-base' : 'text-sm'} font-black text-white font-numbers`}>+${montoIGTF.toFixed(2)}</span>

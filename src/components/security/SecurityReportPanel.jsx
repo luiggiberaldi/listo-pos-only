@@ -50,56 +50,56 @@ const SecurityReportPanel = () => {
 
   return (
     <div className="fixed bottom-4 right-4 z-[70] w-full max-w-md animate-in slide-in-from-bottom-10 duration-700">
-      <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-l-8 ${style.border} overflow-hidden ring-1 ring-black/5`}>
-        
+      <div className={`bg-surface-light dark:bg-slate-800 rounded-xl shadow-2xl border-l-8 ${style.border} overflow-hidden ring-1 ring-black/5`}>
+
         {/* HEADER */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="px-5 py-4 border-b border-border-subtle dark:border-slate-700 flex justify-between items-start bg-app-light/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${style.bg} ${style.color}`}>
               <Icon size={24} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+              <h3 className="text-sm font-black text-content-main dark:text-white uppercase tracking-wider">
                 Informe de Seguridad
               </h3>
-              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] font-medium text-content-secondary dark:text-slate-400">
                 Resumen de Actividad Sospechosa
               </p>
             </div>
           </div>
-          <button onClick={handleDismiss} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={handleDismiss} className="text-content-secondary hover:text-content-main transition-colors">
             <X size={20} />
           </button>
         </div>
 
         {/* BODY - METRICAS */}
         <div className="p-5 grid grid-cols-2 gap-4">
-          <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
-            <div className="text-2xl font-black text-slate-800 dark:text-white mb-1">{weakPinCount}</div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase flex justify-center items-center gap-1">
+          <div className="bg-app-light dark:bg-slate-700/30 p-3 rounded-lg border border-border-subtle/50 dark:border-slate-700 text-center">
+            <div className="text-2xl font-black text-content-main dark:text-white mb-1">{weakPinCount}</div>
+            <div className="text-[10px] font-bold text-content-secondary uppercase flex justify-center items-center gap-1">
               <Activity size={10} /> Accesos Débiles
             </div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
             <div className="text-2xl font-black text-slate-800 dark:text-white mb-1">{uniqueUsersAffected}</div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase flex justify-center items-center gap-1">
+            <div className="text-[10px] font-bold text-content-secondary uppercase flex justify-center items-center gap-1">
               <ShieldCheck size={10} /> Usuarios Afectados
             </div>
           </div>
         </div>
 
         {/* FOOTER - LISTA EVENTOS */}
-        <div className="bg-slate-50 dark:bg-slate-900/30 px-5 py-3 border-t border-slate-100 dark:border-slate-700">
-          <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
+        <div className="bg-app-light dark:bg-slate-900/30 px-5 py-3 border-t border-border-subtle dark:border-slate-700">
+          <div className="text-[10px] font-bold text-content-secondary uppercase mb-2 flex items-center gap-2">
             <FileText size={12} /> Actividad Reciente
           </div>
           <div className="space-y-1.5">
             {recentEvents.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">Sin actividad reciente.</p>
+              <p className="text-xs text-content-secondary italic">Sin actividad reciente.</p>
             ) : (
               recentEvents.map((evt) => (
-                <div key={evt.id} className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-300">
-                  <span className="font-mono bg-white dark:bg-slate-800 px-1.5 rounded border border-slate-200 dark:border-slate-700 text-[10px]">
+                <div key={evt.id} className="flex justify-between items-center text-xs text-content-main dark:text-slate-300">
+                  <span className="font-mono bg-surface-light dark:bg-slate-800 px-1.5 rounded border border-border-subtle dark:border-slate-700 text-[10px]">
                     {evt.contexto}
                   </span>
                   <span>{evt.fecha}</span>
@@ -107,10 +107,10 @@ const SecurityReportPanel = () => {
               ))
             )}
           </div>
-          
+
           <div className={`mt-3 text-[10px] text-center font-bold py-1 px-2 rounded ${style.bg} ${style.color}`}>
-            {riskLevel === 'HIGH' 
-              ? "⚠️ ALTO RIESGO: Se recomienda rotación inmediata de PINs." 
+            {riskLevel === 'HIGH'
+              ? "⚠️ ALTO RIESGO: Se recomienda rotación inmediata de PINs."
               : "ℹ️ Mantenimiento preventivo sugerido."}
           </div>
         </div>

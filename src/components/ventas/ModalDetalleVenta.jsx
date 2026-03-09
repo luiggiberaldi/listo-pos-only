@@ -87,7 +87,7 @@ export default function ModalDetalleVenta({ venta, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-surface-dark/60 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
 
             {/* 🖨️ TICKET OCULTO */}
             <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
@@ -102,7 +102,7 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                 <div className="h-2 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 absolute top-0 left-0 z-20"></div>
 
                 {/* HEADER PREMIUM */}
-                <div className="bg-white/80 dark:bg-slate-900/80 p-6 pb-4 border-b border-slate-100 dark:border-slate-800 backdrop-blur-sm sticky top-0 z-10">
+                <div className="bg-white/80 dark:bg-slate-900/80 p-6 pb-4 border-b border-border-subtle dark:border-slate-800 backdrop-blur-sm sticky top-0 z-10">
                     <div className="flex justify-between items-start mb-2">
                         {venta.esCredito ? (
                             <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-purple-100 dark:border-purple-800">
@@ -113,62 +113,62 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                                 Venta Finalizada
                             </div>
                         )}
-                        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all active:scale-95">
+                        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-app-light dark:bg-slate-800 text-content-secondary hover:bg-red-50 hover:text-red-500 transition-all active:scale-95">
                             <X size={18} />
                         </button>
                     </div>
 
-                    <h3 className="font-black text-slate-800 dark:text-white text-2xl tracking-tight mb-1">
-                        Ticket <span className="text-slate-400">#{venta.idVenta || venta.id.toString().slice(-6)}</span>
+                    <h3 className="font-black text-content-main dark:text-white text-2xl tracking-tight mb-1">
+                        Ticket <span className="text-content-secondary">#{venta.idVenta || venta.id.toString().slice(-6)}</span>
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                    <p className="text-xs text-content-secondary font-medium flex items-center gap-1.5">
                         <Calendar size={12} className={venta.esCredito ? "text-purple-500" : "text-blue-500"} />
                         {new Date(venta.fecha).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                        <span className="w-1 h-1 rounded-full bg-content-secondary/50"></span>
                         {new Date(venta.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase()}
                     </p>
                 </div>
 
                 {/* BODY SCROLLABLE */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 bg-slate-50/80 dark:bg-[#0B1120]">
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 bg-app-light/80 dark:bg-[#0B1120]">
 
                     {/* CLIENTE CARD (Mini) */}
-                    <div className="flex items-center gap-4 py-3 border-b border-dashed border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-4 py-3 border-b border-dashed border-border-subtle dark:border-slate-800">
                         <div className={`w-10 h-10 rounded-xl shadow-md text-white flex items-center justify-center ${venta.esCredito ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'}`}>
                             <User size={18} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Cliente Registrado</p>
-                            <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{nombreCliente}</p>
+                            <p className="text-[10px] text-content-secondary uppercase font-bold tracking-wider">Cliente Registrado</p>
+                            <p className="font-bold text-content-main dark:text-white text-sm leading-tight">{nombreCliente}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[10px] text-slate-400 uppercase font-bold">Documento</p>
-                            <p className="text-xs font-mono font-medium text-slate-600 dark:text-slate-400">{docCliente}</p>
+                            <p className="text-[10px] text-content-secondary uppercase font-bold">Documento</p>
+                            <p className="text-xs font-mono font-medium text-content-main dark:text-slate-400">{docCliente}</p>
                         </div>
                     </div>
 
                     {/* PRODUCTOS (Simple List) */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Receipt size={14} className="text-slate-400" />
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resumen de Compra</h4>
+                            <Receipt size={14} className="text-content-secondary" />
+                            <h4 className="text-[10px] font-black text-content-secondary uppercase tracking-widest">Resumen de Compra</h4>
                         </div>
 
                         <div className="space-y-3">
                             {venta.items?.map((item, i) => (
                                 <div key={i} className="flex justify-between items-start group">
                                     <div className="flex gap-3">
-                                        <div className="bg-white dark:bg-slate-800 w-6 h-6 rounded flex items-center justify-center text-[10px] font-black text-slate-500 shadow-sm border border-slate-100 dark:border-slate-700 font-mono">
+                                        <div className="bg-surface-light dark:bg-slate-800 w-6 h-6 rounded flex items-center justify-center text-[10px] font-black text-content-secondary shadow-sm border border-border-subtle dark:border-slate-700 font-mono">
                                             {item.cantidad}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight group-hover:text-blue-600 transition-colors">
+                                            <p className="text-sm font-bold text-content-main dark:text-slate-200 leading-tight group-hover:text-blue-600 transition-colors">
                                                 {item.nombre}
                                             </p>
-                                            {item.unidadVenta && <p className="text-[9px] text-slate-400 uppercase font-medium mt-0.5">{item.unidadVenta}</p>}
+                                            {item.unidadVenta && <p className="text-[9px] text-content-secondary uppercase font-medium mt-0.5">{item.unidadVenta}</p>}
                                         </div>
                                     </div>
-                                    <div className="font-black font-numbers text-sm text-slate-800 dark:text-white">
+                                    <div className="font-black font-numbers text-sm text-content-main dark:text-white">
                                         ${fmtMoney(item.precio * item.cantidad)}
                                     </div>
                                 </div>
@@ -183,20 +183,20 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                                     <>
                                         {impuesto > 0 && (
                                             <div className="flex justify-between items-start pt-2 mt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
-                                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-9">
+                                                <div className="text-xs font-bold text-content-secondary uppercase tracking-wider pl-9">
                                                     IVA ({venta.ivaPorcentaje || 16}%)
                                                 </div>
-                                                <div className="font-bold font-numbers text-xs text-slate-600 dark:text-slate-400">
+                                                <div className="font-bold font-numbers text-xs text-content-main dark:text-slate-400">
                                                     ${fmtMoney(impuesto)}
                                                 </div>
                                             </div>
                                         )}
                                         {igtfVal > 0 && (
                                             <div className="flex justify-between items-start pt-1">
-                                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-9">
+                                                <div className="text-xs font-bold text-content-secondary uppercase tracking-wider pl-9">
                                                     IGTF (3%)
                                                 </div>
-                                                <div className="font-bold font-numbers text-xs text-slate-600 dark:text-slate-400">
+                                                <div className="font-bold font-numbers text-xs text-content-main dark:text-slate-400">
                                                     ${fmtMoney(igtfVal)}
                                                 </div>
                                             </div>
@@ -208,15 +208,15 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                     </div>
 
                     {/* DIVIDER */}
-                    <div className="my-4 border-t-2 border-dashed border-slate-200 dark:border-slate-800 relative">
-                        <div className="absolute -top-1.5 left-0 w-3 h-3 bg-slate-50 dark:bg-slate-950 rounded-full -translate-x-1.5"></div>
-                        <div className="absolute -top-1.5 right-0 w-3 h-3 bg-slate-50 dark:bg-slate-950 rounded-full translate-x-1.5"></div>
+                    <div className="my-4 border-t-2 border-dashed border-border-subtle dark:border-slate-800 relative">
+                        <div className="absolute -top-1.5 left-0 w-3 h-3 bg-app-light dark:bg-slate-950 rounded-full -translate-x-1.5"></div>
+                        <div className="absolute -top-1.5 right-0 w-3 h-3 bg-app-light dark:bg-slate-950 rounded-full translate-x-1.5"></div>
                     </div>
 
                     {/* DETALLE PAGOS */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Método de Pago</span>
+                            <span className="text-[10px] font-black text-content-secondary uppercase tracking-widest">Método de Pago</span>
                         </div>
 
                         <div className="grid gap-2">
@@ -257,14 +257,14 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                                     }
 
                                     return (
-                                        <div key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <div key={i} className="flex justify-between items-center bg-surface-light dark:bg-slate-800 px-3 py-2.5 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${esBs ? 'bg-purple-500' : 'bg-green-500'}`}></div>
-                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">{pago.metodo || pago.nombre || 'Pago'}</span>
+                                                <span className="text-xs font-bold text-content-main dark:text-slate-300 uppercase">{pago.metodo || pago.nombre || 'Pago'}</span>
                                             </div>
-                                            <div className="text-xs font-black font-numbers text-slate-800 dark:text-white">
+                                            <div className="text-xs font-black font-numbers text-content-main dark:text-white">
                                                 {esBs ? 'Bs' : '$'} {esBs ? fmtBs(montoVisual) : fmtMoney(montoVisual)}
-                                                {pago.referencia && <span className="block text-[9px] font-normal text-slate-400 text-right font-mono mt-0.5">#{pago.referencia.slice(-6)}</span>}
+                                                {pago.referencia && <span className="block text-[9px] font-normal text-content-secondary text-right font-mono mt-0.5">#{pago.referencia.slice(-6)}</span>}
                                             </div>
                                         </div>
                                     );
@@ -276,8 +276,8 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                 </div>
 
                 {/* FOOTER TOTAL (DARK CARD) */}
-                <div className="p-4 bg-slate-50/80 dark:bg-[#0B1120]">
-                    <div className={`text-white p-5 rounded-3xl relative overflow-hidden shadow-xl shadow-slate-300 dark:shadow-none ${venta.esCredito ? 'bg-[#1e1b4b]' : 'bg-[#0f172a]'}`}>
+                <div className="p-4 bg-app-light/80 dark:bg-[#0B1120]">
+                    <div className={`text-white p-5 rounded-3xl relative overflow-hidden shadow-xl shadow-border-subtle dark:shadow-none ${venta.esCredito ? 'bg-[#1e1b4b]' : 'bg-[#0f172a]'}`}>
 
                         {/* Decorative Circles */}
                         <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl ${venta.esCredito ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}></div>
@@ -341,13 +341,13 @@ export default function ModalDetalleVenta({ venta, onClose }) {
                     <div className="flex gap-3 mt-4">
                         <button
                             onClick={handlePrint}
-                            className="flex-1 py-3 text-slate-600 dark:text-slate-400 font-bold text-sm bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:border-blue-200 hover:text-blue-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                            className="flex-1 py-3 text-content-main dark:text-slate-400 font-bold text-sm bg-surface-light dark:bg-slate-800 border-2 border-border-subtle dark:border-slate-700 rounded-xl hover:border-blue-200 hover:text-blue-600 transition-all flex items-center justify-center gap-2 active:scale-95"
                         >
                             <Printer size={16} /> Ticket
                         </button>
                         <button
                             onClick={onClose}
-                            className="flex-1 py-3 bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2 transition-all active:scale-95"
+                            className="flex-1 py-3 bg-surface-dark hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-border-subtle dark:shadow-none flex items-center justify-center gap-2 transition-all active:scale-95"
                         >
                             Cerrar
                         </button>

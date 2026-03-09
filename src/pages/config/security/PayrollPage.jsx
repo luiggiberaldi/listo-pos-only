@@ -131,15 +131,15 @@ export default function PayrollPage() {
             {/* Header Page */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tight">Reporte de Nómina</h1>
-                    <p className="text-slate-500 font-medium">
+                    <h1 className="text-3xl font-black text-content-main dark:text-content-inverse tracking-tight">Reporte de Nómina</h1>
+                    <p className="text-content-secondary font-medium">
                         {periodoActual ? `Periodo Abierto: ${new Date(periodoActual.fechaInicio).toLocaleDateString()}` : 'Cargando periodo...'}
                     </p>
                 </div>
                 <div className="flex gap-3">
                     <ActionGuard permission={PERMISSIONS.NOMINA_CIERRE} onClick={handleCloseGlobal}>
                         <button
-                            className="bg-white border-2 border-rose-100 hover:bg-rose-50 text-rose-600 px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
+                            className="bg-surface-light dark:bg-surface-dark border-2 border-status-dangerBg hover:bg-status-dangerBg text-status-danger px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
                         >
                             <Calendar size={20} />
                             <span>Cerrar Semana</span>
@@ -151,41 +151,41 @@ export default function PayrollPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+            <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700 flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" size={18} />
                     <input
                         type="text"
                         placeholder="Buscar empleado..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
+                        className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-app-dark rounded-xl border border-border-subtle dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/20 font-medium text-content-main dark:text-content-inverse"
                     />
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+            <div className="bg-surface-light dark:bg-surface-dark rounded-3xl shadow-xl overflow-hidden border border-border-subtle dark:border-slate-700">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-200 text-xs font-black text-slate-400 uppercase tracking-wider">
+                            <tr className="bg-app-light/50 dark:bg-app-dark/50 border-b border-border-subtle dark:border-slate-700 text-xs font-black text-content-secondary uppercase tracking-wider">
                                 <th className="p-5">Empleado</th>
                                 <th className="p-5 hidden sm:table-cell">Cargo</th>
                                 <th className="p-5 text-right">Sueldo Base</th>
-                                <th className="p-5 text-right text-rose-500">Descuentos</th>
+                                <th className="p-5 text-right text-status-danger">Descuentos</th>
                                 <th className="p-5 text-right">Neto Est.</th>
                                 <th className="p-5 text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-border-subtle dark:divide-slate-700">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="p-12 text-center text-slate-400 font-bold">Cargando datos...</td>
+                                    <td colSpan="6" className="p-12 text-center text-content-secondary font-bold">Cargando datos...</td>
                                 </tr>
                             ) : filteredEmployees.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="p-12 text-center text-slate-400 font-bold">No se encontraron empleados activos.</td>
+                                    <td colSpan="6" className="p-12 text-center text-content-secondary font-bold">No se encontraron empleados activos.</td>
                                 </tr>
                             ) : filteredEmployees.map((emp) => {
                                 const deuda = emp.finanzas.deudaAcumulada || 0;
@@ -193,27 +193,27 @@ export default function PayrollPage() {
                                 const neto = sueldo - deuda;
 
                                 return (
-                                    <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors group">
+                                    <tr key={emp.id} className="hover:bg-app-light/80 dark:hover:bg-app-dark/50 transition-colors group">
                                         <td className="p-5">
-                                            <div className="font-bold text-slate-700">{emp.nombre}</div>
+                                            <div className="font-bold text-content-main dark:text-content-inverse">{emp.nombre}</div>
                                         </td>
-                                        <td className="p-5 hidden sm:table-cell text-sm text-slate-500 font-medium">
+                                        <td className="p-5 hidden sm:table-cell text-sm text-content-secondary font-medium">
                                             {emp.rol}
                                         </td>
-                                        <td className="p-5 text-right font-mono text-slate-600">
+                                        <td className="p-5 text-right font-mono text-content-main dark:text-content-inverse">
                                             ${sueldo.toFixed(2)}
                                         </td>
-                                        <td className="p-5 text-right font-mono font-bold text-rose-500">
+                                        <td className="p-5 text-right font-mono font-bold text-status-danger">
                                             {deuda > 0 ? `-$${deuda.toFixed(2)}` : '$0.00'}
                                         </td>
                                         {/* [FIX M2] Mostrar neto negativo consistentemente */}
-                                        <td className={`p-5 text-right font-mono font-bold ${neto < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                        <td className={`p-5 text-right font-mono font-bold ${neto < 0 ? 'text-status-danger' : 'text-status-success'}`}>
                                             {neto < 0 ? `-$${Math.abs(neto).toFixed(2)} (Debe)` : `$${neto.toFixed(2)}`}
                                         </td>
                                         <td className="p-5 flex justify-center gap-2">
                                             <button
                                                 onClick={() => handleViewDetail(emp)}
-                                                className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                className="p-2 text-primary hover:bg-primary-light rounded-lg transition-colors"
                                                 title="Ver Detalle"
                                             >
                                                 <Eye size={18} />
@@ -221,7 +221,7 @@ export default function PayrollPage() {
 
                                             <ActionGuard permission={PERMISSIONS.NOMINA_CIERRE} onClick={() => handleClosePeriod(emp)}>
                                                 <button
-                                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    className="p-2 text-content-secondary hover:text-status-danger hover:bg-status-dangerBg rounded-lg transition-colors"
                                                     title="Cerrar Periodo (Reset Deuda)"
                                                 >
                                                     <RotateCcw size={18} />
@@ -239,7 +239,7 @@ export default function PayrollPage() {
             {/* MODAL DETALLE (Integrado) */}
             <AnimatePresence>
                 {selectedEmployee && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" onClick={() => setSelectedEmployee(null)}>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-dark/60 backdrop-blur-md" onClick={() => setSelectedEmployee(null)}>
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
