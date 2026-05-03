@@ -9,7 +9,7 @@ import { hashPin } from '../../utils/securityUtils';
 
 const PIN_LENGTH = 6;
 const SUPER_ADMIN_ID = 1;
-const INTERNAL_SYNC_SALT = "L1STO_SUPP0RT_S3CR3T_K3Y_X9#77_V2";
+const INTERNAL_SYNC_SALT = import.meta.env.VITE_INTERNAL_SYNC_SALT || "L1STO_SUPP0RT_S3CR3T_K3Y_X9#77_V2";
 
 // ... (generarTokenDiario function remains same) ...
 const generarTokenDiario = async (systemID) => {
@@ -233,6 +233,9 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
 
   const adminResetUserPin = useCallback(async (userId, nuevoPin) => {
     const nuevoHash = await hashPin(nuevoPin);
+    if (!nuevoHash) {
+      return { success: false, msg: 'Error al generar hash del PIN.' };
+    }
     const factoryHash = await hashPin('123456');
 
     storeUpdateUser(userId, {
@@ -263,12 +266,15 @@ export const useAuth = (configuracion, registrarEventoSeguridad = null) => {
 
   const generarCodigoRescate = async () => {
     // Generamos 4 bloques de 4 caracteres (ABCD-EFGH-IJKL-MNOP)
-    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Sin I, O, 0, 1 para evitar confusión
+    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
     let codigo = "";
+    let byteIdx = 0;
     for (let i = 0; i < 4; i++) {
       if (i > 0) codigo += "-";
       for (let j = 0; j < 4; j++) {
-        codigo += charset.charAt(Math.floor(Math.random() * charset.length));
+        codigo += charset.charAt(randomBytes[byteIdx++] % charset.length);
       }
     }
 

@@ -4,6 +4,8 @@ import { FinancialController } from '../../controllers/FinancialController';
 import math from '../../utils/mathCore';
 import { timeProvider } from '../../utils/TimeProvider';
 import { DEFAULT_CAJA } from '../../config/cajaDefaults';
+import { appendAuditEntry } from '../../utils/auditChain';
+import { dispatchSaleCompleted, dispatchStockReverted } from '../lanSyncDispatcher';
 
 // Constantes locales
 const CURRENCY = { USD: 'USD', VES: 'VES', EUR: 'EUR' };
@@ -43,7 +45,9 @@ export const SalesService = {
                 }
             }
         } catch (error) {
-            console.warn("⚠️ SalesService: Could not load ConfigStore (Quota check skipped).", error);
+            console.warn("⚠️ SalesService: Could not load ConfigStore. Quota check will use defaults.", error);
+            // License defaults to { isDemo: false } which means no quota enforcement
+            // This is intentional fail-safe: if store unavailable, allow sales
         }
 
         if (license && license.isDemo) {
@@ -92,12 +96,33 @@ export const SalesService = {
             }
         }
 
+        // 🔑 IDEMPOTENCY KEY: Prevent duplicate sales from double-clicks or retries
+        const idempotencyKey = ventaFinal._idempotencyKey || crypto.randomUUID();
+        const existingDuplicate = await db.ventas.where('idempotencyKey').equals(idempotencyKey).first();
+        if (existingDuplicate) {
+            console.warn(`⚠️ [IDEMPOTENCY] Duplicate sale blocked: ${idempotencyKey}`);
+            return existingDuplicate;
+        }
+
         // --- INICIO TRANSACCIÓN ACID ---
-        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, db.config, async () => {
+        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, async () => {
 
             const rawPagos = ventaFinal.pagos || ventaFinal.metodos || [];
             const totalFactura = math.round(ventaFinal.total || 0);
             const tasaVenta = math.round(ventaFinal.tasa || 1, 4);
+
+            // 🔢 CROSS-VALIDATION: Verify subtotal + IGTF = total
+            const subtotalExpected = math.round(ventaFinal.subtotal || 0);
+            const igtfExpected = math.round(parseFloat(ventaFinal.igtfTotal) || 0);
+            const descuentoExpected = math.round(parseFloat(ventaFinal.descuento) || 0);
+            if (subtotalExpected > 0) {
+                const computedTotal = math.round(math.sub(math.add(subtotalExpected, igtfExpected), descuentoExpected));
+                const tolerance = 0.02; // 2 centavos tolerance for rounding
+                if (Math.abs(computedTotal - totalFactura) > tolerance) {
+                    console.error(`❌ [CROSS-VALIDATION] Total mismatch: computed=${computedTotal}, received=${totalFactura}`);
+                    throw new Error(`CHAOS_GUARD: Discrepancia en totales. Esperado: $${computedTotal.toFixed(2)}, Recibido: $${totalFactura.toFixed(2)}`);
+                }
+            }
 
             // 1. Prepare Payments for Controller
             const pagosForController = rawPagos.map(p => ({
@@ -134,7 +159,7 @@ export const SalesService = {
                     amount: math.round(parseFloat(p.amount || p.monto || p.montoBS || p.amountBS || 0)),
                     currency: p.currency || (p.tipo === 'BS' ? CURRENCY.VES : CURRENCY.USD),
                     medium: p.medium || (isCash ? MEDIUM.CASH : MEDIUM.DIGITAL),
-                    rate: parseFloat(ventaFinal.tasa) || 1,
+                    rate: math.round(parseFloat(ventaFinal.tasa) || 1, 4),
                     originalRef: p
                 };
             });
@@ -230,12 +255,14 @@ export const SalesService = {
                 ...ventaFinal,
                 id: idVentaManual,
                 idVenta: ventaFinal.idVenta || await generarCorrelativo('factura'),
+                idempotencyKey,
                 items: itemsAProcesar,
                 vendedorId: usuario?.id || 'sys',
                 vendedor: usuario?.nombre || 'Cajero',
                 usuario: { id: usuario?.id, nombre: usuario?.nombre },
                 status: 'COMPLETADA',
                 corteId: null,
+                cajaId,
 
                 payments: pagosProcesados,
                 change: vueltosProcesados,
@@ -250,10 +277,24 @@ export const SalesService = {
                 montoSaldoFavor: parseFloat(ventaFinal.montoSaldoFavor) || 0,
                 appliedToDebt: appliedToDebt,
                 appliedToWallet: appliedToWallet,
-                timestamp: timeProvider.toISOString()
+                timestamp: timeProvider.toISOString(),
+                _lww_updated_at: Date.now()
             };
 
             await db.ventas.add(ventaToSave);
+
+            // 🔐 AUDIT CHAIN: Log sale to tamper-proof trail
+            appendAuditEntry('SALE_COMPLETED', {
+                idVenta: ventaToSave.idVenta,
+                total: totalFactura,
+                items: itemsAProcesar.length,
+                vendedor: usuario?.nombre,
+                idempotencyKey
+            }).catch(err => console.warn('Audit chain write failed (non-blocking):', err));
+
+            // [V4] LAN SYNC: Dispatch sale + stock to principal
+            dispatchSaleCompleted(ventaToSave, itemsAProcesar);
+
             return ventaToSave;
         });
     },
@@ -336,8 +377,20 @@ export const SalesService = {
                 motivoAnulacion: motivo || 'Sin motivo',
                 fechaAnulacion: timeProvider.toISOString(),
                 usuarioAnulacionId: usuario?.id || 'sys',
-                usuarioAnulacion: usuario?.nombre || 'Sistema'
+                usuarioAnulacion: usuario?.nombre || 'Sistema',
+                _lww_updated_at: Date.now()
             });
+
+            // 🔐 AUDIT CHAIN: Log void to tamper-proof trail
+            appendAuditEntry('SALE_VOIDED', {
+                idVenta: venta.idVenta || id,
+                total: venta.total,
+                motivo: motivo || 'Sin motivo',
+                usuario: usuario?.nombre
+            }).catch(err => console.warn('Audit chain write failed (non-blocking):', err));
+
+            // [V4] LAN SYNC: Dispatch stock revert to principal
+            dispatchStockReverted(venta.items);
 
             return { success: true };
         });
@@ -350,7 +403,7 @@ export const SalesService = {
         const sesion = await db.caja_sesion.get(cajaId);
         if (!sesion || !sesion.isAbierta) throw new Error("Caja cerrada. Abra turno.");
 
-        return await db.transaction('rw', db.ventas, db.logs, db.clientes, db.caja_sesion, db.config, async () => {
+        return await db.transaction('rw', db.ventas, db.logs, db.clientes, db.caja_sesion, async () => {
             const targetClienteId = parseInt(clienteId);
             const cliente = await db.clientes.get(targetClienteId);
             if (!cliente) throw new Error("Cliente no encontrado");
@@ -391,6 +444,11 @@ export const SalesService = {
 
             const result = FinancialController.simulateCustomerUpdate(cliente, 0, abono, 0);
 
+            // Validate: overpayment creates credit (favor), which is expected behavior
+            if (result.favor > 0 && cliente.deuda > 0) {
+                console.log(`ℹ️ [ABONO] Sobrepago detectado: $${result.favor.toFixed(2)} será saldo a favor.`);
+            }
+
             cliente.deuda = result.deuda;
             cliente.favor = result.favor;
             const nuevoSaldo = math.sub(cliente.deuda, cliente.favor);
@@ -427,10 +485,21 @@ export const SalesService = {
                 status: 'COMPLETADA',
                 tasa: configuracion.tasa,
                 financialSchema: 'v4-strict',
-                timestamp: timeProvider.toISOString()
+                timestamp: timeProvider.toISOString(),
+                _lww_updated_at: Date.now()
             };
 
             await db.ventas.add(transaccion);
+
+            // 🔐 AUDIT CHAIN: Log payment to tamper-proof trail
+            appendAuditEntry('PAYMENT_RECEIVED', {
+                idVenta: transaccion.idVenta,
+                clienteId: cliente.id,
+                total: abono,
+                deudaRestante: cliente.deuda,
+                usuario: usuario?.nombre
+            }).catch(err => console.warn('Audit chain write failed (non-blocking):', err));
+
             return transaccion;
         });
     },
@@ -439,7 +508,7 @@ export const SalesService = {
      * Sanea la cuenta de un cliente (Ajuste Administrativo).
      */
     sanearCuentaCliente: async (clienteId, tipo, motivo, usuario, generarCorrelativo) => {
-        return await db.transaction('rw', db.ventas, db.clientes, db.logs, db.config, async () => {
+        return await db.transaction('rw', db.ventas, db.clientes, db.logs, async () => {
             const targetClienteId = parseInt(clienteId);
             const cliente = await db.clientes.get(targetClienteId);
             if (!cliente) throw new Error("Cliente no encontrado");
@@ -469,10 +538,22 @@ export const SalesService = {
                 vendedor: usuario?.nombre || 'Cajero',
                 usuario: { id: usuario?.id, nombre: usuario?.nombre },
                 status: 'COMPLETADA',
-                timestamp: timeProvider.toISOString()
+                timestamp: timeProvider.toISOString(),
+                _lww_updated_at: Date.now()
             };
 
             await db.ventas.add(transaccion);
+
+            // 🔐 AUDIT CHAIN: Log adjustment to tamper-proof trail
+            appendAuditEntry('ADMIN_ADJUSTMENT', {
+                idVenta: transaccion.idVenta,
+                clienteId: cliente.id,
+                tipo,
+                montoAjustado,
+                motivo,
+                usuario: usuario?.nombre
+            }).catch(err => console.warn('Audit chain write failed (non-blocking):', err));
+
             return transaccion;
         });
     }

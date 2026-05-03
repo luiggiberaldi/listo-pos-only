@@ -42,7 +42,7 @@ const ProductGrid = ({
     <div
       ref={ref}
       style={style}
-      className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-20 ${className || ''}`}
+      className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 lg:gap-3 xl:gap-4 pb-20 ${className || ''}`}
       {...props}
     >
       {children}
@@ -57,7 +57,7 @@ const ProductGrid = ({
 
   return (
     <>
-      <div className="flex-1 px-4 py-4 overflow-hidden bg-app-light dark:bg-app-dark">
+      <div className="flex-1 px-2 lg:px-3 xl:px-4 py-2 lg:py-4 overflow-hidden bg-app-light dark:bg-app-dark">
         {filtrados.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-content-secondary gap-4 opacity-50 select-none">
             <div className="p-6 bg-surface-light dark:bg-surface-dark rounded-full"><ScanBarcode size={64} strokeWidth={1.5} /></div>

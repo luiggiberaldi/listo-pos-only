@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 export const usePaymentState = (initialClient, metodosActivos, isTouch) => {
     const [modo, setModo] = useState('contado');
@@ -14,6 +14,10 @@ export const usePaymentState = (initialClient, metodosActivos, isTouch) => {
     const [activeInputType, setActiveInputType] = useState('amount'); // 'amount' | 'ref'
     const inputRefs = useRef([]);
 
+    // Stabilize metodosActivos to prevent unnecessary effect re-runs
+    const metodosActivosIds = JSON.stringify(metodosActivos?.map(m => m.id) || []);
+    const stableMetodosActivos = useMemo(() => metodosActivos, [metodosActivosIds]);
+
     // Auto-focus first input on mount
     useEffect(() => {
         if (inputRefs.current[0]) setTimeout(() => inputRefs.current[0].focus(), 100);
@@ -27,12 +31,12 @@ export const usePaymentState = (initialClient, metodosActivos, isTouch) => {
     // 📱 AUTO-SCROLL PARA MODO TOUCH
     useEffect(() => {
         if (isTouch && activeInputId) {
-            const index = metodosActivos.findIndex(m => m.id === activeInputId);
+            const index = stableMetodosActivos.findIndex(m => m.id === activeInputId);
             if (index !== -1 && inputRefs.current[index]) {
                 inputRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
-    }, [activeInputId, isTouch, metodosActivos]);
+    }, [activeInputId, isTouch, stableMetodosActivos]);
 
     // 🛡️ FIX #6: Memoized to prevent unnecessary re-renders in usePaymentCalculations
     const val = useCallback((id) => (pagos[id] === '' || !pagos[id] ? 0 : Math.round((parseFloat(pagos[id]) + Number.EPSILON) * 100) / 100), [pagos]);

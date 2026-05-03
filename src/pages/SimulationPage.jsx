@@ -442,12 +442,22 @@ const SimulationPage = () => {
                 <span className="text-[10px] text-slate-600 font-mono">{logs.length} entries</span>
                 {logs.length > 0 && (
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
-                      navigator.clipboard.writeText(text).then(() => {
-                        const btn = document.getElementById('copy-log-btn');
-                        if (btn) { btn.dataset.copied = 'true'; setTimeout(() => { btn.dataset.copied = 'false'; }, 2000); }
-                      });
+                      try {
+                        await navigator.clipboard.writeText(text);
+                      } catch {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                      }
+                      const btn = document.getElementById('copy-log-btn');
+                      if (btn) { btn.dataset.copied = 'true'; setTimeout(() => { btn.dataset.copied = 'false'; }, 2000); }
                     }}
                     id="copy-log-btn"
                     className="p-1 rounded-md hover:bg-slate-700/60 text-slate-500 hover:text-slate-300 transition-colors group"

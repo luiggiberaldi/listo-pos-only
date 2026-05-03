@@ -38,7 +38,7 @@ export default function FinancialLayout({ icon: Icon, title, subtitle, color = '
                 <div className={`absolute top-0 left-0 right-0 h-40 bg-gradient-to-b ${theme.headerAccent} pointer-events-none`} />
 
                 {/* Header */}
-                <div className="p-6 md:p-8 pb-4 shrink-0 flex items-center justify-between relative z-10">
+                <div className="p-4 lg:p-6 xl:p-8 pb-4 shrink-0 flex items-center justify-between relative z-10">
                     <div>
                         <div className="flex items-center gap-3">
                             <motion.div
@@ -48,14 +48,14 @@ export default function FinancialLayout({ icon: Icon, title, subtitle, color = '
                             >
                                 <Icon size={24} strokeWidth={2.5} />
                             </motion.div>
-                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{title}</h2>
+                            <h2 className="text-xl lg:text-2xl xl:text-3xl font-black text-slate-800 tracking-tight">{title}</h2>
                         </div>
                         <p className="text-slate-400 font-medium mt-1 ml-1 text-sm">{subtitle}</p>
                     </div>
                 </div>
 
                 {/* Main Content (Inputs) */}
-                <div className="flex-1 overflow-y-auto px-6 md:px-8 py-4 custom-scrollbar relative z-10">
+                <div className="flex-1 overflow-y-auto px-4 lg:px-6 xl:px-8 py-4 custom-scrollbar relative z-10">
                     {children}
                 </div>
             </div>

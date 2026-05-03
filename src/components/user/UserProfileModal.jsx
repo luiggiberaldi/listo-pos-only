@@ -113,48 +113,61 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
     if (!usuario) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200" onClick={onClose}>
+            <div className="bg-slate-50 rounded-3xl shadow-2xl shadow-black/30 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-white/10" onClick={e => e.stopPropagation()}>
 
                 {/* HEADER */}
-                <div className="bg-slate-900 text-white p-6 relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full">
-                        <X size={20} />
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 pb-0 relative overflow-hidden">
+                    {/* Decorative blurs */}
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/15 rounded-full blur-[60px] pointer-events-none" />
+
+                    <button onClick={onClose} className="absolute top-4 right-4 z-10 text-slate-400 hover:text-white transition-all bg-white/5 hover:bg-white/15 p-2 rounded-xl backdrop-blur-sm border border-white/5 hover:border-white/20">
+                        <X size={18} />
                     </button>
 
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg border-4 border-slate-800">
-                            <span className="text-2xl font-bold">{usuario.nombre.substring(0, 2).toUpperCase()}</span>
+                    <div className="flex items-center gap-4 relative">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 border-2 border-white/10">
+                            <span className="text-xl font-black tracking-tight">{usuario.nombre.substring(0, 2).toUpperCase()}</span>
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black">{usuario.nombre}</h2>
-                            <p className="text-indigo-300 font-medium flex items-center gap-2">
-                                <span className="bg-indigo-500/20 px-2 py-0.5 rounded text-xs uppercase tracking-wider border border-indigo-500/30">
+                            <h2 className="text-xl font-black tracking-tight">{usuario.nombre}</h2>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-400/20 text-indigo-300">
                                     {usuario.rol}
                                 </span>
-                            </p>
+                            </div>
                         </div>
                     </div>
 
                     {/* TABS */}
-                    <div className="flex gap-1 mt-8 overflow-x-auto">
+                    <div className="flex gap-1 mt-6 relative">
                         <button
                             onClick={() => setActiveTab('resumen')}
-                            className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'resumen' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
+                            className={`px-5 py-2.5 rounded-t-xl text-sm font-bold transition-all relative ${activeTab === 'resumen'
+                                ? 'bg-slate-50 text-slate-900 shadow-sm'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
                         >
                             {esDueño ? 'Mi Negocio' : 'Resumen'}
                         </button>
                         {!esPlanBodega && !esDueño && (
                             <button
                                 onClick={() => setActiveTab('finanzas')}
-                                className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'finanzas' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
+                                className={`px-5 py-2.5 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'finanzas'
+                                    ? 'bg-slate-50 text-slate-900 shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                }`}
                             >
                                 Mis Finanzas
                             </button>
                         )}
                         <button
                             onClick={() => setActiveTab('seguridad')}
-                            className={`px-4 py-2 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'seguridad' ? 'bg-white text-slate-900' : 'text-slate-400 hover:bg-white/10'}`}
+                            className={`px-5 py-2.5 rounded-t-xl text-sm font-bold transition-all ${activeTab === 'seguridad'
+                                ? 'bg-slate-50 text-slate-900 shadow-sm'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
                         >
                             Seguridad
                         </button>
@@ -166,7 +179,7 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
 
                     {/* TAB: RESUMEN */}
                     {activeTab === 'resumen' && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
 
                             {esDueño ? (
                                 /* =============================== */
@@ -174,42 +187,44 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                                 /* =============================== */
                                 <>
                                     {/* Business Identity Card */}
-                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                                                <Store size={24} className="text-emerald-600" />
+                                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl flex items-center justify-center shadow-sm border border-emerald-200/50">
+                                                <Store size={22} className="text-emerald-600" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="text-lg font-black text-slate-800 truncate">{configuracion.nombre || 'Mi Bodega'}</h3>
-                                                <p className="text-xs text-slate-400 truncate">{configuracion.rif || 'RIF no configurado'} • {configuracion.telefono || 'Sin teléfono'}</p>
+                                                <h3 className="text-lg font-black text-slate-800 truncate tracking-tight">{configuracion.nombre || 'Mi Bodega'}</h3>
+                                                <p className="text-xs text-slate-400 truncate font-medium">{configuracion.rif || 'RIF no configurado'} • {configuracion.telefono || 'Sin teléfono'}</p>
                                             </div>
-                                            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider border border-emerald-200 whitespace-nowrap">
+                                            <span className="bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider border border-emerald-200/80 whitespace-nowrap shadow-sm">
                                                 {planLabel}
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Tasa + Stats Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         {/* TASA Card */}
                                         {(() => {
                                             const tasa = configuracion.tasa || 0;
                                             const hoursAgo = configuracion.fechaTasa
                                                 ? (Date.now() - new Date(configuracion.fechaTasa).getTime()) / (1000 * 60 * 60)
                                                 : 999;
-                                            const freshColor = hoursAgo < 4 ? 'emerald' : hoursAgo < 12 ? 'amber' : 'red';
-                                            const freshIcon = hoursAgo < 4 ? '🟢' : hoursAgo < 12 ? '🟡' : '🔴';
-                                            const freshLabel = hoursAgo < 4 ? 'Vigente' : hoursAgo < 12 ? 'Desactualizada' : 'Vencida';
+                                            const isVigente = hoursAgo < 4;
+                                            const isWarning = hoursAgo >= 4 && hoursAgo < 12;
+                                            const freshLabel = isVigente ? 'Vigente' : isWarning ? 'Desactualizada' : 'Vencida';
+                                            const dotColor = isVigente ? 'bg-emerald-500' : isWarning ? 'bg-amber-500' : 'bg-red-500';
                                             return (
-                                                <div className={`bg-${freshColor}-50 p-4 rounded-2xl border border-${freshColor}-100 shadow-sm`}>
-                                                    <span className={`text-[10px] font-bold text-${freshColor}-500 uppercase tracking-widest block mb-2`}>Tasa de Cambio</span>
-                                                    <span className="text-2xl font-black text-slate-700 block">
+                                                <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 p-4 rounded-2xl border border-emerald-100/80 shadow-sm hover:shadow-md transition-all group">
+                                                    <span className="text-[10px] font-black text-emerald-600/70 uppercase tracking-widest block mb-1.5">Tasa de Cambio</span>
+                                                    <span className="text-2xl font-black text-slate-800 block tracking-tight">
                                                         Bs {tasa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </span>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <span className="text-[10px] text-slate-500">{freshIcon} {freshLabel}</span>
+                                                    <div className="flex items-center gap-2 mt-2.5">
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor} ${isVigente ? 'animate-pulse' : ''}`} />
+                                                        <span className="text-[10px] text-slate-500 font-semibold">{freshLabel}</span>
                                                         {configuracion.fuenteTasa && (
-                                                            <span className="text-[10px] bg-white px-2 py-0.5 rounded-full text-slate-400 border border-slate-100">{configuracion.fuenteTasa}</span>
+                                                            <span className="text-[10px] bg-white/80 px-2 py-0.5 rounded-md text-slate-400 border border-slate-100 font-medium">{configuracion.fuenteTasa}</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -217,10 +232,10 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                                         })()}
 
                                         {/* Products Count */}
-                                        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
-                                            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest block mb-2">Productos Activos</span>
-                                            <span className="text-2xl font-black text-blue-700 block">{(productos || []).length}</span>
-                                            <span className="text-[10px] text-blue-400 mt-2 block">En inventario</span>
+                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-4 rounded-2xl border border-blue-100/80 shadow-sm hover:shadow-md transition-all">
+                                            <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-widest block mb-1.5">Productos Activos</span>
+                                            <span className="text-2xl font-black text-slate-800 block tracking-tight">{(productos || []).length}</span>
+                                            <span className="text-[10px] text-slate-400 mt-2.5 block font-semibold">En inventario</span>
                                         </div>
 
                                         {/* Session / Editable Name */}
@@ -232,7 +247,7 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                                                         title: 'Tu Nombre',
                                                         input: 'text',
                                                         inputValue: usuario.nombre || '',
-                                                        inputPlaceholder: 'Ej: José Pérez',
+                                                        inputPlaceholder: 'Ej: Jose Perez',
                                                         showCancelButton: true,
                                                         confirmButtonText: 'Guardar',
                                                         cancelButtonText: 'Cancelar',
@@ -241,49 +256,42 @@ export default function UserProfileModal({ onClose, initialTab = 'resumen' }) {
                                                     });
                                                     if (value) actualizarUsuario(usuario.id, { nombre: value.trim() });
                                                 }}
-                                                className="bg-violet-50 p-4 rounded-2xl border border-violet-100 shadow-sm cursor-pointer hover:border-violet-300 transition-all group"
+                                                className="bg-gradient-to-br from-violet-50 to-purple-50/50 p-4 rounded-2xl border border-violet-100/80 shadow-sm cursor-pointer hover:shadow-md hover:border-violet-200 transition-all group"
                                             >
-                                                <span className="text-[10px] font-bold text-violet-500 uppercase tracking-widest block mb-2">Tu Nombre</span>
+                                                <span className="text-[10px] font-black text-violet-600/70 uppercase tracking-widest block mb-1.5">Tu Nombre</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-lg font-black text-violet-700 block truncate">{usuario.nombre}</span>
-                                                    <Pencil size={14} className="text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                    <span className="text-lg font-black text-slate-800 block truncate tracking-tight">{usuario.nombre}</span>
+                                                    <Pencil size={13} className="text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                                 </div>
-                                                <span className="text-[10px] text-violet-400 mt-2 block">Toca para editar</span>
+                                                <span className="text-[10px] text-slate-400 mt-2.5 block font-semibold">Toca para editar</span>
                                             </div>
                                         ) : (
-                                            /* 📊 OTROS PLANES: Sesión Activa read-only */
-                                            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm">
-                                                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-2">Sesión Activa</span>
-                                                <span className="text-lg font-black text-indigo-700 block">{usuario.nombre}</span>
-                                                <span className="text-[10px] bg-indigo-100 text-indigo-500 px-2 py-1 rounded-full uppercase font-bold inline-block mt-2">{usuario.rol}</span>
+                                            /* 📊 OTROS PLANES: Sesion Activa read-only */
+                                            <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 p-4 rounded-2xl border border-indigo-100/80 shadow-sm">
+                                                <span className="text-[10px] font-black text-indigo-600/70 uppercase tracking-widest block mb-1.5">Sesion Activa</span>
+                                                <span className="text-lg font-black text-slate-800 block tracking-tight">{usuario.nombre}</span>
+                                                <span className="text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-md uppercase font-bold inline-block mt-2.5">{usuario.rol}</span>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Quick Info */}
-                                    <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Información del Sistema</h4>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
-                                                <span className="text-slate-500">Moneda Base</span>
-                                                <span className="font-bold text-slate-700">{configuracion.tipoTasa || 'USD'}</span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
-                                                <span className="text-slate-500">Redondeo</span>
-                                                <span className="font-bold text-slate-700">
-                                                    {configuracion.modoRedondeo === 'exacto' ? 'Exacto' : configuracion.modoRedondeo === 'entero' ? 'Entero' : configuracion.modoRedondeo === 'multiplo10' ? 'Múltiplo 10' : 'Múltiplo 5'}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5 border-b border-slate-50">
-                                                <span className="text-slate-500">IVA</span>
-                                                <span className="font-bold text-slate-700">{configuracion.porcentajeIva || 16}%</span>
-                                            </div>
-                                            <div className="flex justify-between py-1.5">
-                                                <span className="text-slate-500">Auto-actualizar tasa</span>
-                                                <span className={`font-bold ${configuracion.autoUpdateTasa ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                    {configuracion.autoUpdateTasa ? 'Activo' : 'Desactivado'}
-                                                </span>
-                                            </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Informacion del Sistema</h4>
+                                        <div className="space-y-0.5">
+                                            {[
+                                                { label: 'Moneda Base', value: configuracion.tipoTasa || 'USD' },
+                                                { label: 'Redondeo', value: configuracion.modoRedondeo === 'exacto' ? 'Exacto' : configuracion.modoRedondeo === 'entero' ? 'Entero' : configuracion.modoRedondeo === 'multiplo10' ? 'Multiplo 10' : 'Multiplo 5' },
+                                                { label: 'IVA', value: `${configuracion.porcentajeIva || 16}%` },
+                                                { label: 'Auto-actualizar tasa', value: configuracion.autoUpdateTasa ? 'Activo' : 'Desactivado', highlight: configuracion.autoUpdateTasa },
+                                            ].map((item, idx) => (
+                                                <div key={idx} className="flex justify-between items-center py-2.5 px-1 rounded-lg hover:bg-slate-50/80 transition-colors">
+                                                    <span className="text-sm text-slate-500 font-medium">{item.label}</span>
+                                                    <span className={`text-sm font-bold ${item.highlight === true ? 'text-emerald-600' : item.highlight === false ? 'text-slate-400' : 'text-slate-700'}`}>
+                                                        {item.value}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </>

@@ -15,9 +15,12 @@ export const math = {
     sub: (a, b) => d(a).minus(d(b)).toNumber(),
     mul: (a, b) => d(a).times(d(b)).toNumber(),
     div: (a, b) => {
-        const div = d(b);
-        if (div.isZero()) return 0; // 🛡️ Safe Division
-        return d(a).div(div).toNumber();
+        const divisor = d(b);
+        if (divisor.isZero()) {
+            if (import.meta.env.DEV) console.warn('⚠️ [MATH] División por cero detectada:', a, '/', b);
+            return 0;
+        }
+        return d(a).div(divisor).toNumber();
     },
 
     // 2. Operaciones con Precisión Controlada (Returman Number)

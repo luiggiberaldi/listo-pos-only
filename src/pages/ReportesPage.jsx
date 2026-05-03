@@ -50,7 +50,7 @@ const ReportesPage = () => {
       {/* HEADER & METADATOS */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Análisis de Negocio</h1>
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white">Análisis de Negocio</h1>
           <p className="text-slate-500 dark:text-slate-400">Datos procesados al corte de: {saludDatos.ultimaActualizacion}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -75,9 +75,9 @@ const ReportesPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
           {/* Ventas Hoy */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-2xl">
+              <div className="p-2 lg:p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-2xl">
                 <DollarSign size={24} />
               </div>
               <div className={`flex items-center gap-1 text-xs font-black px-2 py-1 rounded-full ${variacionAyer >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
@@ -85,50 +85,50 @@ const ReportesPage = () => {
                 {Math.abs(variacionAyer)}%
               </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Ventas Hoy</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-wider">Ventas Hoy</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white mt-1">
               {monedaSimbolo}{kpis.hoy.total.toLocaleString()}
             </h2>
             <p className="text-xs text-slate-400 mt-2 font-medium">{kpis.hoy.count} operaciones finalizadas</p>
           </div>
 
           {/* Ganancia Hoy */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl">
+              <div className="p-2 lg:p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl">
                 <TrendingUp size={24} />
               </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Ganancia Estimada</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-wider">Ganancia Estimada</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white mt-1">
               {monedaSimbolo}{kpis.hoy.ganancia.toLocaleString()}
             </h2>
             <p className="text-xs text-slate-400 mt-2 font-medium">Margen neto del día</p>
           </div>
 
           {/* Ticket Promedio */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl">
+              <div className="p-2 lg:p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl">
                 <ShoppingBag size={24} />
               </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Ticket Promedio</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-wider">Ticket Promedio</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white mt-1">
               {monedaSimbolo}{kpis.hoy.ticketPromedio.toLocaleString()}
             </h2>
             <p className="text-xs text-slate-400 mt-2 font-medium">Gasto medio por cliente</p>
           </div>
 
           {/* Ventas Mes */}
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900">
+          <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">
+              <div className="p-2 lg:p-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl">
                 <Clock size={24} />
               </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Total del Mes</p>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-wider">Total del Mes</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white mt-1">
               {monedaSimbolo}{kpis.mes.total.toLocaleString()}
             </h2>
             <p className="text-xs text-slate-400 mt-2 font-medium">{kpis.mes.count} ventas este mes</p>
@@ -147,12 +147,12 @@ const ReportesPage = () => {
       )}
 
       {/* SECCIÓN 2: RITMO DE VENTAS (HEATMAP) */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
-        <div className="flex items-center gap-3 mb-8">
+      <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 xl:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="flex items-center gap-3 mb-6 lg:mb-8">
           <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
             <Clock size={20} />
           </div>
-          <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Ritmo de Ventas por Hora (Hoy)</h3>
+          <h3 className="text-lg lg:text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Ritmo de Ventas por Hora (Hoy)</h3>
         </div>
 
         <div className="h-48 flex items-end gap-1 sm:gap-2">
@@ -182,16 +182,16 @@ const ReportesPage = () => {
       </div>
 
       {/* SECCIÓN 3: TOP PERFORMERS (SIDE BY SIDE) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
 
         {/* Top Productos */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 xl:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
                 <Star size={20} />
               </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Productos Estrella</h3>
+              <h3 className="text-lg lg:text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Productos Estrella</h3>
             </div>
           </div>
           <div className="space-y-4">
@@ -215,13 +215,13 @@ const ReportesPage = () => {
         </div>
 
         {/* Top Clientes */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 xl:p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
                 <Users size={20} />
               </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Mejores Clientes</h3>
+              <h3 className="text-lg lg:text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Mejores Clientes</h3>
             </div>
           </div>
           <div className="space-y-4">

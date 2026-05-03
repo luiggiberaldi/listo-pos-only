@@ -31,7 +31,7 @@ class ErrorBoundary extends React.Component {
         // Production logging (non-blocking)
         if (!import.meta.env.DEV) {
             try {
-                const { db } = require('../../../db');
+                const { db } = require('../../db');
                 db?.logs?.add({
                     tipo: 'ERROR_BOUNDARY',
                     fecha: new Date().toISOString(),
@@ -44,7 +44,9 @@ class ErrorBoundary extends React.Component {
                         section: this.props.section || 'unknown'
                     }
                 }).catch(() => { });
-            } catch { /* non-critical */ }
+            } catch (dbError) {
+                // DB unavailable during error recovery - non-critical
+            }
         }
     }
 

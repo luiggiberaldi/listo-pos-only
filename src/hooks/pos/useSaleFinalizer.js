@@ -9,6 +9,8 @@ export const useSaleFinalizer = ({
     setCarrito // 🆕 Needed to restore items
 }) => {
     const [ticketData, setTicketData] = useState(null);
+    const printTimerRef = useRef(null);
+    const resetTimerRef = useRef(null);
     // ✅ FIX: Usar el store directamente — antes era useState local que nunca se conectaba
     // con el ventaExitosa que DesktopLayout/TouchLayout leen del store.
     const setVentaExitosa = usePosActionsStore.getState().setVentaExitosa;
@@ -85,7 +87,11 @@ export const useSaleFinalizer = ({
                 });
             } catch { /* Ghost audit is non-critical */ }
 
-            setTimeout(() => {
+            // Clear any pending timers from previous calls
+            if (printTimerRef.current) clearTimeout(printTimerRef.current);
+            if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+
+            printTimerRef.current = setTimeout(() => {
                 const procesarImpresion = async () => {
                     if (imprimirTicket) {
                         setTicketData(ventaProcesada || ventaFinal);
@@ -101,7 +107,7 @@ export const useSaleFinalizer = ({
 
                 const hasBalanceEvent = ventaFinal.vueltoCredito || ventaFinal.deudaPendiente > 0;
                 if (!hasBalanceEvent) {
-                    setTimeout(() => {
+                    resetTimerRef.current = setTimeout(() => {
                         setVentaExitosa(false);
                         if (!imprimirTicket) limpiarCarrito();
                         searchInputRef.current?.focus();

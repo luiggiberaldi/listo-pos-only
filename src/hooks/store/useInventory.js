@@ -232,7 +232,13 @@ export const useInventory = (usuario, configuracion, registrarEventoSeguridad) =
                 if (prod) {
                     const factor = convertirABase(1, item.unidadVenta || 'unidad', prod.jerarquia);
                     const descuentoTotal = fixFloat(item.cantidad * factor);
-                    const nuevoStock = fixFloat(prod.stock - descuentoTotal);
+                    let nuevoStock = fixFloat(prod.stock - descuentoTotal);
+
+                    // 🛡️ NON-NEGATIVE STOCK CONSTRAINT
+                    if (nuevoStock < 0) {
+                        console.warn(`⚠️ [STOCK] "${prod.nombre}" would go negative (${nuevoStock}). Flooring to 0.`);
+                        nuevoStock = 0;
+                    }
 
                     await db.productos.update(idKey, { stock: nuevoStock });
 

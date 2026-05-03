@@ -102,10 +102,10 @@ export default function DesktopLayout({
                         <img
                             src="logo_success.png?v=2"
                             alt="LISTO POS"
-                            className="h-48 w-auto relative z-10 drop-shadow-2xl object-contain"
+                            className="h-28 lg:h-36 xl:h-48 w-auto relative z-10 drop-shadow-2xl object-contain"
                         />
                         <div className="mt-8 flex flex-col items-center z-10">
-                            <h2 className="text-5xl font-black text-content-inverse tracking-tighter text-center">
+                            <h2 className="text-3xl lg:text-4xl xl:text-5xl font-black text-content-inverse tracking-tighter text-center">
                                 VENTA <span className="text-status-success">EXITOSA</span>
                             </h2>
                             <p className="text-content-secondary mt-2 font-mono">

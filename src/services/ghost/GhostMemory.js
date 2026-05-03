@@ -48,6 +48,10 @@ export class GhostMemoryService {
         // 🔄 Session Rotation: If a different user types, start a new session!
         if (this.currentUserId !== null && this.currentUserId !== userId) {
             console.log("🔄 Ghost: User changed, rotating session memory");
+            // Flush pending logs before rotation
+            if (this.sessionLogs.length > 0) {
+                await this._flushToFirestore();
+            }
             this.sessionId = null;
             this.sessionLogs = [];
             this.sessionStart = Date.now();
@@ -117,11 +121,11 @@ export class GhostMemoryService {
     }
 
     async _flushToFirestore() {
-        if (!dbMaster || this.sessionLogs.length === 0) return;
+        if (!dbMaster || this.sessionLogs.length === 0 || !this.sessionId) return;
+
+        const logsToFlush = [...this.sessionLogs]; // Snapshot before attempting
 
         try {
-            // Overwrite/Update the Session Document with the full array
-            // This counts as 1 WRITE per batch, saving massive costs.
             const docRef = doc(dbMaster, 'ghost_compact_sessions', this.sessionId);
 
             const authState = useAuthStore.getState();
@@ -134,12 +138,14 @@ export class GhostMemoryService {
                 startTime: this.sessionStart,
                 lastUpdate: new Date().toISOString(),
                 logCount: this.sessionLogs.length,
-                logs: this.sessionLogs // store array directly
+                logs: this.sessionLogs
             }, { merge: true });
 
-            // console.log("📡 Telemetry Compacted (Option 3):", this.sessionLogs.length);
+            // Only clear flushed logs after successful write
+            this.sessionLogs = this.sessionLogs.slice(logsToFlush.length);
         } catch (error) {
-            console.error("📡 Firestore Batch Failed", error);
+            console.error("📡 Firestore Batch Failed — logs retained for retry", error);
+            // Logs are NOT cleared, will be retried on next flush
         }
     }
 

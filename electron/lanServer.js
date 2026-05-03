@@ -1,15 +1,6 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 3.0 (LAN SYNC SERVER — HARDENED + AUTH)
+// ✅ SYSTEM IMPLEMENTATION - V. 4.0 (LAN SYNC SERVER — FULL MULTI-CAJA)
 // Archivo: electron/lanServer.js
-// Protecciones implementadas:
-//   1. Body size limit (anti-flood)
-//   2. Deduplicación de stock updates (idempotencia)
-//   3. Stock negativo → alerta al renderer
-//   4. Rate limiting básico por IP
-//   5. Timeout de conexión SSE (evita leaks)
-//   6. [FIX C1] LAN_SHARED_TOKEN — Auth header obligatorio en rutas sensibles
-//   7. [FIX C2] License salt desde variable de entorno (prepara migración JWT)
-//   8. [FIX M5] Verificación real de _licenseActive
-//   9. [FIX M6] Normalización de nombres de producto (tildes/acentos)
+// V4.0: Full sync — clientes, ventas, cortes, gastos + PIN auth + ID-based stock
 
 import http from 'http';
 import crypto from 'crypto';
@@ -21,23 +12,31 @@ import { networkInterfaces } from 'os';
 const LICENSE_SALT = process.env.LISTO_LICENSE_SALT || "LISTO_POS_V1_SECURE_SALT_998877";
 
 const LAN_PORT = 3847;
-const SYNC_VERSION = '3.0';
+const SYNC_VERSION = '4.0';
 const MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB máximo
 const SSE_TIMEOUT = 60000; // Ping cada 60s para detectar clientes muertos
+const DEDUP_TTL = 5 * 60 * 1000; // 5 min TTL for dedup entries
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS = 60000; // 1 minute lockout after max attempts
 
 // --- ESTADO EN MEMORIA ---
 let productCache = [];
 let categoriesCache = [];
 let configCache = {};
+let clientsCache = [];       // [V4] Cache de clientes para sync bidireccional
 let lastUpdateTimestamp = Date.now();
 let connectedClients = []; // SSE streams activos
 let mainWindowRef = null;
-let _processedUpdateIds = new Set(); // Deduplicación
+let _processedUpdates = new Map(); // Deduplicación con TTL: key → timestamp
 
 // [FIX C1] 🔑 LAN SHARED TOKEN — Se genera al iniciar el servidor.
-// Las cajas secundarias lo reciben durante el handshake inicial (/api/ping)
-// y deben incluirlo en todas las solicitudes posteriores como Authorization header.
 let _lanSharedToken = null;
+
+// [V4] 🔐 PIN de emparejamiento — se configura desde el UI del principal
+let _pairingPIN = null;
+
+// 🛡️ PIN rate limiting per IP
+const _pinAttempts = new Map(); // ip → { count, lastAttempt }
 
 // ═══════════════════════════════════════════════════════════
 // 🔧 HELPERS
@@ -109,6 +108,39 @@ function normalizeName(name) {
     return name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+/** Safe IPC send — wraps try-catch to avoid crashing on destroyed window */
+function safeSend(channel, data) {
+    try {
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+            mainWindowRef.webContents.send(channel, data);
+        }
+    } catch (e) {
+        console.warn(`⚠️ [LAN SERVER] Error sending IPC '${channel}':`, e.message);
+    }
+}
+
+/** Check PIN rate limiting for an IP */
+function checkPinRateLimit(ip) {
+    const entry = _pinAttempts.get(ip);
+    if (!entry) return true;
+    if (Date.now() - entry.lastAttempt > PIN_LOCKOUT_MS) {
+        _pinAttempts.delete(ip);
+        return true;
+    }
+    return entry.count < PIN_MAX_ATTEMPTS;
+}
+
+function recordPinAttempt(ip, success) {
+    if (success) {
+        _pinAttempts.delete(ip);
+        return;
+    }
+    const entry = _pinAttempts.get(ip) || { count: 0, lastAttempt: 0 };
+    entry.count++;
+    entry.lastAttempt = Date.now();
+    _pinAttempts.set(ip, entry);
+}
+
 // ═══════════════════════════════════════════════════════════
 // 📦 CACHE & BROADCAST
 // ═══════════════════════════════════════════════════════════
@@ -124,6 +156,17 @@ export function updateProductCache(products, categories, config) {
         timestamp: lastUpdateTimestamp,
         count: productCache.length,
     });
+}
+
+// [V4] Actualizar cache de clientes (llamado desde renderer via IPC)
+export function updateClientsCache(clients) {
+    clientsCache = clients || [];
+}
+
+// [V4] Configurar PIN de emparejamiento
+export function setPairingPIN(pin) {
+    _pairingPIN = pin;
+    console.log(`🔐 [LAN SERVER] PIN de emparejamiento ${pin ? 'configurado' : 'removido'}`);
 }
 
 function broadcastToClients(data) {
@@ -146,26 +189,36 @@ export function processStockUpdate(updates, cajaId = 'unknown') {
     const results = [];
     const stockAlerts = [];
 
+    // 🛡️ TTL cleanup: purge entries older than DEDUP_TTL
+    const now = Date.now();
+    if (_processedUpdates.size > 100) {
+        for (const [k, ts] of _processedUpdates) {
+            if (now - ts > DEDUP_TTL) _processedUpdates.delete(k);
+        }
+    }
+
     for (const update of updates) {
-        // 🛡️ DEDUPLICACIÓN: generar key único por update
-        const dedupKey = `${normalizeName(update.nombre)}_${update.delta}_${update.timestamp}`;
-        if (_processedUpdateIds.has(dedupKey)) {
+        // 🛡️ DEDUPLICACIÓN: key por producto+delta (sin timestamp para capturar reintentos)
+        const productKey = update.id || normalizeName(update.nombre);
+        const dedupKey = `${productKey}_${update.delta}`;
+        if (_processedUpdates.has(dedupKey) && (now - _processedUpdates.get(dedupKey)) < DEDUP_TTL) {
             results.push({ nombre: update.nombre, skipped: true, reason: 'duplicate' });
             continue;
         }
-        _processedUpdateIds.add(dedupKey);
+        _processedUpdates.set(dedupKey, now);
 
-        // Limpiar dedup cache si crece demasiado (mantener últimos 500)
-        if (_processedUpdateIds.size > 500) {
-            const arr = Array.from(_processedUpdateIds);
-            _processedUpdateIds = new Set(arr.slice(-250));
+        // [V4] ID-BASED MATCH: Intentar por ID primero, fallback a nombre normalizado
+        let product = null;
+        if (update.id) {
+            product = productCache.find(p => p.id === update.id);
+            if (!product) {
+                console.warn(`⚠️ [LAN] ID ${update.id} no encontrado en cache, fallback a nombre: "${update.nombre}"`);
+            }
         }
-
-        // [FIX M6] Usar normalizeName para el match (resuelve "Azúcar" vs "Azucar")
-        const normalizedUpdateName = normalizeName(update.nombre);
-        const product = productCache.find(
-            p => normalizeName(p.nombre) === normalizedUpdateName
-        );
+        if (!product) {
+            const normalizedUpdateName = normalizeName(update.nombre);
+            product = productCache.find(p => normalizeName(p.nombre) === normalizedUpdateName);
+        }
 
         if (product) {
             const oldStock = product.stock || 0;
@@ -195,13 +248,9 @@ export function processStockUpdate(updates, cajaId = 'unknown') {
     lastUpdateTimestamp = Date.now();
 
     // Notificar al renderer (actualizar Dexie del PC1)
-    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-        mainWindowRef.webContents.send('lan-stock-update', updates);
-
-        // 🛡️ Enviar alertas de stock negativo al UI
-        if (stockAlerts.length > 0) {
-            mainWindowRef.webContents.send('lan-stock-alert', stockAlerts);
-        }
+    safeSend('lan-stock-update', updates);
+    if (stockAlerts.length > 0) {
+        safeSend('lan-stock-alert', stockAlerts);
     }
 
     // Notificar a otros clientes SSE
@@ -227,7 +276,13 @@ export function startLanServer(mainWindow) {
     console.log(`🔑 [LAN SERVER] Token de autenticación generado (primeros 8 chars): ${_lanSharedToken.substring(0, 8)}...`);
 
     const server = http.createServer((req, res) => {
-        const url = new URL(req.url, `http://localhost:${LAN_PORT}`);
+        let url;
+        try {
+            url = new URL(req.url, `http://localhost:${LAN_PORT}`);
+        } catch {
+            sendJSON(res, 400, { error: 'Malformed URL' });
+            return;
+        }
         const path = url.pathname;
 
         // CORS preflight
@@ -243,10 +298,7 @@ export function startLanServer(mainWindow) {
 
         // ─── RUTAS PÚBLICAS (sin auth) ─────────────────────────
 
-        // Health check + handshake: devuelve token al que hace ping.
-        // Nota: /api/ping es abierto para que `scanForMaster` y `ConfigConexionLAN`
-        // puedan descubrir el servidor. El token se entrega solo en el ping.
-        // Una vez que PC2 tiene el token, lo usa en el header de las demás rutas.
+        // Health check: descubrir servidor. [V4] Ya NO envía token — requiere PIN
         if (path === '/api/ping' && req.method === 'GET') {
             sendJSON(res, 200, {
                 status: 'ok',
@@ -256,18 +308,82 @@ export function startLanServer(mainWindow) {
                 timestamp: lastUpdateTimestamp,
                 ip: getLocalIP(),
                 clients: connectedClients.length,
-                // [FIX C1] Enviar token en el ping para handshake inicial
-                lanToken: _lanSharedToken,
+                requiresPIN: !!_pairingPIN, // [V4] Indica si necesita PIN
+            });
+            return;
+        }
+
+        // [V4] 🔐 PIN PAIRING: Secundaria envía PIN → recibe token
+        if (path === '/api/pair' && req.method === 'POST') {
+            const clientIP = req.socket.remoteAddress || 'unknown';
+            if (!checkPinRateLimit(clientIP)) {
+                sendJSON(res, 429, { error: 'Demasiados intentos. Espere 1 minuto.' });
+                return;
+            }
+            parseBody(req).then(body => {
+                if (!_pairingPIN) {
+                    // Sin PIN configurado: entregar token directamente (backward compat)
+                    sendJSON(res, 200, {
+                        ok: true,
+                        lanToken: _lanSharedToken,
+                        negocio: configCache.nombreNegocio || 'Listo POS',
+                    });
+                    return;
+                }
+                if (!body.pin || body.pin !== _pairingPIN) {
+                    recordPinAttempt(clientIP, false);
+                    sendJSON(res, 403, { error: 'PIN incorrecto' });
+                    return;
+                }
+                recordPinAttempt(clientIP, true);
+                sendJSON(res, 200, {
+                    ok: true,
+                    lanToken: _lanSharedToken,
+                    negocio: configCache.nombreNegocio || 'Listo POS',
+                });
+            }).catch(err => {
+                sendJSON(res, 400, { error: err.message });
             });
             return;
         }
 
         // ─── RUTAS PROTEGIDAS (requieren auth) ─────────────────
 
-        // [FIX C1] 🔒 Verificar auth en TODAS las rutas sensibles
+        // [V4] SSE acepta token via query param (EventSource no puede setear headers)
+        if (path === '/api/events' && req.method === 'GET') {
+            const qToken = url.searchParams.get('token');
+            const headerOk = verifyLanAuth(req);
+            const queryOk = qToken && qToken === _lanSharedToken;
+            if (!headerOk && !queryOk) {
+                sendJSON(res, 401, { error: 'Unauthorized' });
+                return;
+            }
+
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+            });
+            res.write(`data: ${JSON.stringify({ type: 'CONNECTED', timestamp: Date.now() })}\n\n`);
+            connectedClients.push(res);
+
+            const heartbeat = setInterval(() => {
+                try { res.write(`: heartbeat\n\n`); }
+                catch { clearInterval(heartbeat); }
+            }, SSE_TIMEOUT);
+
+            req.on('close', () => {
+                clearInterval(heartbeat);
+                connectedClients = connectedClients.filter(c => c !== res);
+            });
+            return;
+        }
+
+        // 🔒 Verificar auth en TODAS las demás rutas
         if (!verifyLanAuth(req)) {
             sendJSON(res, 401, {
-                error: 'Unauthorized — Missing or invalid LAN token. Reconnect to the master.'
+                error: 'Unauthorized — Missing or invalid LAN token. Use /api/pair to authenticate.'
             });
             return;
         }
@@ -320,6 +436,103 @@ export function startLanServer(mainWindow) {
             return;
         }
 
+        // [V4] 📋 CLIENTS: Devolver lista de clientes al secundario
+        if (path === '/api/clients' && req.method === 'GET') {
+            sendJSON(res, 200, {
+                clientes: clientsCache,
+                timestamp: Date.now(),
+            });
+            return;
+        }
+
+        // [V4] 📋 CLIENT-SYNC: Recibir cambios de clientes desde secundario
+        if (path === '/api/client-sync' && req.method === 'POST') {
+            parseBody(req).then(body => {
+                if (!body.clientes || !Array.isArray(body.clientes)) {
+                    sendJSON(res, 400, { error: 'Se requiere { clientes: [...] }' });
+                    return;
+                }
+
+                // Forward to renderer for LWW merge
+                safeSend('lan-client-sync', {
+                    clientes: body.clientes,
+                    cajaId: body.cajaId || 'secundaria',
+                });
+
+                // Broadcast SSE event
+                broadcastToClients({ type: 'CLIENTS_UPDATED', timestamp: Date.now() });
+
+                sendJSON(res, 200, { ok: true, received: body.clientes.length });
+            }).catch(err => {
+                const code = err.message === 'Body too large' ? 413 : 400;
+                sendJSON(res, code, { error: err.message });
+            });
+            return;
+        }
+
+        // [V4] 💰 SALE-SYNC: Recibir ventas completadas desde secundario
+        if (path === '/api/sale-sync' && req.method === 'POST') {
+            parseBody(req).then(body => {
+                if (!body.ventas || !Array.isArray(body.ventas)) {
+                    sendJSON(res, 400, { error: 'Se requiere { ventas: [...] }' });
+                    return;
+                }
+
+                safeSend('lan-sale-received', {
+                    ventas: body.ventas,
+                    cajaId: body.cajaId || 'secundaria',
+                });
+
+                sendJSON(res, 200, { ok: true, received: body.ventas.length });
+            }).catch(err => {
+                const code = err.message === 'Body too large' ? 413 : 400;
+                sendJSON(res, code, { error: err.message });
+            });
+            return;
+        }
+
+        // [V4] 🧾 CORTE-SYNC: Recibir cierres de caja desde secundario
+        if (path === '/api/corte-sync' && req.method === 'POST') {
+            parseBody(req).then(body => {
+                if (!body.corte) {
+                    sendJSON(res, 400, { error: 'Se requiere { corte: {...} }' });
+                    return;
+                }
+
+                safeSend('lan-corte-received', {
+                    corte: body.corte,
+                    cajaId: body.cajaId || 'secundaria',
+                });
+
+                sendJSON(res, 200, { ok: true });
+            }).catch(err => {
+                const code = err.message === 'Body too large' ? 413 : 400;
+                sendJSON(res, code, { error: err.message });
+            });
+            return;
+        }
+
+        // [V4] 💸 EXPENSE-SYNC: Recibir gastos desde secundario
+        if (path === '/api/expense-sync' && req.method === 'POST') {
+            parseBody(req).then(body => {
+                if (!body.gastos || !Array.isArray(body.gastos)) {
+                    sendJSON(res, 400, { error: 'Se requiere { gastos: [...] }' });
+                    return;
+                }
+
+                safeSend('lan-expense-received', {
+                    gastos: body.gastos,
+                    cajaId: body.cajaId || 'secundaria',
+                });
+
+                sendJSON(res, 200, { ok: true, received: body.gastos.length });
+            }).catch(err => {
+                const code = err.message === 'Body too large' ? 413 : 400;
+                sendJSON(res, code, { error: err.message });
+            });
+            return;
+        }
+
         // 🔑 LICENSE GRANT: PC1 genera licencia para PC2 (Multi-Caja)
         if (path === '/api/license-grant' && req.method === 'POST') {
             parseBody(req).then(body => {
@@ -328,15 +541,12 @@ export function startLanServer(mainWindow) {
                     return;
                 }
 
-                // [FIX M5] Verificar que PC1 REALMENTE tiene licencia activa
                 const pc1License = configCache._licenseActive;
                 if (pc1License !== true) {
                     sendJSON(res, 403, { error: 'El servidor principal no tiene licencia activa.' });
                     return;
                 }
 
-                // [FIX C2] Generar licencia para PC2 usando SHA-256 (V1)
-                // TODO: Migrar a JWT/RS256 cuando la clave privada esté en Electron main process
                 const hash = crypto.createHash('sha256')
                     .update(body.machineId + LICENSE_SALT)
                     .digest('hex')
@@ -344,13 +554,10 @@ export function startLanServer(mainWindow) {
 
                 console.log(`🔑 [LICENSE] Licencia generada para caja secundaria: ${body.machineId.substring(0, 8)}...`);
 
-                // Notificar al renderer para registrar en Firebase
-                if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-                    mainWindowRef.webContents.send('lan-license-granted', {
-                        secondaryMachineId: body.machineId,
-                        cajaLabel: body.cajaLabel || 'Caja Secundaria',
-                    });
-                }
+                safeSend('lan-license-granted', {
+                    secondaryMachineId: body.machineId,
+                    cajaLabel: body.cajaLabel || 'Caja Secundaria',
+                });
 
                 sendJSON(res, 200, {
                     ok: true,
@@ -362,33 +569,6 @@ export function startLanServer(mainWindow) {
             }).catch(err => {
                 const code = err.message === 'Body too large' ? 413 : 400;
                 sendJSON(res, code, { error: err.message });
-            });
-            return;
-        }
-
-        // SSE: Stream de eventos en tiempo real (protegido — solo clientes autorizados)
-        if (path === '/api/events' && req.method === 'GET') {
-            res.writeHead(200, {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Access-Control-Allow-Origin': '*',
-            });
-            res.write(`data: ${JSON.stringify({ type: 'CONNECTED', timestamp: Date.now() })}\n\n`);
-            connectedClients.push(res);
-
-            // 🛡️ Heartbeat: detectar clientes muertos
-            const heartbeat = setInterval(() => {
-                try {
-                    res.write(`: heartbeat\n\n`);
-                } catch {
-                    clearInterval(heartbeat);
-                }
-            }, SSE_TIMEOUT);
-
-            req.on('close', () => {
-                clearInterval(heartbeat);
-                connectedClients = connectedClients.filter(c => c !== res);
             });
             return;
         }

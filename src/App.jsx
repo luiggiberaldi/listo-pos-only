@@ -37,6 +37,11 @@ const SalesHistoryPage = lazy(() => import('./pages/SalesHistoryPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 
+// Bounded error buffer (module-scoped, not on window)
+const _ghostErrors = [];
+const MAX_GHOST_ERRORS = 10;
+export const getGhostErrors = () => [..._ghostErrors];
+
 // Security Gate
 import LicenseGate from './components/security/LicenseGate';
 import ContractGuard from './components/security/ContractGuard'; // 🟢 CONTRACT GUARD
@@ -141,12 +146,12 @@ function App() {
 
   // 🚨 GLOBAL ERROR TRAP FOR GHOST
   React.useEffect(() => {
-    window.ghostErrors = [];
+    _ghostErrors.length = 0; // Reset on mount
     const handleError = (event) => {
       const errorMsg = event.reason ? `Promise Rejection: ${event.reason}` : event.message;
       console.log('🚨 [GHOST EYE] Error Captured:', errorMsg);
-      window.ghostErrors.push({ message: errorMsg, timestamp: Date.now() });
-      if (window.ghostErrors.length > 10) window.ghostErrors.shift(); // Keep last 10
+      _ghostErrors.push({ message: errorMsg, timestamp: Date.now() });
+      if (_ghostErrors.length > MAX_GHOST_ERRORS) _ghostErrors.shift();
     };
 
     window.addEventListener('error', handleError);

@@ -289,7 +289,7 @@ export default function InventarioPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-6 animate-in fade-in duration-500 pb-20">
+        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 lg:p-6 animate-in fade-in duration-500 pb-20">
             <div className="max-w-[1600px] mx-auto">
 
                 {/* MODALES (Lazy-loaded with Suspense) */}
@@ -379,7 +379,7 @@ export default function InventarioPage() {
 
                     {/* PAGINACIÓN */}
                     {totalItems > 0 && (
-                        <div className="px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+                        <div className="px-4 lg:px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
                             <span className="text-xs text-slate-400 font-medium">
                                 Mostrando <b className="text-slate-700 dark:text-white">{(paginaActual - 1) * 20 + 1}-{Math.min(paginaActual * 20, totalItems)}</b> de <b className="text-slate-700 dark:text-white">{totalItems}</b> items
                             </span>

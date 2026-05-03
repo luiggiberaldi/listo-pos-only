@@ -178,7 +178,7 @@ export default function CierrePage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
+        <div className="p-4 lg:p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
             <div style={{ display: 'none' }}>
                 <ReporteZUniversal ref={ticketRef} corte={corteParaImprimir} formato="ticket" />
             </div>
@@ -187,8 +187,8 @@ export default function CierrePage() {
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-content-main flex items-center gap-2">
-                        <PieChart className="text-primary" size={32} /> CONTROL DE CAJA
+                    <h1 className="text-2xl lg:text-3xl font-black text-content-main flex items-center gap-2">
+                        <PieChart className="text-primary" size={28} /> CONTROL DE CAJA
                     </h1>
                     <p className="text-content-secondary font-medium">Gestión de turnos y arqueo fiscal</p>
                 </div>
@@ -244,13 +244,13 @@ export default function CierrePage() {
                     </div>
 
                     {/* 📊 TARJETAS PRINCIPALES (3 GRANDES) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
                         {/* 💰 1. TOTAL RECAUDADO */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border-l-4 border-l-blue-600 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-2xl border-l-4 border-l-blue-600 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2">Total Recaudado (Caja)</p>
-                                    <h3 className="text-4xl font-black text-slate-800 dark:text-white font-numbers tracking-tight">
+                                    <h3 className="text-2xl lg:text-3xl xl:text-4xl font-black text-slate-800 dark:text-white font-numbers tracking-tight">
                                         ${resumen.ingresoReal.toFixed(2)}
                                     </h3>
                                     {/* IVA removed from here to avoid confusion with Fiscal Total */}
@@ -263,11 +263,11 @@ export default function CierrePage() {
                         </div>
 
                         {/* 🏛️ 2. VENTAS BRUTAS (FISCAL) */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Ventas Brutas (Fiscal)</p>
-                                    <h3 className="text-3xl font-black text-slate-700 dark:text-slate-200 font-numbers tracking-tight">
+                                    <h3 className="text-2xl lg:text-3xl font-black text-slate-700 dark:text-slate-200 font-numbers tracking-tight">
                                         ${resumen.totalVentas.toFixed(2)}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-2">
@@ -283,11 +283,11 @@ export default function CierrePage() {
                         </div>
 
                         {/* 📈 3. INGRESO NETO (GANANCIA) */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-emerald-100 break-words shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
+                        <div className="bg-white dark:bg-slate-800 p-4 lg:p-6 rounded-2xl border border-emerald-100 break-words shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">Ingreso Neto (Base)</p>
-                                    <h3 className="text-3xl font-black text-emerald-600 font-numbers tracking-tight">
+                                    <h3 className="text-2xl lg:text-3xl font-black text-emerald-600 font-numbers tracking-tight">
                                         ${resumen.ventaNeta.toFixed(2)}
                                     </h3>
                                     <p className="text-xs text-emerald-600/60 mt-2 font-medium">Ventas sin impuestos</p>

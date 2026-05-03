@@ -3,7 +3,7 @@
 // Objetivo: Orchestrator principal de la pantalla de login.
 // REQUIERE: npm install framer-motion
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { motion } from 'framer-motion';
@@ -60,6 +60,19 @@ export default function LoginScreen() {
     const isDemo = license?.isDemo;
     const remaining = isDemo ? Math.max(0, (license.quotaLimit || 0) - (license.usageCount || 0)) : 0;
 
+    // --- HANDLERS (must be defined before useEffects that reference them) ---
+    const handleCloseModal = useCallback(() => {
+        setSelectedUser(null);
+        setPin('');
+        setError(false);
+    }, []);
+
+    const handleUserClick = useCallback((u) => {
+        setSelectedUser(u);
+        setError(false);
+        setPin('');
+    }, []);
+
     // --- BUZZER LISTENER ---
     useEffect(() => {
         if (!dbMaster) return;
@@ -96,20 +109,7 @@ export default function LoginScreen() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedUser, activeUsers, isFeedbackOpen]);
-
-    // --- HANDLERS ---
-    const handleCloseModal = () => {
-        setSelectedUser(null);
-        setPin('');
-        setError(false);
-    };
-
-    const handleUserClick = (u) => {
-        setSelectedUser(u);
-        setError(false);
-        setPin('');
-    };
+    }, [selectedUser, activeUsers, isFeedbackOpen, handleUserClick, handleCloseModal]);
 
     const handlePinSubmit = async (e) => {
         if (e) e.preventDefault();
@@ -187,7 +187,7 @@ export default function LoginScreen() {
                 <div className="absolute -bottom-[20%] -right-[10%] w-[800px] h-[800px] bg-primary-light/10 rounded-full blur-[120px]" />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 lg:p-6 xl:p-8">
 
                 {/* PLAN BADGE — Premium Glass */}
                 <motion.div
@@ -216,19 +216,19 @@ export default function LoginScreen() {
                 </motion.div>
 
                 {/* HEADER */}
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16 relative">
-                    <div onClick={handleLogoClick} className="cursor-pointer select-none active:scale-95 transition-transform inline-block relative">
-                        <img src="listo-pos-logo.png" alt="LISTO POS" className="h-36 mx-auto mb-6 object-contain" />
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8 lg:mb-12 xl:mb-16 relative">
+                    <button onClick={handleLogoClick} aria-label="Inicio" className="cursor-pointer select-none active:scale-95 transition-transform inline-block relative bg-transparent border-none p-0">
+                        <img src="listo-pos-logo.png" alt="Logo de LISTO POS - Sistema de punto de venta" className="h-24 lg:h-28 xl:h-36 mx-auto mb-4 lg:mb-6 object-contain" />
                         {secretClicks > 2 && (
                             <div className="absolute -right-6 top-0 bg-red-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold animate-bounce">{7 - secretClicks}</div>
                         )}
-                    </div>
-                    <h1 className="text-3xl font-light tracking-[0.2em] text-content-secondary">¿QUIÉN ESTÁ <strong className="text-content-inverse font-bold">OPERANDO</strong>?</h1>
+                    </button>
+                    <h1 className="text-xl lg:text-2xl xl:text-3xl font-light tracking-[0.2em] text-content-secondary">¿QUIÉN ESTÁ <strong className="text-content-inverse font-bold">OPERANDO</strong>?</h1>
                 </motion.div>
 
                 {/* GRID */}
                 <motion.div
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 max-w-5xl"
+                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6 xl:gap-8 max-w-6xl"
                     initial="hidden" animate="show"
                     variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
                 >
@@ -247,6 +247,7 @@ export default function LoginScreen() {
                         variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}
                         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                         onClick={() => window.location.reload()}
+                        aria-label="Recargar página"
                         className="flex flex-col items-center justify-center gap-4 group opacity-40 hover:opacity-100 transition-opacity"
                     >
                         <div className="w-32 h-32 rounded-full border-2 border-dashed border-slate-700 flex items-center justify-center group-hover:border-slate-500 transition-colors">
@@ -261,6 +262,7 @@ export default function LoginScreen() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setIsFeedbackOpen(true)}
+                    aria-label="Enviar sugerencia"
                     className="absolute bottom-6 right-6 bg-slate-800/50 backdrop-blur-md p-3 rounded-full border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all z-40 shadow-xl group"
                     title="Enviar Sugerencia"
                 >
@@ -302,6 +304,7 @@ export default function LoginScreen() {
                 <div className="pointer-events-auto flex items-center gap-6 bg-black/20 backdrop-blur-sm px-6 py-2 rounded-full border border-white/5 hover:bg-black/40 transition-colors">
                     <button
                         onClick={() => setLegalModalState({ isOpen: true, docType: 'EULA' })}
+                        aria-label="Ver documento legal EULA"
                         className="text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-colors outline-none cursor-pointer"
                     >
                         Documento Legal
@@ -309,6 +312,7 @@ export default function LoginScreen() {
                     <span className="w-px h-3 bg-slate-600" />
                     <button
                         onClick={() => setLegalModalState({ isOpen: true, docType: 'PRIVACY' })}
+                        aria-label="Ver términos de privacidad"
                         className="text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-colors outline-none cursor-pointer"
                     >
                         Términos

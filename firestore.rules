@@ -1,13 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 🌍 REGLAS UNIVERSALES PARA LISTO GO
-    // Permitimos lectura/escritura si el usuario está autenticado (aunque sea anónimo).
-    // En producción, esto debería restringirse más (ej: solo el dueño del UID X puede escribir en X doc),
-    // pero para este MVP con auth anónima en ambas puntas, esto es lo necesario.
-    
+
+    // LISTO GO: Validate ownership - merchantId must match the authenticated user's token
+    // For anonymous auth, we use the UID as the merchant identifier
     match /merchants/{merchantId} {
+      allow read: if request.auth != null && request.auth.uid == merchantId;
+      allow write: if request.auth != null && request.auth.uid == merchantId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data._authUid;
+    }
+
+    // Terminales collection (Master DB) - read-only for terminals, write for master
+    match /terminales/{terminalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == terminalId;
+    }
+
+    // Ghost compact sessions - scoped to system
+    match /ghost_compact_sessions/{sessionId} {
       allow read, write: if request.auth != null;
     }
   }

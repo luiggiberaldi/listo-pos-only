@@ -2,13 +2,14 @@
 // Archivo: src/hooks/sync/useSyncEngine.js
 // Responsabilidad: Orquestar la subida de datos offline-first.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { db as localDb } from '../../db'; // Dexie
 import { db as cloudDb } from '../../services/firebase'; // Firebase
 import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
 
 export const useSyncEngine = () => {
   const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false);
   const [pendingCount, setPendingCount] = useState(0);
 
   // 1. FUNCIÓN PARA ENCOLAR (Pública)
@@ -40,12 +41,15 @@ export const useSyncEngine = () => {
     }
 
     try {
+      if (!targetDb) {
+        console.warn("⚠️ [SYNC-GO] Database became unavailable during sync.");
+        return false;
+      }
       await setDoc(doc(targetDb, coleccion, docId), {
         ...datos,
         _syncedAt: new Date().toISOString(),
         _origin: 'POS_LOCAL_SNAPSHOT'
-      }, { merge: true }); // 🛡️ Evita borrar campos de la App (COMO VERIFICACIONES)
-      console.log(`🚀 [SYNC-GO] Snapshot enviado a ${targetDb === cloudDb ? 'CLIENTE' : 'MASTER'}: ${docId}`);
+      }, { merge: true });
       return true;
     } catch (error) {
       console.error(`❌ [SYNC-GO] Error subiendo snapshot:`, error);
@@ -55,7 +59,7 @@ export const useSyncEngine = () => {
 
   // 2. WORKER DE SINCRONIZACIÓN (Privado)
   const procesarCola = async () => {
-    if (isSyncing || !navigator.onLine) return;
+    if (isSyncingRef.current || !navigator.onLine) return;
 
     try {
       // Buscar pendientes
@@ -69,6 +73,7 @@ export const useSyncEngine = () => {
         return;
       }
 
+      isSyncingRef.current = true;
       setIsSyncing(true);
       setPendingCount(pendientes.length);
 
@@ -94,6 +99,7 @@ export const useSyncEngine = () => {
     } catch (error) {
       console.error("Error en ciclo de sync:", error);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
   };

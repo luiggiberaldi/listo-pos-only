@@ -6,7 +6,7 @@
 // En producción, estas llaves vienen de .env. Si no existen, usamos fallbacks (Dev Mode).
 export const SALT_OWNER = import.meta.env.VITE_SALT_OWNER || "LISTO_GO_TACTICAL_KEY_2026";
 export const SALT_MASTER = import.meta.env.VITE_SALT_MASTER || "LISTO_MASTER_SUPER_ADMIN_KEY_X99";
-const PIN_SALT = "LISTO_POS_V1_SECURE_SALT_998877"; // 🛡️ Legacy Salt for PINs
+const PIN_SALT = import.meta.env.VITE_PIN_SALT || "LISTO_POS_V1_SECURE_SALT_998877";
 
 // 0. PBKDF2 PIN HASHER (Required by useAuth)
 export const hashPin = async (pin) => {

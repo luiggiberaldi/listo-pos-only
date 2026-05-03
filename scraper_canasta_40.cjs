@@ -1,3 +1,5 @@
+// ⚠️ SECURITY NOTE: This scraper should only be run in development/controlled environments.
+// For production use, ensure proper SSL certificate verification is enabled.
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');

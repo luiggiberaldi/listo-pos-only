@@ -53,6 +53,10 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
                 setIsProcessing(false);
             }
         };
+        reader.onerror = () => {
+            Swal.fire("Error", "No se pudo leer el archivo. Intente de nuevo.", "error");
+            setIsProcessing(false);
+        };
         reader.readAsBinaryString(file);
     };
 
@@ -214,15 +218,15 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-            <div className="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col max-h-[90vh]">
+            <div role="dialog" aria-modal="true" aria-labelledby="bulk-import-heading" className="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl border border-white/10 flex flex-col max-h-[90vh]">
 
                 {/* Header */}
                 <div className="p-6 border-b border-border-subtle dark:border-white/5 flex justify-between items-center bg-app-light dark:bg-slate-900/50 rounded-t-2xl">
-                    <h2 className="text-xl font-black text-content-main dark:text-white uppercase tracking-tight flex items-center gap-3">
+                    <h2 id="bulk-import-heading" className="text-xl font-black text-content-main dark:text-white uppercase tracking-tight flex items-center gap-3">
                         <FileSpreadsheet className="text-emerald-500" />
                         Importación Masiva
                     </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                    <button onClick={onClose} aria-label="Cerrar" className="p-2 hover:bg-black/10 rounded-full transition-colors">
                         <X size={20} className="text-content-secondary" />
                     </button>
                 </div>
@@ -249,6 +253,10 @@ export const BulkImportModal = ({ isOpen, onClose, onImportCompleted }) => {
                             {/* Step 2: Upload */}
                             <div
                                 onClick={() => fileInputRef.current.click()}
+                                role="button"
+                                tabIndex={0}
+                                aria-label="Subir archivo Excel para importación masiva"
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current.click(); }}
                                 className="w-full h-48 border-2 border-dashed border-border-subtle hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group"
                             >
                                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".xlsx, .xls" className="hidden" />

@@ -27,7 +27,12 @@ import { useConfigStore } from '../stores/useConfigStore';
  * @deprecated Use Zustand stores directly (useConfigStore, useAuthStore, etc.)
  * This hook is maintained for backward compatibility with 50+ consumers.
  */
+let _storeDeprecationWarned = false;
 export const useStore = () => {
+  if (import.meta.env.DEV && !_storeDeprecationWarned) {
+    _storeDeprecationWarned = true;
+    console.warn('⚠️ [DEPRECATED] useStore() merges 5 contexts per render. Prefer Zustand stores directly (useConfigStore, useAuthStore, etc.)');
+  }
   const config = useConfigContext();
   const auth = useAuthContext();
   const inventory = useInventoryContext();

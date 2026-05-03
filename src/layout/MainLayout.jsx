@@ -162,7 +162,7 @@ export default function MainLayout() {
         className={`
           bg-surface-light dark:bg-surface-dark border-r border-border-subtle 
           flex flex-col h-full shadow-xl z-20 relative transition-all duration-300 ease-in-out
-          ${isCollapsed ? 'w-20' : 'w-64'}
+          ${isCollapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64'}
         `}
       >
         <button
@@ -172,7 +172,7 @@ export default function MainLayout() {
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className="p-4 border-b border-border-subtle flex flex-col items-center flex-shrink-0">
+        <div className="p-2 lg:p-4 border-b border-border-subtle flex flex-col items-center flex-shrink-0">
 
           {/* 1. LOGO COMPACTO */}
           <div
@@ -250,7 +250,7 @@ export default function MainLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar">
+        <nav className="flex-1 p-2 lg:p-3 overflow-y-auto overflow-x-hidden min-h-0 custom-scrollbar">
           {isCollapsed ? <div className="h-px bg-border-subtle mx-2 my-4"></div> : <p className="text-[10px] font-bold text-content-secondary uppercase tracking-wider mb-2 px-2 mt-2">Operaciones</p>}
           <SidebarItem to="/" icon={Home} label="Inicio" collapsed={isCollapsed} isActive={location.pathname === '/'} onNavigate={handleNavClick} />
           {canSell && <SidebarItem to="/vender" icon={ShoppingCart} label="Caja (Ventas)" collapsed={isCollapsed} isActive={location.pathname === '/vender'} onNavigate={handleNavClick} />}
@@ -264,7 +264,7 @@ export default function MainLayout() {
           {canViewInventory && <SidebarItem to="/inventario" icon={Package} label="Inventario Maestro" collapsed={isCollapsed} isActive={location.pathname === '/inventario'} onNavigate={handleNavClick} />}
         </nav>
 
-        <div className="p-3 border-t border-border-subtle flex-shrink-0 bg-surface-light dark:bg-surface-dark z-10 flex flex-col gap-1">
+        <div className="p-2 lg:p-3 border-t border-border-subtle flex-shrink-0 bg-surface-light dark:bg-surface-dark z-10 flex flex-col gap-1">
 
           {/* 📡 NETWORK STATUS PILL */}
           <div className={`flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg mb-1 transition-all duration-300 ${isOnline

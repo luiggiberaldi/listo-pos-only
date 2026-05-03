@@ -221,15 +221,23 @@ function runAudit() {
     console.log(JSON.stringify(report, null, 2));
     console.log('---------------------------------------------------');
 
-    // DELETION LOGIC ADDED
+    // DELETION PHASE (Requires explicit --delete flag)
+    const shouldDelete = process.argv.includes('--delete');
+
+    if (!shouldDelete) {
+        console.log('\n⚠️  [DRY RUN] Los siguientes archivos serían eliminados:');
+        candidates.forEach(file => console.log(`  - ${file}`));
+        console.log(`\nTotal: ${candidates.length} archivos.`);
+        console.log('Para eliminar, ejecute: node dead_code_audit.cjs --delete');
+        return;
+    }
+
     console.log('\n[DELETION PHASE] Deleting candidates...');
     let deletedCount = 0;
 
-    // Flatten candidates
     const filesToDelete = candidates;
 
     filesToDelete.forEach(file => {
-        // Skip deleting this script itself until the very end (handled externally or safe to ignore for now)
         if (file.includes('dead_code_audit.cjs')) return;
 
         const fullPath = path.join(ROOT_DIR, file);

@@ -2,7 +2,7 @@
 // Archivo: src/hooks/store/usePOS.js
 // Objetivo: Hook principal de orquestación.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { useCajaEstado } from '../caja/useCajaEstado';
@@ -74,8 +74,21 @@ export const usePOS = (
     // Detecta cambios en Inventario (Precio, Stock, Nombre) y actualiza la cesta automáticamente.
     const productos = helpers.productos || [];
 
+    const productosVersionRef = useRef(0);
+    const prevProductosRef = useRef(null);
+
     useEffect(() => {
         if (carrito.length === 0) return;
+
+        // Skip if productos reference changed but content is the same (prevents cart reset)
+        if (prevProductosRef.current && prevProductosRef.current.length === productos.length) {
+            const changed = productos.some((p, i) => {
+                const prev = prevProductosRef.current[i];
+                return !prev || prev.id !== p.id || prev.stock !== p.stock || prev.precio !== p.precio;
+            });
+            if (!changed) return;
+        }
+        prevProductosRef.current = productos;
 
         try {
             let cambioDetectado = false;

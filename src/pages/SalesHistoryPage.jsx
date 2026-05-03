@@ -142,13 +142,13 @@ export default function SalesHistoryPage() {
   const totalPaginas = Math.ceil(totalRegistros / itemsPorPagina);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen pb-20 animate-in fade-in duration-500">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto min-h-screen pb-20 animate-in fade-in duration-500">
 
       {/* 1. CABECERA */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-            <FileText className="text-blue-600" size={32} /> HISTORIAL DE VENTAS
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+            <FileText className="text-blue-600" size={28} /> HISTORIAL DE VENTAS
           </h1>
           <p className="text-slate-500 font-medium">Consulta, auditoría y reimpresión global.</p>
         </div>

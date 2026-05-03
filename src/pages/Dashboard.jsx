@@ -164,7 +164,7 @@ export default function Dashboard() {
   const dashTier = planId === 'minimarket' ? 'full' : planId === 'abasto' ? 'mid' : 'lite';
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto animate-in fade-in zoom-in duration-300 pb-24">
+    <div className="p-4 lg:p-6 max-w-[1600px] mx-auto animate-in fade-in zoom-in duration-300 pb-24">
       {isFactoryAuth && (
         <div className="bg-status-danger text-white px-6 py-4 rounded-2xl shadow-xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border-4 border-status-dangerBg">
           <div className="flex items-center gap-4">
@@ -196,8 +196,8 @@ export default function Dashboard() {
       {/* HEADER & FILTROS */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4 border-b border-border-subtle pb-6">
         <div>
-          <h1 className="text-3xl font-black text-content-main flex items-center gap-3 tracking-tight uppercase">
-            <Activity className="text-primary" size={32} /> INICIO
+          <h1 className="text-2xl lg:text-3xl font-black text-content-main flex items-center gap-3 tracking-tight uppercase">
+            <Activity className="text-primary" size={28} /> INICIO
           </h1>
           {/* 💱 P1: BADGE TASA COMPACTO */}
           <div className="flex items-center gap-2 mt-2">
@@ -275,14 +275,14 @@ export default function Dashboard() {
                   <p className="text-[10px] text-slate-500 font-bold">{ventasFiltradas.length} transacciones</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4 lg:gap-6">
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total en Divisas</p>
-                  <p className="text-4xl font-black text-white font-mono tracking-tight">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-2xl lg:text-3xl xl:text-4xl font-black text-white font-mono tracking-tight">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Equivalente Bs</p>
-                  <p className="text-4xl font-black text-emerald-400 font-mono tracking-tight">Bs {(tesoreriaResumen * (configuracion.tasa || 0)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
+                  <p className="text-2xl lg:text-3xl xl:text-4xl font-black text-emerald-400 font-mono tracking-tight">Bs {(tesoreriaResumen * (configuracion.tasa || 0)).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>
             </div>
@@ -327,18 +327,18 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 p-8 opacity-10"><Wallet size={180} className="text-white transform rotate-12" /></div>
                 <div className="relative z-10">
                   <span className="bg-primary/20 text-primary-focus px-3 py-1 rounded-full text-[10px] font-black uppercase mb-3 inline-block">Caja Principal</span>
-                  <h3 className="text-3xl font-black text-white mb-1">Ventas de Hoy</h3>
+                  <h3 className="text-2xl lg:text-3xl font-black text-white mb-1">Ventas de Hoy</h3>
                   <p className="text-xs text-slate-500 font-bold">{ventasFiltradas.length} transacciones</p>
                 </div>
                 <div className="relative z-10 mt-8">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase mb-1">Total Divisas</p>
-                      <p className="text-4xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-2xl lg:text-3xl xl:text-4xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-bold text-slate-400 uppercase mb-1">En Bolívares</p>
-                      <p className="text-4xl font-black text-emerald-400 font-mono tracking-tighter">Bs {(tesoreriaResumen * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
+                      <p className="text-2xl lg:text-3xl xl:text-4xl font-black text-emerald-400 font-mono tracking-tighter">Bs {(tesoreriaResumen * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
                     </div>
                   </div>
                   <p className="text-xs text-primary font-bold mt-4 opacity-80 flex items-center gap-1 group-hover:opacity-100 transition-opacity">
@@ -426,11 +426,11 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 p-8 opacity-10"><Wallet size={180} className="text-white transform rotate-12" /></div>
                 <div className="relative z-10">
                   <span className="bg-primary/20 text-primary-focus px-3 py-1 rounded-full text-[10px] font-black uppercase mb-3 inline-block">Caja Principal</span>
-                  <h3 className="text-3xl font-black text-white mb-1">Ventas de Hoy</h3>
+                  <h3 className="text-2xl lg:text-3xl font-black text-white mb-1">Ventas de Hoy</h3>
                 </div>
                 <div className="relative z-10 mt-8 text-right">
                   <p className="text-xs font-bold text-slate-400 uppercase mb-1">Total en Divisas</p>
-                  <p className="text-5xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-3xl lg:text-4xl xl:text-5xl font-black text-white font-mono tracking-tighter">${tesoreriaResumen.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                   <p className="text-xs text-primary font-bold mt-2 opacity-80">≈ Bs {(tesoreriaResumen * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>

@@ -13,9 +13,20 @@ export default function ConfigNegocio({ form, handleChange, handleGuardar, readO
     const [copiedField, setCopiedField] = useState(null);
 
     // 📋 Lógica de Copiado Rápido
-    const handleCopy = (text, fieldId) => {
+    const handleCopy = async (text, fieldId) => {
         if (!text) return;
-        navigator.clipboard.writeText(text);
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
         setCopiedField(fieldId);
         setTimeout(() => setCopiedField(null), 2000);
     };
@@ -269,8 +280,19 @@ const VinculacionAppCard = () => {
     const systemID = getSystemID();
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${systemID}&size=150x150&color=000000&bgcolor=ffffff`;
 
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(systemID);
+    const copyToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(systemID);
+        } catch {
+            const ta = document.createElement('textarea');
+            ta.value = systemID;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
         const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',

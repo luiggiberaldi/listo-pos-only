@@ -169,6 +169,18 @@ const applySchema = (dbInstance) => {
   dbInstance.version(21).stores({
     nomina_ledger: '++id, empleadoId, tipo, monto, fecha, periodoId, status, [empleadoId+periodoId], [empleadoId+status]'
   });
+
+  // 🔐 V. 22: CHAINED HASH AUDIT LOG (Data Integrity)
+  // Tamper-proof append-only financial audit trail with hash linking
+  dbInstance.version(22).stores({
+    audit_chain: '++id, timestamp, action, previousHash'
+  });
+
+  // 🔑 V. 23: IDEMPOTENCY KEY INDEX (Duplicate Prevention)
+  // Add idempotencyKey index to ventas for O(1) duplicate detection
+  dbInstance.version(23).stores({
+    ventas: '++id, fecha, corteId, clienteId, status, cajaId, idempotencyKey'
+  });
 };
 
 // 🏭 DATABASE INSTANCE CREATION

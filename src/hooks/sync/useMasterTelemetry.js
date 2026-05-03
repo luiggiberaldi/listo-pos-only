@@ -182,9 +182,12 @@ export const useMasterTelemetry = () => {
         const finalId = hwId || getSystemID();
         const docRef = doc(dbMaster, 'terminales', finalId);
 
+        let connectionTimeout;
+
         // Real-time listener for Master commands
         const unsubscribe = onSnapshot(docRef, async (docSnap) => {
             // ✅ CONEXIÓN EXITOSA
+            clearTimeout(connectionTimeout);
             // if (!data) console.log(`📡 [SEGURIDAD] Conectado a canal seguro: ${finalId}`);
 
             if (docSnap.exists()) {
@@ -299,7 +302,14 @@ export const useMasterTelemetry = () => {
             }
         });
 
-        return () => unsubscribe();
+        connectionTimeout = setTimeout(() => {
+            console.warn("⚠️ [TELEMETRY] Firebase listener no respondió en 30s. Posible problema de conexión.");
+        }, 30000);
+
+        return () => {
+            clearTimeout(connectionTimeout);
+            unsubscribe();
+        };
     }, [dbMaster, hwId, adminResetUserPin, usuarios]);
 
     // 6. 🚨 SISTEMA DE REPORTE DE INCIDENTES (EL CHISMOSO)

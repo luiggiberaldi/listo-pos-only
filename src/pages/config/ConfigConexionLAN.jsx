@@ -1,20 +1,23 @@
-// ✅ SYSTEM IMPLEMENTATION - V. 1.0
+// ✅ SYSTEM IMPLEMENTATION - V. 2.0 (MULTI-CAJA CONFIG + PIN PAIRING)
 // Archivo: src/pages/config/ConfigConexionLAN.jsx
-// UI para configurar Multi-Caja (LAN Sync)
 
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Monitor, MonitorSmartphone, CheckCircle, XCircle, Loader2, Cable, RefreshCw } from 'lucide-react';
-import { pingServer } from '../../services/lanSyncService';
+import { Wifi, WifiOff, Monitor, MonitorSmartphone, CheckCircle, XCircle, Loader2, Cable, RefreshCw, KeyRound } from 'lucide-react';
+import { pingServer, pairWithServer } from '../../services/lanSyncService';
 
 export default function ConfigConexionLAN({ onConfigChange }) {
-    const [role, setRole] = useState('principal'); // principal | secundaria
+    const [role, setRole] = useState('principal');
     const [targetIP, setTargetIP] = useState('');
     const [localIP, setLocalIP] = useState('...');
-    const [testStatus, setTestStatus] = useState(null); // null | testing | success | error
+    const [testStatus, setTestStatus] = useState(null);
     const [serverInfo, setServerInfo] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    // Detectar IP local via WebRTC (fallback cuando Electron no está disponible)
+    // [V4] PIN pairing
+    const [pin, setPin] = useState('');
+    const [pairingPIN, setPairingPIN] = useState('');
+    const [pinSaved, setPinSaved] = useState(false);
+
     const detectLocalIP = () => {
         return new Promise((resolve) => {
             try {
@@ -29,36 +32,29 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                         resolve(match[1]);
                     }
                 };
-                // Timeout fallback
                 setTimeout(() => { pc.close(); resolve(null); }, 3000);
             } catch { resolve(null); }
         });
     };
 
-    // Cargar configuración persistente
     useEffect(() => {
         (async () => {
-            // Cargar config guardada
             if (window.electronAPI?.lanGetConfig) {
                 try {
                     const config = await window.electronAPI.lanGetConfig();
                     if (config) {
                         setRole(config.role || 'principal');
                         setTargetIP(config.targetIP || '');
+                        if (config.pairingPIN) setPairingPIN(config.pairingPIN);
                     }
                 } catch (e) {
                     console.warn('⚠️ No se pudo cargar config LAN:', e.message);
                 }
             }
 
-            // Obtener IP — intentar Electron primero, luego WebRTC
             let ip = null;
             if (window.electronAPI?.lanGetIP) {
-                try {
-                    ip = await window.electronAPI.lanGetIP();
-                } catch (e) {
-                    console.warn('⚠️ lanGetIP falló:', e.message);
-                }
+                try { ip = await window.electronAPI.lanGetIP(); } catch { }
             }
             if (!ip || ip === '127.0.0.1') {
                 ip = await detectLocalIP();
@@ -67,22 +63,50 @@ export default function ConfigConexionLAN({ onConfigChange }) {
         })();
     }, []);
 
-    // Probar conexión
+    // [V4] Probar conexión con PIN pairing
     const handleTestConnection = async () => {
         if (!targetIP) return;
         setTestStatus('testing');
         setServerInfo(null);
 
-        const result = await pingServer(targetIP);
-        if (result) {
-            setTestStatus('success');
-            setServerInfo(result);
-        } else {
+        // Primero hacer ping para descubrir
+        const pingResult = await pingServer(targetIP);
+        if (!pingResult) {
             setTestStatus('error');
+            return;
+        }
+
+        // Si requiere PIN, intentar pair
+        if (pingResult.requiresPIN) {
+            if (!pin) {
+                setTestStatus('needs_pin');
+                setServerInfo(pingResult);
+                return;
+            }
+            const pairResult = await pairWithServer(targetIP, pin);
+            if (!pairResult.ok) {
+                setTestStatus('pin_error');
+                setServerInfo({ ...pingResult, pairError: pairResult.error });
+                return;
+            }
+        } else {
+            // Sin PIN — pair directo
+            await pairWithServer(targetIP, null);
+        }
+
+        setTestStatus('success');
+        setServerInfo(pingResult);
+    };
+
+    // [V4] Guardar PIN en principal
+    const handleSavePIN = async () => {
+        if (window.electronAPI?.lanSetPIN) {
+            await window.electronAPI.lanSetPIN(pairingPIN || null);
+            setPinSaved(true);
+            setTimeout(() => setPinSaved(false), 2000);
         }
     };
 
-    // Guardar configuración
     const handleSave = async () => {
         setSaving(true);
         const config = { role, targetIP: role === 'secundaria' ? targetIP : '' };
@@ -91,13 +115,10 @@ export default function ConfigConexionLAN({ onConfigChange }) {
             await window.electronAPI.lanSaveConfig(config);
         }
 
-        // Guardar también en localStorage para que App.jsx lo lea
         localStorage.setItem('listo-lan-config', JSON.stringify(config));
-
         if (onConfigChange) onConfigChange(config);
         setSaving(false);
 
-        // Notificar
         const Swal = (await import('sweetalert2')).default;
         await Swal.fire({
             icon: 'success',
@@ -112,18 +133,16 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
     return (
         <div className="space-y-6">
-            {/* TÍTULO */}
             <div className="flex items-center gap-3">
                 <Cable className="text-primary" size={24} />
                 <div>
                     <h3 className="text-lg font-bold text-content-main dark:text-content-inverse">Conexión Multi-Caja</h3>
-                    <p className="text-sm text-content-secondary">Sincroniza inventario entre PCs por cable de red (100% offline)</p>
+                    <p className="text-sm text-content-secondary">Sincroniza inventario, clientes, ventas y cierres entre PCs (100% offline)</p>
                 </div>
             </div>
 
             {/* SELECTOR DE ROL */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Caja Principal */}
                 <button
                     onClick={() => setRole('principal')}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${role === 'principal'
@@ -141,7 +160,6 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                     </p>
                 </button>
 
-                {/* Caja Secundaria */}
                 <button
                     onClick={() => setRole('secundaria')}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${role === 'secundaria'
@@ -162,21 +180,59 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
             {/* INFO PARA PRINCIPAL */}
             {role === 'principal' && (
-                <div className="bg-primary-light dark:bg-primary/15 border border-primary/30 dark:border-primary/40 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-3">
-                        <Wifi className="text-primary" size={22} />
-                        <span className="font-bold text-primary">Servidor activo</span>
+                <>
+                    <div className="bg-primary-light dark:bg-primary/15 border border-primary/30 dark:border-primary/40 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-3">
+                            <Wifi className="text-primary" size={22} />
+                            <span className="font-bold text-primary">Servidor activo</span>
+                        </div>
+                        <p className="text-sm text-content-secondary mb-3">
+                            Las otras cajas deben conectarse a esta dirección:
+                        </p>
+                        <div className="bg-surface-light dark:bg-surface-dark rounded-xl px-4 py-3 font-mono text-lg font-bold text-center text-primary border border-border-subtle dark:border-slate-700">
+                            {localIP}
+                        </div>
+                        <p className="text-xs text-content-secondary mt-3 text-center">
+                            Puerto: 3847 • Conecta ambas PCs con un cable Ethernet al mismo router
+                        </p>
                     </div>
-                    <p className="text-sm text-content-secondary mb-3">
-                        Las otras cajas deben conectarse a esta dirección:
-                    </p>
-                    <div className="bg-surface-light dark:bg-surface-dark rounded-xl px-4 py-3 font-mono text-lg font-bold text-center text-primary border border-border-subtle dark:border-slate-700">
-                        {localIP}
+
+                    {/* [V4] PIN DE EMPAREJAMIENTO */}
+                    <div className="bg-surface-light dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-3">
+                            <KeyRound className="text-status-warning" size={22} />
+                            <span className="font-bold text-content-main dark:text-content-inverse">PIN de Emparejamiento</span>
+                        </div>
+                        <p className="text-sm text-content-secondary mb-4">
+                            Establece un PIN de 4 dígitos que las cajas secundarias deben ingresar para conectarse. Deja vacío para permitir conexión sin PIN.
+                        </p>
+                        <div className="flex gap-3 items-center">
+                            <input
+                                type="text"
+                                value={pairingPIN}
+                                onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                    setPairingPIN(v);
+                                }}
+                                placeholder="Ej: 1234"
+                                maxLength={4}
+                                className="w-32 px-4 py-3 bg-app-light dark:bg-app-dark border border-border-subtle dark:border-slate-700 rounded-xl font-mono text-center text-2xl tracking-[0.5em] focus:ring-2 focus:ring-primary/40 outline-none text-content-main dark:text-content-inverse"
+                            />
+                            <button
+                                onClick={handleSavePIN}
+                                className="px-5 py-3 bg-primary hover:bg-primary-hover text-content-inverse font-bold rounded-xl transition-all flex items-center gap-2"
+                            >
+                                {pinSaved ? <CheckCircle size={18} /> : <KeyRound size={18} />}
+                                {pinSaved ? 'Guardado' : 'Guardar PIN'}
+                            </button>
+                        </div>
+                        {pairingPIN && (
+                            <p className="text-xs text-status-warning mt-3 font-bold">
+                                Comparte este PIN con los operadores de las cajas secundarias
+                            </p>
+                        )}
                     </div>
-                    <p className="text-xs text-content-secondary mt-3 text-center">
-                        Puerto: 3847 • Conecta ambas PCs con un cable Ethernet al mismo router
-                    </p>
-                </div>
+                </>
             )}
 
             {/* CONFIG PARA SECUNDARIA */}
@@ -199,8 +255,6 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                                 placeholder="Ej: 192.168.1.100"
                                 className="flex-1 px-4 py-3 bg-surface-light dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl font-mono text-center text-lg focus:ring-2 focus:ring-status-warning/40 outline-none text-content-main dark:text-content-inverse"
                             />
-
-                            {/* BOTON PROBAR */}
                             <button
                                 onClick={handleTestConnection}
                                 disabled={!targetIP || testStatus === 'testing'}
@@ -211,7 +265,6 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                             </button>
                         </div>
 
-                        {/* 🔍 AUTO ESCANEO */}
                         <div className="mt-2 flex justify-end">
                             <button
                                 onClick={async () => {
@@ -240,16 +293,17 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
                                     if (found) {
                                         setTargetIP(found);
-                                        setTestStatus('success');
-                                        const r = await fetch(`http://${found}:3847/api/ping`);
-                                        const info = await r.json();
-                                        setServerInfo(info);
-                                        if (info.lanToken) {
-                                            try { localStorage.setItem('listo-lan-auth-token', info.lanToken); } catch { /**/ }
+                                        const result = await pingServer(found);
+                                        setServerInfo(result);
+                                        if (result?.requiresPIN) {
+                                            setTestStatus('needs_pin');
+                                        } else {
+                                            // Pair directamente
+                                            await pairWithServer(found, null);
+                                            setTestStatus('success');
                                         }
                                     } else {
                                         setTestStatus('error');
-                                        console.warn("No se encontró ninguna Caja Principal en la red.");
                                     }
                                 }}
                                 className="text-sm text-primary hover:underline flex items-center gap-1"
@@ -259,12 +313,46 @@ export default function ConfigConexionLAN({ onConfigChange }) {
                         </div>
                     </div>
 
+                    {/* [V4] PIN Input cuando el servidor lo requiere */}
+                    {(testStatus === 'needs_pin' || testStatus === 'pin_error') && (
+                        <div className="bg-surface-light dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl p-4 space-y-3 animate-in fade-in">
+                            <div className="flex items-center gap-2">
+                                <KeyRound size={18} className="text-status-warning" />
+                                <span className="font-bold text-content-main dark:text-content-inverse text-sm">
+                                    El servidor requiere PIN de emparejamiento
+                                </span>
+                            </div>
+                            <div className="flex gap-3 items-center">
+                                <input
+                                    type="text"
+                                    value={pin}
+                                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                    placeholder="PIN"
+                                    maxLength={4}
+                                    className="w-32 px-4 py-3 bg-app-light dark:bg-app-dark border border-border-subtle dark:border-slate-700 rounded-xl font-mono text-center text-2xl tracking-[0.5em] focus:ring-2 focus:ring-status-warning/40 outline-none text-content-main dark:text-content-inverse"
+                                />
+                                <button
+                                    onClick={handleTestConnection}
+                                    disabled={!pin || pin.length < 4}
+                                    className="px-5 py-3 bg-status-warning hover:brightness-110 disabled:opacity-40 text-content-inverse font-bold rounded-xl transition-all"
+                                >
+                                    Emparejar
+                                </button>
+                            </div>
+                            {testStatus === 'pin_error' && (
+                                <p className="text-xs text-status-danger font-bold">
+                                    PIN incorrecto. Pídelo al operador de la Caja Principal.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Resultado del test */}
                     {testStatus === 'success' && serverInfo && (
                         <div className="flex items-center gap-3 p-4 bg-status-successBg dark:bg-status-success/10 border border-status-success/30 rounded-xl">
                             <CheckCircle className="text-status-success" size={20} />
                             <div>
-                                <p className="font-bold text-status-success">¡Conexión exitosa!</p>
+                                <p className="font-bold text-status-success">¡Conexión y emparejamiento exitosos!</p>
                                 <p className="text-sm text-content-secondary">
                                     {serverInfo.negocio} • {serverInfo.productos} productos
                                 </p>
@@ -298,13 +386,13 @@ export default function ConfigConexionLAN({ onConfigChange }) {
 
             {/* INSTRUCTIVO */}
             <div className="bg-app-light dark:bg-app-dark rounded-2xl p-5 border border-border-subtle dark:border-slate-700">
-                <p className="font-bold text-sm text-content-main dark:text-content-inverse mb-3">📋 Cómo configurar Multi-Caja:</p>
+                <p className="font-bold text-sm text-content-main dark:text-content-inverse mb-3">Cómo configurar Multi-Caja:</p>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-content-secondary">
                     <li>Conecta ambas PCs al mismo router con cables Ethernet</li>
-                    <li>En la <strong>PC principal</strong>, selecciona "Caja Principal" y anota la IP</li>
+                    <li>En la <strong>PC principal</strong>, selecciona "Caja Principal", establece un PIN y anota la IP</li>
                     <li>En la <strong>PC secundaria</strong>, selecciona "Caja Secundaria" e ingresa la IP</li>
-                    <li>Presiona "Probar" para verificar la conexión</li>
-                    <li>Guarda y reinicia la app — los productos se sincronizarán automáticamente</li>
+                    <li>Presiona "Probar", ingresa el PIN y verifica la conexión</li>
+                    <li>Guarda y reinicia — productos, clientes, ventas y cierres se sincronizarán automáticamente</li>
                 </ol>
             </div>
         </div>

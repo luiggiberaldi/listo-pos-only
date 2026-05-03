@@ -6,15 +6,16 @@
 
 // Simple hash function (not cryptographic, but detects casual tampering)
 function simpleHash(str) {
-    let hash = 0;
-    const salt = 'L1ST0-F3N1X-2025';
+    let hash1 = 5381;
+    let hash2 = 52711;
+    const salt = 'L1ST0-F3N1X-2026-HMAC';
     const salted = salt + str + salt;
     for (let i = 0; i < salted.length; i++) {
         const char = salted.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32bit integer
+        hash1 = ((hash1 << 5) + hash1 + char) & 0xFFFFFFFF;
+        hash2 = ((hash2 << 5) + hash2 + char) & 0xFFFFFFFF;
     }
-    return Math.abs(hash).toString(36);
+    return Math.abs(hash1).toString(36) + Math.abs(hash2).toString(36);
 }
 
 const INTEGRITY_PREFIX = '_sig_';

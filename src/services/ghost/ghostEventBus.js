@@ -204,11 +204,10 @@ function _sanitizeShallow(obj) {
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', () => {
         if (_buffer.length > 0) {
-            // Synchronous fallback: try navigator.sendBeacon with Dexie
-            // But Dexie is async, so we do a best-effort sync write
+            const toFlush = [..._buffer];
+            _buffer.length = 0; // Clear immediately to prevent double-flush
             try {
-                const tx = db.ghost_audit_log.bulkAdd(_buffer);
-                // Fire and forget — page is closing
+                db.ghost_audit_log.bulkAdd(toFlush);
             } catch { /* best effort */ }
         }
     });

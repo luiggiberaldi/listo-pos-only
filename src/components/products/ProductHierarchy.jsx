@@ -22,15 +22,12 @@ const NivelConfig = ({ nivel, label, icon, colorBorder, colorText, colorBg, form
     useEffect(() => {
         const p = parseFloat(datosNivel.precio);
         if (isNaN(p)) {
-            if (precioBs !== '') setPrecioBs('');
+            setPrecioBs(prev => prev !== '' ? '' : prev);
             return;
         }
 
         const calculatedBsNum = p * tasa;
-        if (parseFloat(precioBs) !== parseFloat(calculatedBsNum.toFixed(2))) {
-            setPrecioBs(calculatedBsNum.toFixed(2));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setPrecioBs(prev => parseFloat(prev) !== parseFloat(calculatedBsNum.toFixed(2)) ? calculatedBsNum.toFixed(2) : prev);
     }, [datosNivel.precio, tasa]);
 
     const handleBsChange = (val) => {

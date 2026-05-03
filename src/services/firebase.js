@@ -87,7 +87,7 @@ async function _doInit() {
         }
 
         // --- 3. DOBLE AUTENTICACIÓN (una sola vez) ---
-        const authenticateAntenna = (authInstance, label) => {
+        const authenticateAntenna = (authInstance, label, retries = 3) => {
             if (!authInstance) return;
             onAuthStateChanged(authInstance, (user) => {
                 if (!user) {
@@ -96,9 +96,15 @@ async function _doInit() {
                     );
                 }
             });
-            signInAnonymously(authInstance).catch(error => {
-                console.error(`❌ [IRON DOME] Fallo inicial en ${label}:`, error.code);
-            });
+            const attemptAuth = (attempt) => {
+                signInAnonymously(authInstance).catch(error => {
+                    console.error(`❌ [IRON DOME] Fallo auth ${label} (intento ${attempt}/${retries}):`, error.code);
+                    if (attempt < retries) {
+                        setTimeout(() => attemptAuth(attempt + 1), 2000 * attempt);
+                    }
+                });
+            };
+            attemptAuth(1);
         };
 
         authenticateAntenna(authClient, "CLIENTE");

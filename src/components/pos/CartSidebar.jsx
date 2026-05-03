@@ -51,7 +51,7 @@ const CartSidebar = ({
   const lastAddedIndex = carrito.length - 1;
 
   return (
-    <div className="w-[450px] bg-surface-light dark:bg-surface-dark border-l border-border-subtle flex flex-col shadow-2xl z-20 relative transition-all">
+    <div className="w-[340px] lg:w-[380px] xl:w-[420px] 2xl:w-[460px] bg-surface-light dark:bg-surface-dark border-l border-border-subtle flex flex-col shadow-2xl z-20 relative transition-all">
 
       {/* CAPA DE BLOQUEO */}
       {isProcessing && (
@@ -142,20 +142,20 @@ const CartSidebar = ({
       </div>
 
       {/* Footer Totales y Acciones */}
-      <div className="p-5 bg-surface-light dark:bg-surface-dark border-t border-border-subtle shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-30">
+      <div className="p-3 lg:p-4 xl:p-5 bg-surface-light dark:bg-surface-dark border-t border-border-subtle shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] z-30">
         <div className="flex justify-between items-end mb-2">
-          <span className="text-sm font-bold text-content-secondary">Subtotal</span>
-          <span className="text-base font-bold text-content-main">${subtotalBase.toFixed(2)}</span>
+          <span className="text-xs lg:text-sm font-bold text-content-secondary">Subtotal</span>
+          <span className="text-sm lg:text-base font-bold text-content-main">${subtotalBase.toFixed(2)}</span>
         </div>
 
-        <div className="flex justify-between items-center pt-4 border-t border-dashed border-border-subtle mb-4 gap-2">
+        <div className="flex justify-between items-center pt-3 lg:pt-4 border-t border-dashed border-border-subtle mb-3 lg:mb-4 gap-2">
           <div>
-            <p className="text-xs text-content-secondary font-bold uppercase tracking-wider">Total $</p>
-            <p className="text-4xl font-black text-content-main leading-none tracking-tight">${totalUSD.toFixed(2)}</p>
+            <p className="text-[10px] lg:text-xs text-content-secondary font-bold uppercase tracking-wider">Total $</p>
+            <p className="text-2xl lg:text-3xl xl:text-4xl font-black text-content-main leading-none tracking-tight">${totalUSD.toFixed(2)}</p>
           </div>
-          <div className="text-right bg-app-light dark:bg-app-dark p-3 rounded-xl border border-border-subtle flex-1 min-w-0">
-            <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">BOLÍVARES</p>
-            <p className="text-3xl font-black text-primary leading-none truncate">
+          <div className="text-right bg-app-light dark:bg-app-dark p-2 lg:p-3 rounded-xl border border-border-subtle flex-1 min-w-0">
+            <p className="text-[9px] lg:text-[10px] text-primary font-black uppercase tracking-widest mb-1">BOLÍVARES</p>
+            <p className="text-xl lg:text-2xl xl:text-3xl font-black text-primary leading-none truncate">
               {Math.round(totalBS).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>

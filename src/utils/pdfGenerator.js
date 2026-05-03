@@ -9,8 +9,7 @@ export const generateAccountStatementPDF = async (cliente, transactions, stats, 
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
-    return new Promise(async (resolve, reject) => {
-        try {
+    try {
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.width;
             const pageHeight = doc.internal.pageSize.height;
@@ -202,45 +201,41 @@ export const generateAccountStatementPDF = async (cliente, transactions, stats, 
 
             // 🔍 DIAGNÓSTICO DE INICIADO
             if (window.electronAPI && !window.electronAPI.savePDF) {
-                alert("⚠️ ACTUALIZACIÓN REQUERIDA: Cierre y abra la aplicación para guardar archivos correctamente.");
+                console.error("ACTUALIZACIÓN REQUERIDA: Cierre y abra la aplicación para guardar archivos correctamente.");
+                throw new Error("ACTUALIZACIÓN REQUERIDA: Cierre y abra la aplicación para guardar archivos correctamente.");
             }
 
             // 1. ELECTRON
             if (window.electronAPI && window.electronAPI.savePDF) {
                 const pdfArrayBuffer = doc.output('arraybuffer');
-                window.electronAPI.savePDF(pdfArrayBuffer, fileName)
-                    .then(result => {
-                        if (result.success) {
-                            import('sweetalert2').then(SwalModule => {
-                                const Swal = SwalModule.default;
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: '¡Guardado Exitoso!',
-                                    html: `Ubicación:<br/><small style="color:#666; word-break:break-all;">${result.path}</small>`,
-                                    showDenyButton: true,
-                                    confirmButtonText: '📄 Abrir Ahora',
-                                    denyButtonText: '📂 Ver en Carpeta',
-                                    confirmButtonColor: '#6366f1',
-                                    denyButtonColor: '#64748b'
-                                }).then((swalResult) => {
-                                    if (swalResult.isConfirmed && result.path) {
-                                        window.electronAPI.openFileDefault(result.path);
-                                    } else if (swalResult.isDenied && result.path) {
-                                        window.electronAPI.openFileLocation(result.path);
-                                    }
-                                });
-                            });
-                            resolve({ success: true, method: 'electron' });
-                        } else {
-                            if (!result.canceled) alert('Error guardando: ' + result.error);
-                            resolve({ success: false, method: 'electron', error: result.error });
-                        }
-                    })
-                    .catch(e => {
-                        console.error(e);
-                        reject(e);
+                const result = await window.electronAPI.savePDF(pdfArrayBuffer, fileName);
+                if (result.success) {
+                    import('sweetalert2').then(SwalModule => {
+                        const Swal = SwalModule.default;
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Guardado Exitoso!',
+                            html: `Ubicación:<br/><small style="color:#666; word-break:break-all;">${result.path}</small>`,
+                            showDenyButton: true,
+                            confirmButtonText: '📄 Abrir Ahora',
+                            denyButtonText: '📂 Ver en Carpeta',
+                            confirmButtonColor: '#6366f1',
+                            denyButtonColor: '#64748b'
+                        }).then((swalResult) => {
+                            if (swalResult.isConfirmed && result.path) {
+                                window.electronAPI.openFileDefault(result.path);
+                            } else if (swalResult.isDenied && result.path) {
+                                window.electronAPI.openFileLocation(result.path);
+                            }
+                        });
                     });
-                return;
+                    return { success: true, method: 'electron' };
+                } else {
+                    if (!result.canceled) {
+                        console.error('Error guardando PDF:', result.error);
+                    }
+                    return { success: false, method: 'electron', error: result.error };
+                }
             }
 
             // 2. BROWSER (MODERNO + FALLBACK)
@@ -279,9 +274,8 @@ export const generateAccountStatementPDF = async (cliente, transactions, stats, 
                 URL.revokeObjectURL(url);
             }
 
-            resolve({ success: true, method: 'browser' });
+            return { success: true, method: 'browser' };
         } catch (error) {
-            reject(error);
+            throw error;
         }
-    });
 };

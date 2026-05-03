@@ -107,6 +107,10 @@ export default function LicenseGate({ children }) {
 
             const { licenseKey, negocio, serverMachineId, plan: grantedPlan } = await licRes.json();
 
+            if (!licenseKey) {
+                throw new Error('Respuesta del servidor no contiene licencia válida');
+            }
+
             // 3. Guardar la licencia y plan localmente
             SecureStorage.set('listo_license_key', licenseKey);
             SecureStorage.set('listo_plan', grantedPlan || 'bodega');
@@ -266,8 +270,19 @@ export default function LicenseGate({ children }) {
                                         <Terminal size={24} className="text-red-500 shrink-0" />
                                         <span
                                             className="font-mono text-xl font-bold text-yellow-500 tracking-wider select-all break-all cursor-pointer hover:text-yellow-400 transition-colors"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(machineId);
+                                            onClick={async () => {
+                                                try {
+                                                    await navigator.clipboard.writeText(machineId);
+                                                } catch {
+                                                    const ta = document.createElement('textarea');
+                                                    ta.value = machineId;
+                                                    ta.style.position = 'fixed';
+                                                    ta.style.opacity = '0';
+                                                    document.body.appendChild(ta);
+                                                    ta.select();
+                                                    document.execCommand('copy');
+                                                    document.body.removeChild(ta);
+                                                }
                                                 setCopied(true);
                                                 setTimeout(() => setCopied(false), 2000);
                                             }}
@@ -276,8 +291,19 @@ export default function LicenseGate({ children }) {
                                         </span>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(machineId);
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(machineId);
+                                            } catch {
+                                                const ta = document.createElement('textarea');
+                                                ta.value = machineId;
+                                                ta.style.position = 'fixed';
+                                                ta.style.opacity = '0';
+                                                document.body.appendChild(ta);
+                                                ta.select();
+                                                document.execCommand('copy');
+                                                document.body.removeChild(ta);
+                                            }
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
                                         }}
@@ -430,8 +456,19 @@ export default function LicenseGate({ children }) {
                                     <p className="text-[10px] text-slate-500 uppercase font-bold mb-1 tracking-wider">HARDWARE ID DETECTADO</p>
                                     <p
                                         className="font-mono text-xs text-blue-400 break-all select-all hover:text-white transition-colors cursor-pointer"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(machineId);
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(machineId);
+                                            } catch {
+                                                const ta = document.createElement('textarea');
+                                                ta.value = machineId;
+                                                ta.style.position = 'fixed';
+                                                ta.style.opacity = '0';
+                                                document.body.appendChild(ta);
+                                                ta.select();
+                                                document.execCommand('copy');
+                                                document.body.removeChild(ta);
+                                            }
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
                                         }}
@@ -440,8 +477,19 @@ export default function LicenseGate({ children }) {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(machineId);
+                                    onClick={async () => {
+                                        try {
+                                            await navigator.clipboard.writeText(machineId);
+                                        } catch {
+                                            const ta = document.createElement('textarea');
+                                            ta.value = machineId;
+                                            ta.style.position = 'fixed';
+                                            ta.style.opacity = '0';
+                                            document.body.appendChild(ta);
+                                            ta.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(ta);
+                                        }
                                         setCopied(true);
                                         setTimeout(() => setCopied(false), 2000);
                                     }}

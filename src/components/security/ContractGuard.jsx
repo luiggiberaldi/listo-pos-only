@@ -7,6 +7,7 @@ import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import { dbMaster } from '../../services/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import Swal from 'sweetalert2';
 import { useLicenseGuard } from '../../hooks/security/useLicenseGuard';
 import { useConfigContext } from '../../context/ConfigContext';
 
@@ -83,7 +84,7 @@ export default function ContractGuard({ children }) {
         }
 
         if (!machineId) {
-            alert("Error de Seguridad: No se pudo identificar el hardware.");
+            Swal.fire({ icon: 'error', title: 'Error de Seguridad', text: 'No se pudo identificar el hardware.' });
             return;
         }
 
@@ -177,7 +178,7 @@ export default function ContractGuard({ children }) {
 
         } catch (error) {
             console.error("Critical Signing Error", error);
-            alert("Error del sistema. Intente nuevamente.");
+            Swal.fire({ icon: 'error', title: 'Error del Sistema', text: 'Intente nuevamente.' });
         } finally {
             setAccepting(false);
         }

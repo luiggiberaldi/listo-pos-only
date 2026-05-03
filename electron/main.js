@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import nodeMachineId from 'node-machine-id';
 const { machineIdSync } = nodeMachineId;
 import checkDiskSpace from 'check-disk-space';
-import { startLanServer, updateProductCache, getLocalIP } from './lanServer.js';
+import { startLanServer, updateProductCache, updateClientsCache, setPairingPIN, getLocalIP } from './lanServer.js';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
@@ -141,6 +141,10 @@ app.whenReady().then(() => {
     }
     if (lanConfig.role === 'principal') {
       startLanServer(mainWindow);
+      // [V4] Restaurar PIN de emparejamiento si existe
+      if (lanConfig.pairingPIN) {
+        setPairingPIN(lanConfig.pairingPIN);
+      }
     }
   } catch (e) {
     console.error('❌ [LAN] Error iniciando servidor:', e.message);
@@ -281,18 +285,27 @@ ipcMain.handle('firebase-sync', async () => {
 
 // Renderer envía productos actualizados → cache del servidor
 ipcMain.on('lan-sync-products', (event, { products, categories, config }) => {
-  // Enriquecer config con machineId y estado de licencia para el endpoint /api/license-grant
-  const enrichedConfig = {
-    ...config,
-    _machineId: (() => { try { return machineIdSync(); } catch { return 'UNKNOWN'; } })(),
-    _licenseActive: !!config?._licenseActive, // El renderer indica si tiene licencia
-  };
-  updateProductCache(products, categories, enrichedConfig);
+  try {
+    // Enriquecer config con machineId y estado de licencia para el endpoint /api/license-grant
+    const enrichedConfig = {
+      ...config,
+      _machineId: (() => { try { return machineIdSync(); } catch { return 'UNKNOWN'; } })(),
+      _licenseActive: !!config?._licenseActive, // El renderer indica si tiene licencia
+    };
+    updateProductCache(products, categories, enrichedConfig);
+  } catch (e) {
+    console.error('❌ [LAN] Error actualizando cache de productos:', e.message);
+  }
 });
 
 // Obtener IP local para mostrar en UI
 ipcMain.handle('lan-get-ip', () => {
-  return getLocalIP();
+  try {
+    return getLocalIP();
+  } catch (e) {
+    console.error('❌ [LAN] Error obteniendo IP:', e.message);
+    return '127.0.0.1';
+  }
 });
 
 // Obtener/guardar configuración LAN
@@ -312,6 +325,34 @@ ipcMain.handle('lan-save-config', (event, config) => {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     return true;
   } catch (e) {
+    return false;
+  }
+});
+
+// [V4] Renderer envía clientes actualizados → cache del servidor
+ipcMain.on('lan-sync-clients', (event, clients) => {
+  try {
+    updateClientsCache(clients);
+  } catch (e) {
+    console.error('❌ [LAN] Error actualizando cache de clientes:', e.message);
+  }
+});
+
+// [V4] Configurar PIN de emparejamiento
+ipcMain.handle('lan-set-pin', (event, pin) => {
+  try {
+    // Guardar PIN en lan-config.json
+    const configPath = path.join(app.getPath('userData'), 'lan-config.json');
+    let config = { role: 'principal' };
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    }
+    config.pairingPIN = pin || null;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    setPairingPIN(pin || null);
+    return true;
+  } catch (e) {
+    console.error('❌ [LAN] Error guardando PIN:', e.message);
     return false;
   }
 });

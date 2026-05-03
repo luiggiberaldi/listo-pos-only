@@ -145,7 +145,7 @@ export default function TotalDiarioPage() {
   }, [ventas, rango, customStart, customEnd]);
 
   return (
-    <div className="min-h-screen bg-app-light dark:bg-app-dark p-6 animate-in fade-in slide-in-from-right-8 duration-500">
+    <div className="min-h-screen bg-app-light dark:bg-app-dark p-4 lg:p-6 animate-in fade-in slide-in-from-right-8 duration-500">
       <div className="max-w-5xl mx-auto">
 
         {/* HEADER */}

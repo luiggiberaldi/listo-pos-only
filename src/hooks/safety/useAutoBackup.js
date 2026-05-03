@@ -11,9 +11,12 @@ const BACKUP_KEYS = [
 
 export const useAutoBackup = () => {
     const backupIntervalRef = useRef(null);
+    const isBackingUpRef = useRef(false);
 
     useEffect(() => {
         const performBackup = async () => {
+            if (isBackingUpRef.current) return; // Prevent concurrent backups
+            isBackingUpRef.current = true;
             try {
                 // 1. Gather Data Snapshot
                 const snapshot = {};
@@ -37,10 +40,10 @@ export const useAutoBackup = () => {
                     device: navigator.userAgent
                 });
 
-                console.log("💾 [RESILIENCE] Auto-Backup saved to IndexedDB.");
-
             } catch (e) {
                 console.error("❌ [RESILIENCE] Backup failed:", e);
+            } finally {
+                isBackingUpRef.current = false;
             }
         };
 

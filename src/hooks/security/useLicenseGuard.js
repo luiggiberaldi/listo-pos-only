@@ -141,6 +141,7 @@ export const useLicenseGuard = () => {
     // porque era trivialmente bypasseable (localStorage.clear()) y causaba falsos
     // positivos permanentes ante errores transitorios de Firebase.
     useEffect(() => {
+        let mounted = true;
         // [FIX C1] Solo el entorno DEV activa ghost bypass
         if (import.meta.env.DEV && localStorage.getItem('ghost_bypass') === 'true') return;
 
@@ -153,6 +154,7 @@ export const useLicenseGuard = () => {
 
         // Suscripción en Tiempo Real
         const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (!mounted) return;
             if (docSnap.exists()) {
                 const data = docSnap.data();
 
@@ -195,7 +197,10 @@ export const useLicenseGuard = () => {
             // FAIL-SAFE OFFLINE: Mantenemos estado actual (no bloqueamos por error de red).
         });
 
-        return () => unsubscribe();
+        return () => {
+            mounted = false;
+            unsubscribe();
+        };
     }, [machineId, firebaseReady]); // Dependencia clave: firebaseReady
 
     return { status, machineId, isSuspended, plan };

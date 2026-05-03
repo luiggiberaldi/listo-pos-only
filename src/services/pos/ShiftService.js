@@ -3,6 +3,9 @@ import { db } from '../../db';
 import { generarReporteZ } from '../../utils/reportUtils';
 import { timeProvider } from '../../utils/TimeProvider';
 import { DEFAULT_CAJA } from '../../config/cajaDefaults';
+import { appendAuditEntry } from '../../utils/auditChain';
+import math from '../../utils/mathCore';
+import { dispatchCorteCompleted } from '../lanSyncDispatcher';
 
 /**
  * Servicio de Turnos (Shift Service)
@@ -54,6 +57,41 @@ export const ShiftService = {
                 const report = generarReporteZ(ventasParaCierre, sesion, usuario, {}, egresos);
                 Object.assign(report, datosInyectados);
 
+                // 💰 CASH COUNT RECONCILIATION
+                // If physical cash count is provided, compute variance against system balance
+                const conteoFisico = datosInyectados.conteoFisico;
+                let reconciliacion = null;
+                if (conteoFisico) {
+                    const balanceSistemaUSD = math.round(sesion.balances?.efectivoUSD || 0);
+                    const balanceSistemaBS = math.round(sesion.balances?.efectivoBS || 0);
+                    const conteoUSD = math.round(parseFloat(conteoFisico.usd) || 0);
+                    const conteoBS = math.round(parseFloat(conteoFisico.bs) || 0);
+
+                    const varianzaUSD = math.round(math.sub(conteoUSD, balanceSistemaUSD));
+                    const varianzaBS = math.round(math.sub(conteoBS, balanceSistemaBS));
+
+                    // Threshold: flag if variance exceeds $1 USD or Bs equivalent
+                    const VARIANCE_THRESHOLD_USD = 1.00;
+                    const isDiscrepancy = Math.abs(varianzaUSD) > VARIANCE_THRESHOLD_USD ||
+                        Math.abs(varianzaBS) > (VARIANCE_THRESHOLD_USD * (sesion.tasa || 1));
+
+                    reconciliacion = {
+                        conteoFisico: { usd: conteoUSD, bs: conteoBS },
+                        balanceSistema: { usd: balanceSistemaUSD, bs: balanceSistemaBS },
+                        varianza: { usd: varianzaUSD, bs: varianzaBS },
+                        isDiscrepancy,
+                        severity: isDiscrepancy
+                            ? (Math.abs(varianzaUSD) > 5 ? 'HIGH' : 'MEDIUM')
+                            : 'OK'
+                    };
+
+                    report.reconciliacion = reconciliacion;
+
+                    if (isDiscrepancy) {
+                        console.warn(`⚠️ [RECONCILIACIÓN] Discrepancia detectada: USD ${varianzaUSD.toFixed(2)}, BS ${varianzaBS.toFixed(2)}`);
+                    }
+                }
+
                 // 1. Save Log
                 await db.logs.add({
                     tipo: 'CORTE_Z',
@@ -78,13 +116,37 @@ export const ShiftService = {
                     balancesApertura: sesion.balancesApertura,
                     usuario: sesion.usuarioApertura,
                     balancesFinales: sesion.balances,
+                    reconciliacion: reconciliacion || null,
+                    _lww_updated_at: Date.now(),
                     ...report,
                     ...datosInyectados
                 };
+
+                // Guard: Prevent duplicate Z-cuts for same session
+                const existingCorte = await db.cortes.where('idApertura').equals(sesion.idApertura).first();
+                if (existingCorte) {
+                    throw new Error("Ya existe un corte Z para esta sesión. No se permite duplicar.");
+                }
+
                 await db.cortes.put(corteFinal);
+
+                // 🔐 AUDIT CHAIN: Log Z-cut to tamper-proof trail
+                appendAuditEntry('Z_CUT_COMPLETED', {
+                    corteId: corteFinal.id,
+                    cajaId,
+                    ventasCount: ventasParaCierre.length,
+                    usuario: usuario?.nombre,
+                    reconciliacion: reconciliacion ? {
+                        varianzaUSD: reconciliacion.varianza.usd,
+                        severity: reconciliacion.severity
+                    } : null
+                }).catch(err => console.warn('Audit chain write failed (non-blocking):', err));
 
                 // 4. Close Session (Delete Active)
                 await db.caja_sesion.delete(cajaId);
+
+                // [V4] LAN SYNC: Dispatch corte to principal
+                dispatchCorteCompleted(corteFinal);
 
                 return report;
             });

@@ -15,16 +15,16 @@ export default defineConfig({
     fullyParallel: false, // Sequential for Simulations to avoid DB collision
     forbidOnly: !!process.env.CI,
     retries: 0, // No retries, errors should be visible immediately
-    workers: 1, // Single worker thread
+    workers: process.env.CI ? 2 : 1, // Single worker thread
     reporter: 'list',
     use: {
         baseURL: 'http://127.0.0.1:5173',
         trace: 'on-first-retry',
         viewport: { width: 1280, height: 720 },
         permissions: ['clipboard-read', 'clipboard-write'],
-        headless: false, // Visual debugging
+        headless: !process.env.DEBUG_TESTS, // Headless by default, visual when debugging
         launchOptions: {
-            slowMo: 100, // Human-like speed
+            slowMo: process.env.DEBUG_TESTS ? 100 : 0, // Human-like speed when debugging
         },
         ignoreHTTPSErrors: true,
     },

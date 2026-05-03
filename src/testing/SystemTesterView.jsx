@@ -78,12 +78,22 @@ export default function SystemTesterView() {
         setIsRunning(false);
     }, []);
 
-    const handleCopy = useCallback(() => {
+    const handleCopy = useCallback(async () => {
         const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
-        navigator.clipboard.writeText(text).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     }, [logs]);
 
     const handleRunStress = useCallback(async () => {

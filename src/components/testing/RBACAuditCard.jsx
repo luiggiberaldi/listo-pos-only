@@ -67,8 +67,19 @@ export default function RBACAuditCard({ validator }) {
                             Caja Negra / Auditoría
                         </span>
                         <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(logs.join('\n'));
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(logs.join('\n'));
+                                } catch {
+                                    const ta = document.createElement('textarea');
+                                    ta.value = logs.join('\n');
+                                    ta.style.position = 'fixed';
+                                    ta.style.opacity = '0';
+                                    document.body.appendChild(ta);
+                                    ta.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(ta);
+                                }
                             }}
                             className="text-[10px] font-bold text-violet-500 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
                         >

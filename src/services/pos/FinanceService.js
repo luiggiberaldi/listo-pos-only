@@ -3,6 +3,7 @@ import { db } from '../../db';
 import math from '../../utils/mathCore';
 import { timeProvider } from '../../utils/TimeProvider';
 import { DEFAULT_CAJA } from '../../config/cajaDefaults';
+import { dispatchExpenseRegistered } from '../lanSyncDispatcher';
 
 /**
  * Servicio de Finanzas (Finance Service)
@@ -61,10 +62,23 @@ export const FinanceService = {
                 meta: {
                     moneda,
                     medio,
-                    categoria: categoria || 'GENERAL', // [FIX ARQ-1] Categoría para reportes
-                    tasaSnapshot: tasaActual, // 📸 SNAPSHOT HISTÓRICO
-                    balanceSnapshot: newBalances // Snapshot útil para auditoría
+                    categoria: categoria || 'GENERAL',
+                    tasaSnapshot: tasaActual,
+                    balanceSnapshot: newBalances
                 }
+            });
+
+            // [V4] LAN SYNC: Dispatch expense to principal
+            dispatchExpenseRegistered({
+                fecha: timeProvider.toISOString(),
+                tipo: 'GASTO_CAJA',
+                producto: 'GASTO OPERATIVO',
+                cantidad: amount,
+                referencia: moneda,
+                detalle: motivo,
+                usuarioId: usuario.id,
+                usuarioNombre: usuario.nombre || 'Sistema',
+                meta: { moneda, medio, categoria: categoria || 'GENERAL', tasaSnapshot: tasaActual }
             });
 
             return { success: true, logId };

@@ -11,6 +11,11 @@ export const useInventoryStore = create(ghostMiddleware((set, get) => ({
     searchIndex: [],
 
     setProductos: (productos) => {
+        // Skip index rebuild if products haven't changed
+        if (get().productos.length === productos.length && get().productos[0]?.id === productos[0]?.id) {
+            return; // Same dataset, skip expensive index rebuild
+        }
+
         const cats = ['Todo', ...new Set(productos.map(p => p.categoria || 'General'))];
 
         // 🚀 INDEXED SEARCH GENERATION

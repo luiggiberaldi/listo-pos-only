@@ -116,7 +116,7 @@ export default function ClientesPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
 
       {/* --- MODALES --- */}
       {clienteAbonar && (
@@ -129,8 +129,8 @@ export default function ClientesPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-black text-content-main dark:text-white flex items-center gap-2">
-            <Users className="text-primary" size={32} /> CLIENTES
+          <h1 className="text-2xl lg:text-3xl font-black text-content-main dark:text-white flex items-center gap-2">
+            <Users className="text-primary" size={28} /> CLIENTES
           </h1>
           <p className="text-slate-500 font-medium">
             Gestión de cartera ({totalItems} registros)

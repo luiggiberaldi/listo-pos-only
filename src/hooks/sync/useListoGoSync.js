@@ -66,10 +66,12 @@ export const useListoGoSync = () => {
         let totalVentasActivasHoy = 0;
         const metodosPagoHoy = {};
 
+        // TODO: Add composite index [fecha+status] in Dexie schema for better performance
         const ventasActivas = await db.ventas
             .where('fecha').between(startOfDay, endOfDay)
             .filter(v => v.status !== 'ANULADA')
-            .reverse() // Newest first optimization
+            .reverse()
+            .limit(500) // Cap to prevent memory issues on high-volume days
             .toArray();
 
         ventasActivas.forEach(v => {

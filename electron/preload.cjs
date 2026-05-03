@@ -60,16 +60,36 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // ═══════════════════════════════════════════════
     lanSyncProducts: (products, categories, config) =>
         ipcRenderer.send('lan-sync-products', { products, categories, config }),
+    lanSyncClients: (clients) =>
+        ipcRenderer.send('lan-sync-clients', clients),
+    lanSetPIN: (pin) => ipcRenderer.invoke('lan-set-pin', pin),
     lanGetIP: () => ipcRenderer.invoke('lan-get-ip'),
     lanGetConfig: () => ipcRenderer.invoke('lan-get-config'),
     lanSaveConfig: (config) => ipcRenderer.invoke('lan-save-config', config),
+
+    // Listeners: stock
     onLanStockUpdate: (callback) =>
         ipcRenderer.on('lan-stock-update', (event, updates) => callback(updates)),
     onLanStockAlert: (callback) =>
         ipcRenderer.on('lan-stock-alert', (event, alerts) => callback(alerts)),
+
+    // [V4] Listeners: clientes, ventas, cortes, gastos
+    onLanClientSync: (callback) =>
+        ipcRenderer.on('lan-client-sync', (event, data) => callback(data)),
+    onLanSaleReceived: (callback) =>
+        ipcRenderer.on('lan-sale-received', (event, data) => callback(data)),
+    onLanCorteReceived: (callback) =>
+        ipcRenderer.on('lan-corte-received', (event, data) => callback(data)),
+    onLanExpenseReceived: (callback) =>
+        ipcRenderer.on('lan-expense-received', (event, data) => callback(data)),
+
     removeLanListeners: () => {
         ipcRenderer.removeAllListeners('lan-stock-update');
         ipcRenderer.removeAllListeners('lan-stock-alert');
+        ipcRenderer.removeAllListeners('lan-client-sync');
+        ipcRenderer.removeAllListeners('lan-sale-received');
+        ipcRenderer.removeAllListeners('lan-corte-received');
+        ipcRenderer.removeAllListeners('lan-expense-received');
     },
 });
 

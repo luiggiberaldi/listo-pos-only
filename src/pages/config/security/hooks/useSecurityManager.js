@@ -33,7 +33,13 @@ export const useSecurityManager = (readOnly) => {
         if (input) {
           const isPassword = input.type === 'password';
           input.type = isPassword ? 'text' : 'password';
-          btn.innerHTML = isPassword ? EYE_OFF_ICON : EYE_ICON;
+          btn.textContent = '';
+          const parser = new DOMParser();
+          const svgDoc = parser.parseFromString(isPassword ? EYE_OFF_ICON : EYE_ICON, 'image/svg+xml');
+          const svgElement = svgDoc.documentElement;
+          if (svgElement && svgElement.nodeName === 'svg') {
+              btn.appendChild(document.importNode(svgElement, true));
+          }
           btn.classList.toggle('text-blue-500', isPassword);
         }
       });
@@ -364,9 +370,9 @@ export const useSecurityManager = (readOnly) => {
         groupItems.forEach(p => {
           const isChecked = currentCustom.includes(p.key);
           htmlContent += `
-              <div class="flex items-start gap-3 p-3 rounded-xl border ${isChecked ? 'bg-violet-50/50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-800/50 dark:border-slate-700'} hover:border-violet-300 transition-all cursor-pointer group" onclick="const ck = document.getElementById('perm-${p.key}'); ck.checked = !ck.checked; this.classList.toggle('bg-violet-50/50'); this.classList.toggle('border-violet-200'); this.classList.toggle('dark:bg-violet-900/20'); this.classList.toggle('dark:border-violet-800');">
+              <div class="flex items-start gap-3 p-3 rounded-xl border ${isChecked ? 'bg-violet-50/50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-800/50 dark:border-slate-700'} hover:border-violet-300 transition-all cursor-pointer group perm-toggle-row" data-perm-key="${p.key}">
                 <div class="mt-0.5">
-                  <input type="checkbox" id="perm-${p.key}" value="${p.key}" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 transition-all" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="perm-${p.key}" value="${p.key}" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 transition-all perm-checkbox">
                 </div>
                 <div class="flex-1">
                   <p class="text-sm font-bold text-slate-700 dark:text-slate-200">${p.label}</p>
@@ -391,6 +397,25 @@ export const useSecurityManager = (readOnly) => {
       confirmButtonColor: '#7c3aed',
       cancelButtonText: 'Cancelar',
       width: '600px',
+      didRender: (popup) => {
+        popup.querySelectorAll('.perm-toggle-row').forEach(row => {
+          row.addEventListener('click', (e) => {
+            if (e.target.classList.contains('perm-checkbox')) return;
+            const ck = row.querySelector('.perm-checkbox');
+            if (ck) {
+              ck.checked = !ck.checked;
+              row.classList.toggle('bg-violet-50/50');
+              row.classList.toggle('border-violet-200');
+              row.classList.toggle('dark:bg-violet-900/20');
+              row.classList.toggle('dark:border-violet-800');
+            }
+          });
+          const checkbox = row.querySelector('.perm-checkbox');
+          if (checkbox) {
+            checkbox.addEventListener('click', (e) => e.stopPropagation());
+          }
+        });
+      },
       preConfirm: () => {
         const checked = [];
         configurablePermissions.forEach(p => {

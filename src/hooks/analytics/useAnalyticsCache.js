@@ -9,7 +9,7 @@
  */
 import { create } from 'zustand';
 
-const CACHE_TTL_MS = 60_000; // 1-minute TTL for historical data
+const CACHE_TTL_MS = 300_000; // 5-minute TTL for historical data
 
 export const useAnalyticsCache = create((set, get) => ({
     // ── Historical totals cache ──────────────────────────────────

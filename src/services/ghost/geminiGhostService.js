@@ -6,6 +6,12 @@ const MODEL_NAME = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash-exp";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// Simple circuit breaker
+let _consecutiveFailures = 0;
+let _circuitOpenUntil = 0;
+const MAX_FAILURES = 3;
+const CIRCUIT_COOLDOWN_MS = 60000; // 1 minute
+
 /**
  * System Prompt Definition
  * Defines the persona and the capabilities (Tool Use)
@@ -42,6 +48,13 @@ Solo usa el token si estás seguro de que el video es relevante.
  * @returns {Promise<{text: string, videoId: string|null}>}
  */
 export const askGeminiGhost = async (userQuery, context, skills) => {
+    if (Date.now() < _circuitOpenUntil) {
+        return {
+            text: "Estoy tomando un descanso para no sobrecargar la nube. Intenta en un momento.",
+            videoId: null
+        };
+    }
+
     if (!API_KEY) {
         console.warn("GhostService: No VITE_GEMINI_API_KEY found.");
         return {
@@ -82,7 +95,17 @@ RESPUESTA DEL FANTASMA:
 
         // 3. Call Gemini
         const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+
+        let responseText;
+        try {
+            responseText = result.response.text();
+        } catch (parseError) {
+            console.error("GhostService: Failed to parse model response:", parseError);
+            return {
+                text: "Recibí una respuesta incompleta de la nube. Intenta de nuevo.",
+                videoId: null
+            };
+        }
 
         // 4. Parser for Tool Use [PLAY_VIDEO: id]
         let finalVideoId = null;
@@ -94,6 +117,8 @@ RESPUESTA DEL FANTASMA:
             cleanText = responseText.replace(videoMatch[0], '').trim();
         }
 
+        _consecutiveFailures = 0; // Reset on success
+
         return {
             text: cleanText,
             videoId: finalVideoId
@@ -104,7 +129,20 @@ RESPUESTA DEL FANTASMA:
 
         // Handle 429 specifically if possible, otherwise generic
         if (error.message.includes('429') || error.message.includes('quota')) {
+            _consecutiveFailures++;
+            if (_consecutiveFailures >= MAX_FAILURES) {
+                _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
+                _consecutiveFailures = 0;
+                console.warn("⚠️ Ghost AI circuit breaker activated for 60s");
+            }
             throw new Error("QUOTA_EXCEEDED");
+        }
+
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= MAX_FAILURES) {
+            _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
+            _consecutiveFailures = 0;
+            console.warn("⚠️ Ghost AI circuit breaker activated for 60s");
         }
 
         return {

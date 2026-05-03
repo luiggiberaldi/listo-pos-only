@@ -42,11 +42,6 @@ export const useDataPersistence = () => {
                 throw new Error("El archivo de respaldo está incompleto o corrupto (Falta Dexie/LocalStorage). Si intenta importar productos, use el módulo de Inventario.");
             }
 
-            // 🛡️ VALIDACIÓN DE ESTRUCTURA (Para evitar "Restaurando..." infinito en archivos corruptos)
-            if (!data.dexie || !data.localStorage) {
-                throw new Error("El archivo de respaldo está incompleto o corrupto (Falta Dexie/LocalStorage). Si intenta importar productos, use el módulo de Inventario.");
-            }
-
             Swal.fire({ title: 'Restaurando...', text: 'Peligro: Se borrarán los datos actuales.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             await restaurarCapsulaDeTiempo(data);

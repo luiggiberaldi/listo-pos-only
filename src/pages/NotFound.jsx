@@ -10,7 +10,7 @@ export default function NotFound() {
             <div className="max-w-2xl w-full text-center">
                 {/* 404 Animation */}
                 <div className="relative mb-8">
-                    <div className="text-[180px] font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600 leading-none select-none">
+                    <div className="text-[100px] lg:text-[140px] xl:text-[180px] font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600 leading-none select-none">
                         404
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -19,10 +19,10 @@ export default function NotFound() {
                 </div>
 
                 {/* Message */}
-                <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-4">
+                <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-4">
                     Página No Encontrada
                 </h1>
-                <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
+                <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
                     Lo sentimos, la página que buscas no existe o ha sido movida. Verifica la URL o regresa al inicio.
                 </p>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import Swal from 'sweetalert2';
 
@@ -59,6 +59,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     });
 
     // 3️⃣ LOCAL UI STATE
+    const focusTimerRef = useRef(null);
     const [distVueltoUSD, setDistVueltoUSD] = useState(0);
     const [distVueltoBS, setDistVueltoBS] = useState(0);
     const [isChangeCredited, setIsChangeCredited] = useState(false);
@@ -96,6 +97,12 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     const deudaCliente = modo === 'credito' ? faltaPorPagar : 0;
 
     // 🆕 EFECTOS LOCALES
+    useEffect(() => {
+        return () => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+        };
+    }, []);
+
     useEffect(() => {
         if (cambioUSD === 0 && isChangeCredited) setIsChangeCredited(false);
     }, [cambioUSD]);
@@ -144,14 +151,16 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         if (cambioUSD > 0.01) {
             setActiveInputId('CHANGE_USD');
             setActiveInputType('change');
-            setTimeout(() => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+            focusTimerRef.current = setTimeout(() => {
                 const changeInput = document.querySelector('[data-currency="USD"]');
                 if (changeInput) changeInput.focus();
             }, 10);
         } else {
             setActiveInputId(metodosActivos[0]?.id || null);
             setActiveInputType('amount');
-            setTimeout(() => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+            focusTimerRef.current = setTimeout(() => {
                 const firstPaymentInput = document.querySelector('input[inputmode="decimal"]');
                 if (firstPaymentInput) firstPaymentInput.focus();
             }, 10);
@@ -231,7 +240,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                 referencia: referencias[m.id] || ''
             }));
 
-            const clienteObj = clientes.find(c => c.id === clienteSeleccionado);
+            const clienteObj = Array.isArray(clientes) ? clientes.find(c => c.id === clienteSeleccionado) : null;
             const nombreClienteFinal = clienteObj ? clienteObj.nombre : (clienteSeleccionado ? 'Cliente' : null);
 
             onPagar({
@@ -270,7 +279,8 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
             e.preventDefault();
             setActiveInputId('CHANGE_USD');
             setActiveInputType('change');
-            setTimeout(() => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+            focusTimerRef.current = setTimeout(() => {
                 const changeInput = document.querySelector('[data-currency="USD"]');
                 if (changeInput) changeInput.focus();
             }, 10);
@@ -279,7 +289,7 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
 
     return (
         <div className="fixed inset-0 bg-surface-dark/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in zoom-in duration-200">
-            <div className={`bg-surface-light dark:bg-surface-dark w-full ${isTouch ? 'max-w-7xl' : 'max-w-5xl'} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]`}>
+            <div role="dialog" aria-modal="true" aria-label="Modal de pago" className={`bg-surface-light dark:bg-surface-dark w-full ${isTouch ? 'max-w-7xl' : 'max-w-5xl'} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]`}>
 
                 <PaymentHeader isTouch={isTouch} modo={modo} setModo={setModo} onClose={onClose} />
 

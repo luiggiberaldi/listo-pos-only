@@ -158,8 +158,8 @@ export default function ConfigPage() {
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-app-light dark:bg-app-dark">
-      <aside className="w-72 bg-surface-light dark:bg-surface-dark border-r border-border-subtle dark:border-slate-700/60 flex flex-col shadow-sm">
-        <div className="p-6 border-b border-border-subtle dark:border-slate-700/60">
+      <aside className="w-56 lg:w-72 bg-surface-light dark:bg-surface-dark border-r border-border-subtle dark:border-slate-700/60 flex flex-col shadow-sm">
+        <div className="p-4 lg:p-6 border-b border-border-subtle dark:border-slate-700/60">
           <div className="flex items-center gap-3 text-content-main dark:text-content-inverse">
             <div className="p-2 bg-primary text-content-inverse rounded-lg shadow-lg shadow-primary/25"><Settings2 size={20} /></div>
             <h1 className="text-lg font-black tracking-tight">Preferencias</h1>
@@ -199,7 +199,7 @@ export default function ConfigPage() {
         </nav>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-app-light dark:bg-app-dark custom-scrollbar p-8">
+      <main className="flex-1 overflow-y-auto bg-app-light dark:bg-app-dark custom-scrollbar p-4 lg:p-6 xl:p-8">
         <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-8 flex items-center gap-4">
             <div className="p-4 bg-surface-light dark:bg-surface-dark rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700/60">
