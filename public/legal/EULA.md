@@ -1,6 +1,6 @@
 # CONTRATO DE LICENCIA DE USUARIO FINAL (EULA)
 ## LISTO POS - Sistema de Punto de Venta
-**Versión 1.0 | Fecha de Vigencia: Enero 2026**
+**Versión 1.2 | Fecha de Vigencia: Mayo 2026**
 
 ---
 
@@ -29,11 +29,14 @@ Al instalar, copiar o utilizar de cualquier forma el software LISTO POS (en adel
 
 ### 2.1 Licencia Limitada
 El desarrollador Luigi Beraldi le concede una licencia **NO EXCLUSIVA, INTRANSFERIBLE y LIMITADA** para:
-- Instalar y usar el Software en **UN (1) SOLO EQUIPO** (computador o terminal).
+- Instalar y usar el Software en **UN (1) SOLO EQUIPO** (computador o terminal) o acceder a la versión web (SaaS) mediante una cuenta autorizada.
 - Utilizar el Software únicamente para fines comerciales legítimos de su negocio.
 
-### 2.2 Identificador Único de Hardware (HWID)
-El Software está vinculado criptográficamente al identificador único de hardware del equipo donde se instaló originalmente. **Esta licencia NO es transferible a otro equipo** sin autorización expresa del desarrollador.
+### 2.2 Identificador Único
+El Software puede estar vinculado criptográficamente al identificador único de hardware (HWID) del equipo donde se instaló originalmente, o a una cuenta de usuario en la versión web. **Esta licencia NO es transferible a otro equipo o cuenta** sin autorización expresa del desarrollador.
+
+### 2.3 Planes y Niveles de Servicio
+El Software opera bajo un modelo de planes escalonados (Bodega, Abasto, Minimarket) que determinan las funcionalidades disponibles. El acceso a funcionalidades premium está sujeto al plan contratado y puede variar sin previo aviso.
 
 ---
 
@@ -46,6 +49,8 @@ El Usuario **NO PUEDE**:
 3. **Sublicenciar, alquilar, prestar o transferir** la licencia a terceros.
 4. **Remover o alterar** avisos de propiedad intelectual, marcas o logos del Software.
 5. **Utilizar el Software** para actividades ilícitas o contrarias a la ley venezolana.
+6. **Compartir credenciales** de acceso con terceros no autorizados.
+7. **Intentar acceder** a funcionalidades de planes superiores sin la debida contratación.
 
 ---
 
@@ -75,8 +80,9 @@ El desarrollador **NO SERÁ RESPONSABLE** por:
 ### 5.3 Responsabilidad del Usuario
 El Usuario es **ÚNICO RESPONSABLE** de:
 - Mantener respaldos periódicos de su información.
-- Contar con sistemas de respaldo eléctrico (UPS) para proteger sus datos.
+- Contar con sistemas de respaldo eléctrico (UPS) para proteger sus datos en la versión local.
 - Verificar la exactitud de los cálculos y reportes generados.
+- Mantener la confidencialidad de sus credenciales de acceso (PIN, contraseñas).
 
 ---
 
@@ -123,4 +129,4 @@ Para consultas sobre licenciamiento y soporte técnico:
 
 *© 2025-2026 Luigi Beraldi. Todos los derechos reservados.*
 *LISTO POS es una marca comercial de Luigi Beraldi.*
-*Documento generado automáticamente. Última actualización: Enero 2026.*
+*Documento generado automáticamente. Última actualización: Mayo 2026.*

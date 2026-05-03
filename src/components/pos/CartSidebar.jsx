@@ -5,7 +5,8 @@
 import React, { memo } from 'react';
 import { ShoppingBasket, Layers, Package, Scale, Calculator, X, Minus, Plus, Save, Loader2, PauseCircle, Search, AlertTriangle } from 'lucide-react';
 import { useCartSidebar } from '../../hooks/useCartSidebar';
-import { Assistant } from '../ghost/Assistant';
+// 👻 GHOST UI HIDDEN
+// import { Assistant } from '../ghost/Assistant';
 import CartItem from './CartItem';
 import { useCartStore } from '../../stores/useCartStore';
 import { usePosCalcStore } from '../../stores/usePosCalcStore';
@@ -70,7 +71,8 @@ const CartSidebar = ({
             <div className="bg-primary text-white p-2 rounded-lg shadow-primary/30 shadow-md"><ShoppingBasket size={20} /></div>
             Cesta ({carrito.length})
           </h2>
-          <Assistant variant="inline" />
+          {/* 👻 GHOST UI HIDDEN */}
+          {/* <Assistant variant="inline" /> */}
         </div>
 
         {/* Buscador de Cesta */}

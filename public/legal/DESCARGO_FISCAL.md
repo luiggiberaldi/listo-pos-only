@@ -1,6 +1,6 @@
 # DESCARGO DE RESPONSABILIDAD FISCAL
 ## LISTO POS - Declaración ante Autoridades Tributarias
-**Versión 1.1 | Fecha de Vigencia: Enero 2026**
+**Versión 1.2 | Fecha de Vigencia: Mayo 2026**
 
 ---
 
@@ -30,6 +30,7 @@ LISTO POS es una herramienta de **gestión interna** diseñada para:
 - Generar reportes de ventas para control interno del negocio.
 - Administrar inventario y flujo de caja.
 - Facilitar la operación diaria del punto de venta.
+- Sincronizar datos entre múltiples terminales y dispositivos móviles (según plan contratado).
 
 ### 1.2 NO es Facturación Fiscal
 El Software **NO ESTÁ DISEÑADO NI AUTORIZADO** para:
@@ -75,17 +76,18 @@ El desarrollador **NO SERÁ RESPONSABLE** por:
 
 ### 3.3 Pérdida de Datos
 El desarrollador **NO SERÁ RESPONSABLE** por pérdida de información causada por:
-- Cortes de energía eléctrica (el Usuario debe contar con UPS).
+- Cortes de energía eléctrica (el Usuario debe contar con UPS en la versión local).
 - Fallas de hardware del equipo del Usuario.
 - Virus informáticos o ataques cibernéticos.
 - Errores de operación por parte del Usuario.
+- Pérdida de conexión a internet que impida la sincronización en la nube.
 
 ---
 
 ## 4. RECOMENDACIONES IMPORTANTES
 
-### 4.1 Sistema de Respaldo Eléctrico (UPS)
-**ES OBLIGATORIO** que el Usuario cuente con un Sistema de Alimentación Ininterrumpida (UPS) para:
+### 4.1 Sistema de Respaldo Eléctrico (UPS) — Versión Local
+**ES OBLIGATORIO** que el Usuario que utilice la versión local cuente con un Sistema de Alimentación Ininterrumpida (UPS) para:
 - Proteger los datos ante cortes de luz.
 - Permitir el cierre seguro del sistema en emergencias.
 - Evitar corrupción de la base de datos local.
@@ -143,4 +145,4 @@ Para consultas:
 
 *© 2025-2026 Luigi Beraldi. Todos los derechos reservados.*
 *LISTO POS es una marca comercial de Luigi Beraldi.*
-*Documento generado automáticamente. Última actualización: Enero 2026.*
+*Documento generado automáticamente. Última actualización: Mayo 2026.*

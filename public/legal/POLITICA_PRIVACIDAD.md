@@ -1,6 +1,6 @@
 # POLÍTICA DE PRIVACIDAD Y PROTECCIÓN DE DATOS
 ## LISTO POS - Manejo de Información del Usuario
-**Versión 1.0 | Fecha de Vigencia: Enero 2026**
+**Versión 1.2 | Fecha de Vigencia: Mayo 2026**
 
 ---
 
@@ -29,8 +29,10 @@ El responsable del tratamiento de sus datos personales es **Luigi Beraldi**, ide
 
 ### 2.1 Datos del Negocio
 - Nombre del establecimiento comercial.
-- Identificador único de hardware (HWID) del equipo.
+- Identificador único de hardware (HWID) del equipo (versión local).
+- Credenciales de acceso (PIN de usuario, cuenta de autenticación).
 - Configuración de preferencias del sistema.
+- Plan contratado y nivel de servicio.
 
 ### 2.2 Datos de Transacciones
 - Registro de ventas realizadas (montos, fechas, métodos de pago).
@@ -44,7 +46,13 @@ Para mejorar el servicio y brindar soporte, el Software puede recopilar:
 - Errores técnicos y reportes de fallos (sin datos personales).
 - Estadísticas de uso agregadas (número de transacciones, no montos específicos).
 
-### 2.4 Datos que NO Recopilamos
+### 2.4 Datos de Sincronización
+Si el Usuario utiliza funcionalidades de sincronización (Listo Go, LAN Multi-Caja), se pueden transmitir:
+- Datos de inventario y ventas entre dispositivos autorizados.
+- Estado de conexión entre terminales.
+- Identificadores de sesión para coordinar la sincronización.
+
+### 2.5 Datos que NO Recopilamos
 El Software **NO** recopila ni almacena:
 - Números de cédula de identidad de clientes finales.
 - Información de tarjetas de crédito o débito.
@@ -74,11 +82,13 @@ Utilizamos la información recopilada para:
 ## 4. ALMACENAMIENTO Y SEGURIDAD
 
 ### 4.1 Infraestructura en la Nube
-Los datos se almacenan en servidores de **Google Firebase**, que cumplen con:
+Los datos se almacenan en servidores de **Google Firebase** y **Supabase**, que cumplen con:
 - Certificación ISO 27001 (Gestión de Seguridad de la Información).
 - Encriptación de datos en tránsito (TLS 1.2+).
 - Encriptación de datos en reposo (AES-256).
 - Centros de datos con seguridad física de nivel empresarial.
+
+La versión web (SaaS) del Software se distribuye a través de la red global de **Cloudflare**, que proporciona protección adicional contra ataques DDoS y encriptación en tránsito.
 
 ### 4.2 Almacenamiento Local
 El Software también almacena datos localmente en su equipo:
@@ -89,8 +99,9 @@ El Software también almacena datos localmente en su equipo:
 ### 4.3 Acceso Restringido
 El acceso a los datos está protegido por:
 - Sistema de autenticación por PIN.
-- Identificación única de hardware (HWID).
-- Licencia criptográfica vinculada al equipo.
+- Identificación única de hardware (HWID) en versión local.
+- Licencia criptográfica vinculada al equipo o cuenta.
+- Permisos granulares por rol de usuario (según plan contratado).
 
 ---
 
@@ -98,12 +109,12 @@ El acceso a los datos está protegido por:
 
 ### 5.1 Con Quién Compartimos
 Podemos compartir información únicamente con:
-1. **Proveedores de Infraestructura:** Google Firebase (almacenamiento).
+1. **Proveedores de Infraestructura:** Google Firebase (almacenamiento), Supabase (base de datos en la nube), Cloudflare (distribución y seguridad web).
 2. **Autoridades Competentes:** Solo ante requerimiento judicial formal.
 3. **Soporte Técnico Autorizado:** Con su consentimiento expreso para resolver incidencias.
 
 ### 5.2 Transferencias Internacionales
-Los datos pueden ser procesados en servidores ubicados fuera de Venezuela (infraestructura de Google). Estas transferencias cumplen con estándares internacionales de protección de datos.
+Los datos pueden ser procesados en servidores ubicados fuera de Venezuela (infraestructura de Google, Supabase y Cloudflare). Estas transferencias cumplen con estándares internacionales de protección de datos.
 
 ---
 
@@ -144,9 +155,10 @@ Puede solicitar la eliminación completa de sus datos en cualquier momento. El p
 
 ## 8. COOKIES Y TECNOLOGÍAS SIMILARES
 
-El Software de escritorio no utiliza cookies. Sin embargo, el panel de administración web puede utilizar:
+El Software de escritorio no utiliza cookies. Sin embargo, la versión web (SaaS) y el panel de administración pueden utilizar:
 - Cookies de sesión (para mantener su inicio de sesión).
-- Almacenamiento local del navegador (preferencias).
+- Almacenamiento local del navegador (preferencias y caché offline).
+- Service Workers para funcionamiento sin conexión (PWA).
 
 ---
 
@@ -194,4 +206,4 @@ Esta política cumple con:
 
 *© 2025-2026 Luigi Beraldi. Todos los derechos reservados.*
 *LISTO POS es una marca comercial de Luigi Beraldi.*
-*Documento generado automáticamente. Última actualización: Enero 2026.*
+*Documento generado automáticamente. Última actualización: Mayo 2026.*

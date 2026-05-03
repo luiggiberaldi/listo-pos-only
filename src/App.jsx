@@ -9,15 +9,17 @@ import { useListoGoSync } from './hooks/sync/useListoGoSync'; // 🔄 MOBILE APP
 import { useRemoteLockListener } from './hooks/security/useRemoteLockListener'; // 🛡️ REMOTE LOCK (DEADLOCK PROOF)
 import { PERMISSIONS } from './config/permissions';
 import RouteGuard from './components/security/RouteGuard';
-import { GhostEye } from './components/ghost/GhostEye';
-import { Assistant } from './components/ghost/Assistant';
+// 👻 GHOST UI HIDDEN — imports kept for quick reactivation
+// import { GhostEye } from './components/ghost/GhostEye';
+// import { Assistant } from './components/ghost/Assistant';
 import UpdateNotification from './components/common/UpdateNotification';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { initFirebase } from './services/firebase'; // 🚀 LAZY INIT
 import { useLanSync } from './hooks/sync/useLanSync'; // 📡 LAN MULTI-CAJA
 import { secretsService } from './services/config/SecretsService';
 import { initSupabase } from './services/supabaseClient';
-import { ghostService } from './services/ghostAI';
+// 👻 GHOST UI HIDDEN
+// import { ghostService } from './services/ghostAI';
 
 // Layouts (eager - needed immediately)
 import MainLayout from './layout/MainLayout';
@@ -86,14 +88,14 @@ function App() {
       });
     }, 2000);
 
-    // 👻 GHOST AUDITOR: Initialize after Firebase (5s total delay)
-    const ghostTimer = setTimeout(() => {
-      import('./services/ghost/ghostAuditScheduler').then(({ initGhostAuditor }) => {
-        initGhostAuditor();
-      }).catch(e => console.warn('👻 Ghost Auditor init skipped:', e.message));
-    }, 5000);
+    // 👻 GHOST AUDITOR: Hidden — ready to reactivate
+    // const ghostTimer = setTimeout(() => {
+    //   import('./services/ghost/ghostAuditScheduler').then(({ initGhostAuditor }) => {
+    //     initGhostAuditor();
+    //   }).catch(e => console.warn('👻 Ghost Auditor init skipped:', e.message));
+    // }, 5000);
 
-    return () => { clearTimeout(timer); clearTimeout(ghostTimer); };
+    return () => { clearTimeout(timer); };
   }, []);
 
   // 🔐 SECRETS BOOTSTRAP (Persist API Keys)
@@ -109,40 +111,25 @@ function App() {
     loadSecrets();
   }, []);
 
-  // 👻 GHOST MODE TOOLS (Development Only)
-  React.useEffect(() => {
-    if (!import.meta.env.DEV) return; // 🛡️ Block in production
-
-    import('./db').then(({ toggleGhostMode, isGhostMode }) => {
-      import('./utils/TimeProvider').then(({ timeProvider }) => {
-        window.GhostTools = {
-          timeProvider,
-          toggleMode: toggleGhostMode,
-          isGhost: isGhostMode
-        };
-
-        if (isGhostMode) {
-          console.log("👻 GHOST MODE ACTIVE");
-          document.body.style.border = '5px solid red';
-          document.body.style.boxSizing = 'border-box';
-          document.body.setAttribute('data-ghost-mode', 'true');
-
-          const div = document.createElement('div');
-          div.style.position = 'fixed';
-          div.style.bottom = '10px';
-          div.style.right = '10px';
-          div.style.zIndex = '99999';
-          div.style.background = 'red';
-          div.style.color = 'white';
-          div.style.padding = '5px 10px';
-          div.style.fontWeight = 'bold';
-          div.style.pointerEvents = 'none';
-          div.innerText = '👻 GHOST MODE';
-          document.body.appendChild(div);
-        }
-      });
-    });
-  }, []);
+  // 👻 GHOST MODE TOOLS — Hidden (uncomment to reactivate)
+  // React.useEffect(() => {
+  //   if (!import.meta.env.DEV) return;
+  //   import('./db').then(({ toggleGhostMode, isGhostMode }) => {
+  //     import('./utils/TimeProvider').then(({ timeProvider }) => {
+  //       window.GhostTools = { timeProvider, toggleMode: toggleGhostMode, isGhost: isGhostMode };
+  //       if (isGhostMode) {
+  //         console.log("👻 GHOST MODE ACTIVE");
+  //         document.body.style.border = '5px solid red';
+  //         document.body.style.boxSizing = 'border-box';
+  //         document.body.setAttribute('data-ghost-mode', 'true');
+  //         const div = document.createElement('div');
+  //         Object.assign(div.style, { position:'fixed', bottom:'10px', right:'10px', zIndex:'99999', background:'red', color:'white', padding:'5px 10px', fontWeight:'bold', pointerEvents:'none' });
+  //         div.innerText = '👻 GHOST MODE';
+  //         document.body.appendChild(div);
+  //       }
+  //     });
+  //   });
+  // }, []);
 
   // 🚨 GLOBAL ERROR TRAP FOR GHOST
   React.useEffect(() => {
@@ -296,10 +283,11 @@ function App() {
               )}
             </Routes>
           </Suspense>
-          {isAuthenticated && <Assistant variant="floating" />}
+          {/* 👻 GHOST UI HIDDEN — uncomment to reactivate */}
+          {/* {isAuthenticated && <Assistant variant="floating" />} */}
         </HashRouter>
       </ContractGuard>
-      {isAuthenticated && <GhostEye />}
+      {/* {isAuthenticated && <GhostEye />} */}
     </LicenseGate>
   );
 }

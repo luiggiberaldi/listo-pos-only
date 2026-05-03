@@ -5,7 +5,7 @@
 export const EULA_CONTENT = `
 CONTRATO DE LICENCIA DE USUARIO FINAL (EULA)
 LISTO POS - Sistema de Punto de Venta
-Versión 1.1 | Enero 2026
+Versión 1.2 | Mayo 2026
 
 ==========================================================
 
@@ -34,11 +34,14 @@ SI NO ESTÁ DE ACUERDO CON ESTOS TÉRMINOS, NO INSTALE NI UTILICE EL SOFTWARE.
 
 2.1 Licencia Limitada
 El desarrollador Luigi Beraldi le concede una licencia NO EXCLUSIVA, INTRANSFERIBLE y LIMITADA para:
-• Instalar y usar el Software en UN (1) SOLO EQUIPO.
+• Instalar y usar el Software en UN (1) SOLO EQUIPO o acceder a la versión web (SaaS) mediante una cuenta autorizada.
 • Utilizar el Software únicamente para fines comerciales legítimos.
 
-2.2 Identificador Único de Hardware (HWID)
-El Software está vinculado criptográficamente al identificador único de hardware del equipo donde se instaló. Esta licencia NO es transferible a otro equipo sin autorización expresa.
+2.2 Identificador Único
+El Software está vinculado criptográficamente al identificador único de hardware del equipo donde se instaló, o a una cuenta de usuario en la versión web. Esta licencia NO es transferible sin autorización expresa.
+
+2.3 Planes y Niveles de Servicio
+El Software opera bajo un modelo de planes escalonados (Bodega, Abasto, Minimarket) que determinan las funcionalidades disponibles.
 
 ==========================================================
 
@@ -50,6 +53,7 @@ El Usuario NO PUEDE:
 • Sublicenciar, alquilar o transferir la licencia a terceros.
 • Remover avisos de propiedad intelectual o logos.
 • Utilizar el Software para actividades ilícitas.
+• Compartir credenciales de acceso con terceros no autorizados.
 
 ==========================================================
 
@@ -82,6 +86,7 @@ LISTO POS es una herramienta de GESTIÓN INTERNA diseñada para:
 • Registrar transacciones comerciales de forma organizada.
 • Generar reportes de ventas para control interno.
 • Administrar inventario y flujo de caja.
+• Sincronizar datos entre múltiples terminales y dispositivos móviles (según plan).
 
 El Software NO ESTÁ DISEÑADO NI AUTORIZADO para:
 • Emitir facturas con valor fiscal ante el SENIAT.
@@ -108,15 +113,16 @@ El desarrollador de LISTO POS NO ASUME NINGUNA RESPONSABILIDAD por:
 • Sanciones derivadas del incumplimiento de obligaciones fiscales.
 • Cierres del establecimiento por razones tributarias.
 • Errores en el cálculo de impuestos (IVA, retenciones).
-• Pérdida de datos por cortes eléctricos (USE UPS OBLIGATORIO).
+• Pérdida de datos por cortes eléctricos (USE UPS OBLIGATORIO en versión local).
 • Fallas de hardware o ataques cibernéticos.
+• Pérdida de conexión a internet que impida la sincronización.
 
 ==========================================================
 
 4. REQUISITOS OBLIGATORIOS
 
-4.1 SISTEMA DE RESPALDO ELÉCTRICO (UPS)
-ES OBLIGATORIO que el Usuario cuente con un UPS para:
+4.1 SISTEMA DE RESPALDO ELÉCTRICO (UPS) — VERSIÓN LOCAL
+ES OBLIGATORIO que el Usuario que utilice la versión local cuente con un UPS para:
 • Proteger los datos ante cortes de luz.
 • Permitir el cierre seguro del sistema.
 • Evitar corrupción de la base de datos.
@@ -158,10 +164,12 @@ Datos que NO Recopilamos:
 
 2. ALMACENAMIENTO Y SEGURIDAD
 
-Los datos se almacenan en servidores de Google Firebase con:
+Los datos se almacenan en servidores de Google Firebase y Supabase con:
 • Certificación ISO 27001
 • Encriptación TLS 1.2+ en tránsito
 • Encriptación AES-256 en reposo
+
+La versión web (SaaS) se distribuye a través de Cloudflare.
 
 Nos comprometemos a NO:
 • Vender sus datos a terceros.
@@ -184,7 +192,7 @@ Contacto: TechSupport@kiplystart.com
 
 AL HACER CLIC EN "ACEPTO Y FIRMO", USTED RECONOCE QUE HA LEÍDO, ENTENDIDO Y ACEPTA TODOS LOS TÉRMINOS DE ESTE CONTRATO UNIFICADO.
 
-Fecha de revisión del documento: Enero 2026
+Fecha de revisión del documento: Mayo 2026
 `;
 
 export const FULL_CONTRACT = EULA_CONTENT + FISCAL_CONTENT + PRIVACY_CONTENT;
