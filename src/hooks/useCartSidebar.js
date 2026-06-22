@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Custom hook for CartSidebar logic.
@@ -10,8 +10,8 @@ export function useCartSidebar({ carrito, onChangeQty, isProcessing }) {
     const scrollContainerRef = useRef(null);
 
     // --- Business Rules Helpers ---
-    const getMinQty = (tipoUnidad) => (tipoUnidad === 'peso' ? 0.005 : 1);
-    const getStep = (tipoUnidad) => (tipoUnidad === 'peso' ? 0.05 : 1);
+    const getMinQty = useCallback((tipoUnidad) => ((tipoUnidad === 'peso' || tipoUnidad === 'litro') ? 0.005 : 1), []);
+    const getStep = useCallback((tipoUnidad) => ((tipoUnidad === 'peso' || tipoUnidad === 'litro') ? 0.05 : 1), []);
 
     // --- Filter Logic ---
     const filteredCart = useMemo(() => {
@@ -43,7 +43,7 @@ export function useCartSidebar({ carrito, onChangeQty, isProcessing }) {
 
     // --- Actions / Handlers ---
 
-    const handleQtyChangeSafe = (index, item, delta) => {
+    const handleQtyChangeSafe = useCallback((index, item, delta) => {
         if (isProcessing) return;
 
         const min = getMinQty(item.tipoUnidad);
@@ -52,14 +52,14 @@ export function useCartSidebar({ carrito, onChangeQty, isProcessing }) {
         if (nuevaCantidad < min) return;
 
         // Business Rule: Precision handling for 'peso' vs integer units
-        const cantidadFinal = item.tipoUnidad === 'peso'
+        const cantidadFinal = (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro')
             ? Math.round(nuevaCantidad * 1000) / 1000
             : Math.floor(nuevaCantidad);
 
         onChangeQty(index, cantidadFinal);
-    };
+    }, [isProcessing, onChangeQty, getMinQty]);
 
-    const handleInputChangeSafe = (index, item, valueStr) => {
+    const handleInputChangeSafe = useCallback((index, item, valueStr) => {
         if (isProcessing) return;
 
         const min = getMinQty(item.tipoUnidad);
@@ -69,7 +69,7 @@ export function useCartSidebar({ carrito, onChangeQty, isProcessing }) {
         if (val < min) val = min;
 
         onChangeQty(index, val);
-    };
+    }, [isProcessing, onChangeQty, getMinQty]);
 
     return {
         viewMode,

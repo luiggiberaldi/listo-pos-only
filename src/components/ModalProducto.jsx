@@ -9,7 +9,7 @@ import ProductBasicInfo from './products/ProductBasicInfo';
 import ProductPricing from './products/ProductPricing';
 import ProductHierarchy from './products/ProductHierarchy';
 import ProductStockInput from './products/ProductStockInput';
-import SimpleProductForm from './products/SimpleProductForm';
+import ProductWizardForm from './products/ProductWizardForm';
 
 // ✅ INTEGRACIÓN DE SEGURIDAD FÉNIX V1.0
 import { useSecureAction } from '../hooks/security/useSecureAction';
@@ -28,22 +28,17 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
   const showCosts = tienePermiso(PERMISOS.INV_VER_COSTOS);
 
   // 🏪 MODO BODEGA VS AVANZADO
-  // Si el plan es 'bodega', por defecto inicia en simple. Si no, en avanzado.
-  const [isSimpleMode, setIsSimpleMode] = useState(false);
-
-  useEffect(() => {
-    // Solo cambiar si es un producto nuevo o si el usuario no ha intervenido manualmente (podríamos guardar preferencia)
+  // Si el plan es 'bodega', por defecto inicia en simple (Modo Bodega). Si no, en avanzado.
+  const [isSimpleMode, setIsSimpleMode] = useState(() => {
     if (!productoEditar) {
-      setIsSimpleMode(license?.plan === 'bodega');
+      return license?.plan === 'bodega';
     } else {
       // Al editar, si el producto tiene jerarquías complejas (Paquete), forzar avanzado.
-      // Bulto AHORA es soportado en simple.
+      // Bulto es soportado en simple.
       const isComplex = productoEditar.jerarquia?.paquete?.activo;
-      if (license?.plan === 'bodega' && !isComplex) {
-        setIsSimpleMode(true);
-      }
+      return license?.plan === 'bodega' && !isComplex;
     }
-  }, [license, productoEditar]);
+  });
 
 
   const getFactores = () => {
@@ -86,7 +81,7 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
             stockFinalRef.current = { total: stockVal, breakdown: null };
           }
 
-          if (form.tipoUnidad === 'peso') {
+          if (form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') {
             precioFinal = parseFloat(form.precio) || 0;
             factorCosto = 1;
           } else {
@@ -228,7 +223,7 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
               className="flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm font-bold text-slate-600 dark:text-slate-300"
             >
               {isSimpleMode ? <ToggleLeft className="text-emerald-500" /> : <ToggleRight className="text-blue-500" />}
-              {isSimpleMode ? 'Modo Bodega' : 'Modo Avanzado'}
+              {isSimpleMode ? 'Asistente Rápido' : 'Modo Avanzado'}
             </button>
 
             <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 transition-all">
@@ -241,7 +236,7 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-slate-900/50">
 
           {isSimpleMode ? (
-            <SimpleProductForm
+            <ProductWizardForm
               form={form}
               updateField={updateField}
               onSave={handleSubmit}
@@ -249,7 +244,7 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
               productoEditar={productoEditar}
               categorias={categorias}
               tasa={tasa}
-              updateJerarquia={updateJerarquia} // Passing updateJerarquia
+              updateJerarquia={updateJerarquia}
             />
           ) : (
             <div className="p-8 space-y-10">
@@ -309,22 +304,24 @@ export default function ModalProducto({ productoEditar, onClose, onGuardar, conf
         </div>
 
         {/* STICKY FOOTER CON GLASS EFFECT */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex gap-4 sticky bottom-0 z-20">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-3.5 px-6 rounded-xl font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="flex-[2] py-3.5 px-6 bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-slate-200 dark:shadow-blue-900/20 flex items-center justify-center gap-2 transition-all transform active:scale-95"
-          >
-            <Save size={18} />
-            {productoEditar ? 'Guardar Cambios' : 'Crear Producto'}
-          </button>
-        </div>
+        {!isSimpleMode && (
+          <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex gap-4 sticky bottom-0 z-20">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3.5 px-6 rounded-xl font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="flex-[2] py-3.5 px-6 bg-slate-900 hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-slate-200 dark:shadow-blue-900/20 flex items-center justify-center gap-2 transition-all transform active:scale-95"
+            >
+              <Save size={18} />
+              {productoEditar ? 'Guardar Cambios' : 'Crear Producto'}
+            </button>
+          </div>
+        )}
 
       </div >
     </div >

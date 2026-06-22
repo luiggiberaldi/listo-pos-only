@@ -55,7 +55,9 @@ export const useSaleFinalizer = ({
                 igtfTotal: datosPago.igtfTotal || 0,
                 montoVueltoDigital: datosPago.montoVueltoDigital || 0,
                 vueltoCredito: !!datosPago.vueltoCredito,
-                montoSaldoFavor: datosPago.montoSaldoFavor || 0
+                montoSaldoFavor: datosPago.montoSaldoFavor || 0,
+                esCashea: datosPago.esCashea || false,
+                tipoVenta: datosPago.tipoVenta || undefined
             };
 
             if (ventaFinal.montoSaldoFavor > 0) {
@@ -95,7 +97,7 @@ export const useSaleFinalizer = ({
                 const procesarImpresion = async () => {
                     if (imprimirTicket) {
                         setTicketData(ventaProcesada || ventaFinal);
-                        await new Promise(r => setTimeout(r, 100));
+                        await new Promise(r => setTimeout(r, 400));
                         handlePrint();
                         await new Promise(r => setTimeout(r, 1000));
                     }

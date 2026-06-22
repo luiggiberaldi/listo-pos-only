@@ -79,14 +79,15 @@ export default function InventarioHeader({
             selectedCount={selectedCount}
           />
 
-          <button
-            onClick={() => typeof setMostrarKardex === 'function' && setMostrarKardex(true)}
-            className="p-3.5 bg-surface-light dark:bg-slate-800 text-content-main dark:text-slate-300 hover:bg-app-light dark:hover:bg-slate-700 rounded-xl border border-border-subtle dark:border-slate-700 transition-all shadow-sm flex items-center gap-2"
-            title="Historial de Movimientos"
-          >
-            <History size={20} />
-            <span className="hidden sm:inline text-sm font-bold">Movimientos</span>
-          </button>
+          <ActionGuard permission={PERMISSIONS.INV_VER_KARDEX} onClick={() => setMostrarKardex(true)} actionName="Ver Historial (Kardex)">
+            <button
+              className="p-3.5 bg-surface-light dark:bg-slate-800 text-content-main dark:text-slate-300 hover:bg-app-light dark:hover:bg-slate-700 rounded-xl border border-border-subtle dark:border-slate-700 transition-all shadow-sm flex items-center gap-2"
+              title="Historial de Movimientos"
+            >
+              <History size={20} />
+              <span className="hidden sm:inline text-sm font-bold">Movimientos</span>
+            </button>
+          </ActionGuard>
 
           <ActionGuard permission={PERMISSIONS.INVENTORY_MANAGE} onClick={abrirModalCrear} actionName="Crear Producto">
             <button

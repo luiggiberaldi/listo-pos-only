@@ -23,6 +23,50 @@ const PosHeader = React.forwardRef(({ onKeyDown }, ref) => {
   const tasaReferencia = useConfigStore(s => s.configuracion?.tasaReferencia || 0);
   const offlineMode = useConfigStore(s => s.offlineMode);
 
+  // 🚀 LOCAL SEARCH QUERY STATE FOR FLUID TYPING
+  const [localQuery, setLocalQuery] = React.useState(busqueda);
+  const debounceTimerRef = React.useRef(null);
+
+  // Synchronize local input value when the store value is cleared/updated externally (e.g. after add or escape)
+  useEffect(() => {
+    setLocalQuery(busqueda);
+  }, [busqueda]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(debounceTimerRef.current);
+  }, []);
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setLocalQuery(val);
+
+    clearTimeout(debounceTimerRef.current);
+
+    // Si parece un código de barras (solo números y longitud >= 8), o si está vacío,
+    // actualizamos de inmediato para que el lector de barras sea instantáneo.
+    const esCodigoBarras = /^\d+$/.test(val) && val.length >= 8;
+    if (esCodigoBarras || val === '') {
+      setBusqueda(val, true); // immediate = true
+    } else {
+      // Si es texto, debouncamos a 250ms para no saturar con re-renders de PosPage
+      debounceTimerRef.current = setTimeout(() => {
+        setBusqueda(val, true);
+      }, 250);
+    }
+  };
+
+  const handleInputKeyDown = (e) => {
+    // Si presiona Enter o asterisco (*), actualizamos inmediatamente el store
+    if (e.key === 'Enter' || e.key === '*') {
+      clearTimeout(debounceTimerRef.current);
+      setBusqueda(e.target.value, true);
+    }
+    if (onKeyDown) {
+      onKeyDown(e);
+    }
+  };
+
   // ⚡ ENFOQUE INICIAL ÚNICO
   useEffect(() => {
     if (ref && ref.current) {
@@ -40,9 +84,9 @@ const PosHeader = React.forwardRef(({ onKeyDown }, ref) => {
             type="text"
             placeholder="Escanear o buscar producto..."
             className="w-full pl-10 pr-12 py-3 bg-app-light dark:bg-app-dark border-2 border-transparent focus:bg-surface-light dark:focus:bg-surface-dark focus:border-primary rounded-xl outline-none transition-all text-lg font-medium text-content-main shadow-inner"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            onKeyDown={onKeyDown}
+            value={localQuery}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
           />
           <div className="absolute right-3 top-3 text-content-secondary bg-surface-light dark:bg-surface-dark border border-border-subtle px-2 py-1 rounded text-xs font-mono">F2</div>
         </div>

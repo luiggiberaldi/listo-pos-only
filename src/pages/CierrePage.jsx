@@ -39,7 +39,12 @@ export default function CierrePage() {
     });
 
     useEffect(() => {
-        if (corteParaImprimir) handlePrint();
+        if (corteParaImprimir) {
+            const timer = setTimeout(() => {
+                handlePrint();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
     }, [corteParaImprimir]);
 
     // 1. OBTENEMOS TODO (VÁLIDAS Y ANULADAS)
@@ -179,7 +184,7 @@ export default function CierrePage() {
 
     return (
         <div className="p-4 lg:p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
-            <div style={{ display: 'none' }}>
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0', height: '0', overflow: 'hidden' }}>
                 <ReporteZUniversal ref={ticketRef} corte={corteParaImprimir} formato="ticket" />
             </div>
 

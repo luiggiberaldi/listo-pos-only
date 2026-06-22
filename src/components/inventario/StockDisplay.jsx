@@ -8,12 +8,12 @@ export default function StockDisplay({ p }) {
 
   const stockTotal = parseFloat(p?.stock) || 0;
 
-  // MODO PESO
-  if (p.tipoUnidad === 'peso') {
+  // MODO PESO / LITRO
+  if (p.tipoUnidad === 'peso' || p.tipoUnidad === 'litro') {
     return (
       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold ${stockTotal <= 5 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-app-light text-content-main border-border-subtle'}`}>
         <div className={`w-2 h-2 rounded-full ${stockTotal <= 5 ? 'bg-red-500' : 'bg-content-secondary'}`}></div>
-        {stockTotal.toFixed(3)} Kg
+        {stockTotal.toFixed(3)} {p.tipoUnidad === 'litro' ? 'Lt' : 'Kg'}
       </div>
     );
   }

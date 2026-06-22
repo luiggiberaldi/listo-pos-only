@@ -23,7 +23,7 @@ import { useAuthContext } from '../context/AuthContext';
 
 // --- HOOKS ---
 import { useSalesProcessor } from '../hooks/store/useSalesProcessor';
-import { useInventory } from '../hooks/store/useInventory';
+import { transaccionVenta, transaccionAnulacion } from '../services/pos/posDbTransactions';
 import { useCajaEstado } from '../hooks/caja/useCajaEstado';
 import { useSecureAction } from '../hooks/security/useSecureAction';
 import { PERMISOS, useRBAC } from '../hooks/store/useRBAC';
@@ -82,7 +82,6 @@ export default function PosPage() {
   const carrito = useCartStore(s => s.carrito);
   const generarCorrelativo = useConfigStore(s => s.generarCorrelativo);
   const playSound = useUIStore(s => s.playSound);
-  const { transaccionVenta, transaccionAnulacion } = useInventory(usuario, configuracion, () => { });
   const { registrarVenta } = useSalesProcessor(
     usuario, configuracion,
     { transaccionVenta, transaccionAnulacion, playSound, generarCorrelativo },

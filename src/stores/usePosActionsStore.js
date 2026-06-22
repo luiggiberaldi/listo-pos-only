@@ -68,7 +68,7 @@ export const usePosActionsStore = create(ghostMiddleware((set, get) => ({
             const consumos = {};
             for (const item of carrito) {
                 const id = item.id;
-                if (item.tipoUnidad === 'peso') continue;
+                if (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') continue;
                 let factor = 1;
                 if (item.unitType === 'bulto' || item.unidadVenta === 'bulto') {
                     factor = parseFloat(item.jerarquia?.bulto?.contenido || 1);
@@ -125,9 +125,9 @@ export const usePosActionsStore = create(ghostMiddleware((set, get) => ({
         const carrito = useCartStore.getState().carrito;
         const item = carrito[idx];
         if (!item) return;
-        const minQty = item.tipoUnidad === 'peso' ? 0.005 : 1;
+        const minQty = (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? 0.005 : 1;
         let cantidadSegura = Math.max(cant, minQty);
-        if (item.tipoUnidad === 'peso') cantidadSegura = Math.round(cantidadSegura * 1000) / 1000;
+        if (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') cantidadSegura = Math.round(cantidadSegura * 1000) / 1000;
         else cantidadSegura = Math.floor(cantidadSegura);
         useCartStore.getState().cambiarCantidadCarrito(idx, cantidadSegura);
     },
@@ -162,7 +162,7 @@ export const usePosActionsStore = create(ghostMiddleware((set, get) => ({
         const agregarAlCarrito = useCartStore.getState().agregarAlCarrito;
         const { setBusqueda, setSelectedIndex } = usePosSearchStore.getState();
 
-        if (producto.tipoUnidad === 'peso') {
+        if (producto.tipoUnidad === 'peso' || producto.tipoUnidad === 'litro') {
             setBusqueda('');
             useUIStore.getState().openModal('PESAJE', producto);
             _refs.searchInputRef?.current?.blur();

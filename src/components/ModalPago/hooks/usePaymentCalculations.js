@@ -10,10 +10,18 @@ export const usePaymentCalculations = ({
     configuracion,
     metodosActivos,
     val,
-    pagoSaldoFavor
+    pagoSaldoFavor,
+    casheaActive = false,
+    casheaPercent = 60
 }) => {
     // 🛡️ Tasa Segura
     const tasaSegura = tasa > 0 ? tasa : 1;
+
+    // Calculamos el monto financiado por Cashea
+    const casheaAmountUsd = useMemo(() => {
+        if (!casheaActive) return 0;
+        return math.round(totalUSD * (100 - casheaPercent) / 100);
+    }, [casheaActive, totalUSD, casheaPercent]);
 
     // 1. Prepare Payments for Controller
     const allPayments = useMemo(() => {
@@ -43,8 +51,21 @@ export const usePaymentCalculations = ({
                 aplicaIGTF: false // Wallet never tax
             });
         }
+
+        // Add Cashea Financed Payment (Virtual/Internal)
+        if (casheaActive && casheaAmountUsd > 0) {
+            list.push({
+                amount: casheaAmountUsd,
+                currency: 'USD',
+                type: 'DIVISA',
+                medium: 'INTERNAL',
+                aplicaIGTF: false,
+                id: 'cashea'
+            });
+        }
+
         return list;
-    }, [pagos, metodosActivos, val, pagoSaldoFavor]);
+    }, [pagos, metodosActivos, val, pagoSaldoFavor, casheaActive, casheaAmountUsd]);
 
     // 2. Call Controller
     const result = useMemo(() => {
@@ -66,6 +87,7 @@ export const usePaymentCalculations = ({
         totalConIGTFBS,
         faltaPorPagarBS,
         tasaSegura,
+        casheaAmountUsd,
         // Wrappers for compatibility
         round2: (n) => math.round(n),
         round4: (n) => math.round(n, 4)

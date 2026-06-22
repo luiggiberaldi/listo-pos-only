@@ -5,7 +5,7 @@
 import React, { useRef, useEffect, useCallback, Suspense, lazy } from 'react';
 import {
     Trash2, Plus, Minus, Search, ShoppingCart,
-    Package, LayoutGrid, CheckCircle2, ChevronRight, Clock, HelpCircle
+    Package, LayoutGrid, CheckCircle2, ChevronRight, Clock, HelpCircle, Droplet
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -108,22 +108,25 @@ const TouchTicketItem = React.memo(({ item, idx, onAdd, onSub, onRemove, tasa })
                     {item.tipoUnidad === 'peso' && (
                         <span className="text-[10px] text-orange-500 font-bold">KG</span>
                     )}
+                    {item.tipoUnidad === 'litro' && (
+                        <span className="text-[10px] text-sky-500 font-bold">LT</span>
+                    )}
                 </div>
             </div>
             <div className="flex items-center gap-3">
                 <button
-                    onClick={() => onSub(idx, item.cantidad - 1)}
+                    onClick={() => onSub(idx, item.cantidad - ((item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? 0.05 : 1))}
                     className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center active:bg-slate-200 active:scale-95 transition-all"
                 >
                     <Minus size={20} />
                 </button>
-                <div className="w-10 text-center">
-                    <span className="text-lg font-black text-slate-900 font-numbers">
-                        {item.cantidad}
+                <div className="w-16 text-center">
+                    <span className="text-sm font-black text-slate-900 font-numbers block truncate">
+                        {(item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? item.cantidad.toFixed(3) : item.cantidad}
                     </span>
                 </div>
                 <button
-                    onClick={() => onAdd(idx, item.cantidad + 1)}
+                    onClick={() => onAdd(idx, item.cantidad + ((item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? 0.05 : 1))}
                     className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center active:bg-blue-200 active:scale-95 transition-all"
                 >
                     <Plus size={20} />
@@ -211,7 +214,7 @@ export default function TouchLayout({
     return (
         <div className="flex h-screen bg-slate-100 overflow-hidden font-sans touch-mode">
 
-            <div style={{ display: 'none' }}>
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0', height: '0', overflow: 'hidden' }}>
                 {Ticket ? <Ticket ref={ticketRef} data={ticketData} /> : null}
                 {TicketSaldoFavor ? <TicketSaldoFavor ref={ticketSaldoRef} data={ticketData} /> : null}
             </div>
@@ -243,7 +246,7 @@ export default function TouchLayout({
 
             {/* --- MODALES --- */}
             <Suspense fallback={<div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
-                {activeModal === 'PESAJE' && modalData && <ModalPesaje producto={modalData} tasa={tasa} onConfirm={(d) => { agregarAlCarrito(modalData, d.peso, 'peso', d.precioTotal / d.peso); closeModal(); }} onClose={closeModal} />}
+                {activeModal === 'PESAJE' && modalData && <ModalPesaje producto={modalData} tasa={tasa} onConfirm={(d) => { agregarAlCarrito(modalData, d.peso, modalData.tipoUnidad, d.precioTotal / d.peso); closeModal(); }} onClose={closeModal} />}
                 {activeModal === 'JERARQUIA' && modalData && <ModalJerarquia producto={modalData} onSelect={(f) => { agregarAlCarrito(modalData, 1, f, modalData.jerarquia[f].precio); closeModal(); }} onClose={closeModal} />}
                 {activeModal === 'PAGO' && <ModalPago totalUSD={totalUSD} totalBS={totalBS} tasa={tasa} onPagar={usePosActionsStore.getState().finalizarVenta} initialClient={null} isTouch={true} onClose={closeModal} />}
                 {activeModal === 'ESPERA' && <ModalEspera tickets={ticketsEspera} onRecuperar={usePosActionsStore.getState().handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={closeModal} />}

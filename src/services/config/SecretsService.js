@@ -94,7 +94,7 @@ class SecretsManager {
         console.log(`🔐 SecretsManager: Ready. Loaded ${Object.keys(this.secrets).length} keys.`);
 
         // Warn about missing critical keys
-        const criticalKeys = ['VITE_GEMINI_API_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
+        const criticalKeys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
         criticalKeys.forEach(key => {
             if (!this.get(key)) {
                 console.warn(`⚠️ [SECRETS] Critical key missing: ${key}. Some features may be unavailable.`);

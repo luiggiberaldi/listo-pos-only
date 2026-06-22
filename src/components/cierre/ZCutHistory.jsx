@@ -130,7 +130,10 @@ export default function ZCutHistory() {
 
     React.useEffect(() => {
         if (corteSeleccionado) {
-            printFn();
+            const timer = setTimeout(() => {
+                printFn();
+            }, 300);
+            return () => clearTimeout(timer);
         }
     }, [corteSeleccionado, printFn]);
 
@@ -277,7 +280,7 @@ export default function ZCutHistory() {
             </div>
 
             {/* COMPONENTE OCULTO PARA IMPRESIÓN - Estilo CierrePage */}
-            <div style={{ display: 'none' }}>
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0', height: '0', overflow: 'hidden' }}>
                 <ReporteZUniversal ref={printRef} corte={corteSeleccionado} formato="ticket" paperWidth={paperSize} />
             </div>
 

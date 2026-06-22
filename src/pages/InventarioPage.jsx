@@ -40,7 +40,8 @@ export default function InventarioPage() {
     const {
         productos, agregarProducto, eliminarProducto, actualizarProducto,
         configuracion, movimientos, vaciarInventarioCompleto,
-        categorias, usuario, crearCategoria, eliminarCategoria
+        categorias, usuario, crearCategoria, eliminarCategoria,
+        eliminarMovimiento, eliminarMovimientos
     } = useStore();
 
     const { ejecutarAccionSegura } = useSecureAction();
@@ -49,7 +50,7 @@ export default function InventarioPage() {
     // PERMISOS
     const showCosts = tienePermiso(PERMISOS.INV_VER_COSTOS);
     const canSeeStats = tienePermiso(PERMISOS.REP_VER_DASHBOARD);
-    const canManageAudit = tienePermiso(PERMISOS.REP_VER_AUDITORIA); // [FIX PERM-1] was ADMIN_AUDITORIA (phantom)
+    const canManageAudit = tienePermiso(PERMISOS.INV_VER_KARDEX);
 
     // ESTADOS MODALES
     const [mostrarModal, setMostrarModal] = useState(false);
@@ -83,7 +84,7 @@ export default function InventarioPage() {
 
         const { valorInventarioVenta, valorCostoInventario, stockBajo } = lista.reduce((acc, p) => {
             let precioRef = parseFloat(p.precio) || 0;
-            if (p.tipoUnidad !== 'peso' && p.jerarquia?.unidad?.activo) {
+            if (p.tipoUnidad !== 'peso' && p.tipoUnidad !== 'litro' && p.jerarquia?.unidad?.activo) {
                 precioRef = parseFloat(p.jerarquia.unidad.precio) || 0;
             }
 
@@ -304,7 +305,15 @@ export default function InventarioPage() {
                     {mostrarLabelStudio && <LabelStudioModal isOpen={mostrarLabelStudio} onClose={() => setMostrarLabelStudio(false)} selectedProducts={productosParaEtiquetas} tasa={configuracion.tasa || 1} />}
                     {mostrarModal && <ModalProducto productoEditar={productoAEditar} onClose={() => setMostrarModal(false)} onGuardar={guardarDesdeModal} configuracion={configuracion} />}
                     {mostrarImportModal && <BulkImportModal isOpen={mostrarImportModal} onClose={() => setMostrarImportModal(false)} onImportCompleted={async () => { const Swal = await getSwal(); Swal.fire("Listo", "Inventario actualizado", "success"); }} />}
-                    {mostrarKardex && canManageAudit && <ModalKardex movimientos={movimientos} productos={productos} onClose={() => setMostrarKardex(false)} />}
+                    {mostrarKardex && canManageAudit && (
+                        <ModalKardex
+                            movimientos={movimientos}
+                            productos={productos}
+                            eliminarMovimiento={eliminarMovimiento}
+                            eliminarMovimientos={eliminarMovimientos}
+                            onClose={() => setMostrarKardex(false)}
+                        />
+                    )}
                     {productoAjuste && <ModalAjusteStock producto={productoAjuste} onClose={() => setProductoAjuste(null)} onConfirm={async (d) => { const oldStock = productoAjuste.stock; actualizarProducto(d.id, d); try { const { emitStockAdjusted } = await import('../services/ghost/ghostAuditInterceptors'); emitStockAdjusted(productoAjuste.nombre, oldStock, d.stock, 'manual'); } catch { } const Swal = await getSwal(); Swal.fire({ title: '¡Ajustado!', icon: 'success', timer: 1500, showConfirmButton: false }); setProductoAjuste(null); }} />}
                 </Suspense>
 
@@ -323,7 +332,7 @@ export default function InventarioPage() {
                     handleCrearCategoria={handleCrearCategoria}
                     handleEliminarCategoria={handleEliminarCategoria}
                     handleBorrarTodo={handleBorrarTodo}
-                    setMostrarKardex={canManageAudit ? setMostrarKardex : null}
+                    setMostrarKardex={setMostrarKardex}
                     abrirModalCrear={abrirModalCrear}
                     tieneProductos={safeProductos.length > 0}
                     // 🆕 PROPS NUEVAS

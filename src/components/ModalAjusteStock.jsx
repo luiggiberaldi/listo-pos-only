@@ -39,7 +39,7 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
   const factorBulto = contBulto * (showPaquete ? contPaq : 1);
 
   const calcularCantidadTotal = () => {
-    if (producto?.tipoUnidad === 'peso') return parseFloat(cantidad.unidades) || 0;
+    if (producto?.tipoUnidad === 'peso' || producto?.tipoUnidad === 'litro') return parseFloat(cantidad.unidades) || 0;
     const b = parseInt(cantidad.bultos) || 0;
     const p = parseInt(cantidad.paquetes) || 0;
     const u = parseInt(cantidad.unidades) || 0;
@@ -70,6 +70,7 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
 
   const getStockProyectadoLabel = () => {
     if (producto?.tipoUnidad === 'peso') return `${stockFinal.toFixed(3)} Kg`;
+    if (producto?.tipoUnidad === 'litro') return `${stockFinal.toFixed(3)} Lt`;
     if (stockFinal <= 0) return "0 Unidades";
 
     const items = [];
@@ -252,8 +253,8 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
           <div className="space-y-3">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Cantidad a {tipo === 'entrada' ? 'Agregar' : 'Retirar'}</label>
 
-            {producto?.tipoUnidad === 'peso' ? (
-              <div className="flex items-center gap-2"><input type="number" step="0.001" className="w-full p-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-2xl font-bold text-center bg-white dark:bg-slate-950 outline-none focus:border-indigo-500" placeholder="0.000" value={cantidad.unidades} onChange={e => setCantidad({ ...cantidad, unidades: e.target.value })} autoFocus /><span className="text-lg font-bold text-slate-400">Kg</span></div>
+            {producto?.tipoUnidad === 'peso' || producto?.tipoUnidad === 'litro' ? (
+              <div className="flex items-center gap-2"><input type="number" step="0.001" className="w-full p-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-2xl font-bold text-center bg-white dark:bg-slate-950 outline-none focus:border-indigo-500" placeholder="0.000" value={cantidad.unidades} onChange={e => setCantidad({ ...cantidad, unidades: e.target.value })} autoFocus /><span className="text-lg font-bold text-slate-400">{producto?.tipoUnidad === 'litro' ? 'Lt' : 'Kg'}</span></div>
             ) : (
               <div className={gridColsClass}>
                 {showBulto && (
@@ -310,7 +311,7 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
             <input className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm" placeholder="Detalle extra (Ej: #Factura, Nombre de quien retiró...)" value={notaAdicional} onChange={e => setNotaAdicional(e.target.value)} />
           </div>
 
-          {tipo === 'entrada' && producto?.tipoUnidad !== 'peso' && (
+          {tipo === 'entrada' && producto?.tipoUnidad !== 'peso' && producto?.tipoUnidad !== 'litro' && (
             <div>
               <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center gap-2">
                 <Calendar size={14} /> Actualizar Vencimiento (Opcional)
@@ -376,7 +377,7 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
               {getStockProyectadoLabel()}
             </div>
             <p className={`text-3xl font-extrabold ${tipo === 'entrada' ? 'text-green-600' : 'text-red-500'}`}>
-              {(parseFloat(stockFinal) || 0).toFixed(producto?.tipoUnidad === 'peso' ? 3 : 0)} <span className="text-xs">Total Unds</span>
+              {(parseFloat(stockFinal) || 0).toFixed((producto?.tipoUnidad === 'peso' || producto?.tipoUnidad === 'litro') ? 3 : 0)} <span className="text-xs">Total</span>
             </p>
           </div>
 

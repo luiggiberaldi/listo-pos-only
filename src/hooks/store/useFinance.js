@@ -13,8 +13,15 @@ export const useFinance = () => {
     ];
 
     const [metodosPago, setMetodosPago] = useState(() => {
-        const cargados = safeLoad('listo-metodos', metodosDefault);
-        return Array.isArray(cargados) ? cargados : metodosDefault;
+        let cargados = safeLoad('listo-metodos', metodosDefault);
+        if (Array.isArray(cargados)) {
+            const tieneCashea = cargados.some(m => m.id === 'cashea');
+            if (!tieneCashea) {
+                cargados = [...cargados, { id: 'cashea', nombre: 'Cashea', tipo: 'DIVISA', icono: 'Smartphone', activo: true, requiereRef: true, aplicaIGTF: false }];
+            }
+            return cargados;
+        }
+        return metodosDefault;
     });
 
     useEffect(() => { localStorage.setItem('listo-metodos', JSON.stringify(metodosPago)); }, [metodosPago]);

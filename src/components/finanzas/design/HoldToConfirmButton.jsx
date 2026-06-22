@@ -19,24 +19,29 @@ export default function HoldToConfirmButton({ onConfirm, label = 'MANTENER PARA 
     const theme = SHIMMER_COLORS[color] || SHIMMER_COLORS.indigo;
 
     useEffect(() => {
+        let animId;
         if (isHolding && !disabled && !hasConfirmedRef.current) {
             const startTime = Date.now();
-            intervalRef.current = setInterval(() => {
+            const update = () => {
                 const elapsed = Date.now() - startTime;
                 const newProgress = Math.min((elapsed / HOLD_TIME) * 100, 100);
                 setProgress(newProgress);
 
                 if (newProgress >= 100) {
                     handleComplete();
+                } else {
+                    animId = requestAnimationFrame(update);
                 }
-            }, 10);
+            };
+            animId = requestAnimationFrame(update);
         } else {
-            clearInterval(intervalRef.current);
             if (!hasConfirmedRef.current) setProgress(0);
         }
 
-        return () => clearInterval(intervalRef.current);
-    }, [isHolding, disabled]);
+        return () => {
+            if (animId) cancelAnimationFrame(animId);
+        };
+    }, [isHolding, disabled, handleComplete]);
 
     const handleComplete = useCallback(() => {
         if (hasConfirmedRef.current) return;

@@ -12,6 +12,28 @@ import { SecureStorage } from '../../utils/SecureStorage';
 // Una vez que todos los terminales migren a JWT (V2), este import puede eliminarse.
 import { LICENSE_SALT_LEGACY } from '../../config/licenseLegacy';
 
+// Helper para decodificar JWT sin depender de jsrsasign en el navegador (evita fallos de ESM/globals)
+const decodeJWT = (token) => {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const utf8Decoder = new TextDecoder('utf-8');
+        return JSON.parse(utf8Decoder.decode(bytes));
+    } catch (e) {
+        console.error("Error decoding JWT:", e);
+        return null;
+    }
+};
+
 export const useLicenseGuard = () => {
     const [status, setStatus] = useState('checking'); // checking | authorized | unauthorized | connecting
     const [machineId, setMachineId] = useState(null);
@@ -77,7 +99,8 @@ export const useLicenseGuard = () => {
 
                     if (isValid) {
                         // 2. Leer Payload
-                        const payload = KJUR.jws.JWS.readSafeJSONString(storedLicense.split('.')[1]);
+                        const payload = decodeJWT(storedLicense);
+                        if (!payload) throw new Error("No se pudo decodificar el payload de la licencia.");
 
                         // [FIX M3] 3. Verificar Expiración (offline) — NUEVO
                         if (payload.exp) {

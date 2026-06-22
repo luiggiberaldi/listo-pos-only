@@ -29,7 +29,11 @@ export const useInventoryStore = create(ghostMiddleware((set, get) => ({
         set({ productos, categorias: cats, searchIndex: index });
     },
 
-    loadProductos: async () => {
+    loadProductos: async (force = false) => {
+        // Cache-first loading: si ya tenemos productos cargados en memoria,
+        // evitamos consultas redundantes a IndexedDB.
+        if (!force && get().productos.length > 0) return;
+
         try {
             const items = await db.productos.toArray();
             get().setProductos(items);

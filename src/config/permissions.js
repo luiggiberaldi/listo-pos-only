@@ -32,6 +32,7 @@ export const PERMISSIONS = {
     // 📦 INVENTARIO
     INVENTORY_VIEW: 'INVENTORY_VIEW',
     INV_VER: 'INV_VER', // Legacy Alias
+    INV_VER_KARDEX: 'INV_VER_KARDEX',
 
     INVENTORY_MANAGE: 'INVENTORY_MANAGE',
     INV_EDITAR: 'INV_EDITAR', // Alias preferido en UI
@@ -116,6 +117,7 @@ export const ROLE_PERMISSIONS = {
         // Gestión Operativa
         PERMISSIONS.INVENTORY_VIEW,
         PERMISSIONS.INV_VER,
+        PERMISSIONS.INV_VER_KARDEX,
         PERMISSIONS.INVENTORY_MANAGE,
         PERMISSIONS.INV_EDITAR,
         PERMISSIONS.INVENTORY_ADJUST,
@@ -206,6 +208,7 @@ export const PERMISSION_META = {
 
     // INVENTARIO
     [PERMISSIONS.INV_VER]: { label: 'Ver Catálogo', description: 'Consultar lista de productos y stock.', group: PERMISSION_GROUPS.INVENTORY.id },
+    [PERMISSIONS.INV_VER_KARDEX]: { label: 'Ver Historial (Kardex)', description: 'Consultar el historial de movimientos de inventario.', group: PERMISSION_GROUPS.INVENTORY.id },
     [PERMISSIONS.INV_VER_COSTOS]: { label: 'Ver Costos de Compra', description: 'Visualizar márgenes y precios de costo.', group: PERMISSION_GROUPS.INVENTORY.id },
     [PERMISSIONS.INV_EDITAR]: { label: 'Gestión de Productos', description: 'Crear o modificar datos de productos.', group: PERMISSION_GROUPS.INVENTORY.id, critical: true },
     [PERMISSIONS.INV_AJUSTE]: { label: 'Ajustes de Inventario', description: 'Corregir stock manualmente.', group: PERMISSION_GROUPS.INVENTORY.id, critical: true },

@@ -229,15 +229,7 @@ export default function ModalAbono({ cliente, onClose }) {
                                             className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-[#6366f1] outline-none shadow-sm"
                                         >
                                             {availableMethods.map((m, idx) => {
-                                                let emoji = '🔹';
-                                                const n = m.nombre.toLowerCase();
-                                                if (n.includes('efectivo')) emoji = (n.includes('bs') || m.tipo === 'BS') ? '🇻🇪' : '💵';
-                                                else if (n.includes('pago móvil') || n.includes('pago movil')) emoji = '📱';
-                                                else if (n.includes('punto') || n.includes('tarjeta')) emoji = '💳';
-                                                else if (n.includes('zelle')) emoji = '🇺🇸';
-                                                else if (n.includes('binance')) emoji = '🪙';
-                                                else if (n.includes('biopago')) emoji = '👆';
-                                                return <option key={idx} value={m.nombre}>{emoji} {m.nombre}</option>;
+                                                return <option key={idx} value={m.nombre}>{m.nombre}</option>;
                                             })}
                                         </select>
                                     </div>

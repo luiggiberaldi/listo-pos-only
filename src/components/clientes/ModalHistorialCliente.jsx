@@ -9,9 +9,12 @@ import { useReactToPrint } from 'react-to-print';
 import Ticket from '../Ticket';
 import TicketSaldoFavor from '../TicketSaldoFavor';
 import { generateAccountStatementPDF } from '../../utils/pdfGenerator'; // Static Import
+import CasheaIcon from '../CasheaIcon';
+import { useCustomers } from '../../hooks/store/useCustomers';
 
 export default function ModalHistorialCliente({ cliente: clienteProp, onClose }) {
     const { ventas, configuracion, registrarAbono, sanearCuentaCliente } = useStore();
+    const { convertDeudaToCashea, clearCasheaDeuda } = useCustomers();
     const [showAbono, setShowAbono] = useState(false);
     const [expandedRow, setExpandedRow] = useState(null);
     const [filterType, setFilterType] = useState('ALL');
@@ -107,7 +110,7 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
 
     const handleReprint = async (mov) => {
         setReprintData(mov);
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 400));
 
         if (mov.esAbono || (mov.vueltoCredito && mov.cambio > 0)) {
             handlePrintSaldo();
@@ -206,6 +209,55 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
         }
     };
 
+    // 🏪 CASHEA ACTIONS
+    const handleSaldarCashea = async () => {
+        const r = await Swal.fire({
+            title: '¿Saldar Deuda Cashea?',
+            text: `Se marcará la deuda de Cashea de $${(cliente.casheaDeuda || 0).toFixed(2)} como saldada. ¿Continuar?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, Saldar',
+            confirmButtonColor: '#9333ea'
+        });
+
+        if (r.isConfirmed) {
+            try {
+                await clearCasheaDeuda(cliente.id);
+                Swal.fire('Saldado', 'La deuda de Cashea ha sido saldada con éxito.', 'success');
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+    };
+
+    const handlePasarACashea = async () => {
+        const { value: amount } = await Swal.fire({
+            title: 'Convertir a Cashea',
+            text: `Ingrese el monto de la deuda fiada actual ($${(cliente.deuda || 0).toFixed(2)}) que desea pasar a financiamiento Cashea.`,
+            input: 'number',
+            inputAttributes: {
+                min: '0.01',
+                max: (cliente.deuda || 0).toString(),
+                step: 'any'
+            },
+            inputValue: (cliente.deuda || 0).toString(),
+            showCancelButton: true,
+            confirmButtonText: 'Convertir',
+            confirmButtonColor: '#9333ea'
+        });
+
+        if (amount) {
+            const parsedAmount = parseFloat(amount);
+            if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+            try {
+                await convertDeudaToCashea(cliente.id, parsedAmount);
+                Swal.fire('Convertido', `Se han transferido $${parsedAmount.toFixed(2)} a Deuda Cashea.`, 'success');
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
 
@@ -245,19 +297,30 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 bg-slate-50/50 dark:bg-slate-950/30">
 
                     {/* CARD: SALDO QUADRANTS */}
-                    <div className="md:col-span-5 grid grid-cols-2 gap-4">
+                    <div className={`${cliente.casheaDeuda > 0 ? 'md:col-span-7' : 'md:col-span-5'} grid ${cliente.casheaDeuda > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
                         {/* DEUDA */}
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-red-100 dark:border-red-900/30 shadow-sm relative overflow-hidden group">
                             <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-1">
                                     <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Deuda (Fiado)</p>
-                                    <button
-                                        onClick={() => handleSanearCuenta('DEUDA')}
-                                        className="text-slate-900 dark:text-slate-100 hover:text-black transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                                        title="Sanear Deuda"
-                                    >
-                                        <Settings size={14} />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                        {cliente.deuda > 0.01 && (
+                                            <button
+                                                onClick={handlePasarACashea}
+                                                className="text-[9px] font-bold text-purple-600 hover:text-purple-800 transition-colors bg-purple-50 dark:bg-purple-950/20 px-1 py-0.5 rounded border border-purple-100 dark:border-purple-900/30"
+                                                title="Pasar a Cashea"
+                                            >
+                                                → Cashea
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleSanearCuenta('DEUDA')}
+                                            className="text-slate-900 dark:text-slate-100 hover:text-black transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                                            title="Sanear Deuda"
+                                        >
+                                            <Settings size={14} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="text-3xl font-black text-red-600 dark:text-red-400 font-numbers">${(cliente.deuda || 0).toFixed(2)}</div>
                                 <p className="text-[10px] font-medium text-slate-400 mt-1">
@@ -268,6 +331,31 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
                                 <AlertCircle size={80} />
                             </div>
                         </div>
+
+                        {/* DEUDA CASHEA */}
+                        {cliente.casheaDeuda > 0 && (
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 shadow-sm relative overflow-hidden group">
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Deuda Cashea</p>
+                                        <button
+                                            onClick={handleSaldarCashea}
+                                            className="text-purple-600 dark:text-purple-400 hover:text-purple-800 transition-colors p-1 rounded-full hover:bg-purple-50 dark:hover:bg-slate-800 font-extrabold text-[10px]"
+                                            title="Saldar Cashea"
+                                        >
+                                            Saldar
+                                        </button>
+                                    </div>
+                                    <div className="text-3xl font-black text-purple-600 dark:text-purple-400 font-numbers">${(cliente.casheaDeuda || 0).toFixed(2)}</div>
+                                    <p className="text-[10px] font-medium text-slate-400 mt-1">
+                                        Financiado
+                                    </p>
+                                </div>
+                                <div className="absolute -right-4 -top-4 text-purple-50 dark:text-purple-900/10 transform rotate-12 group-hover:scale-110 transition-transform pointer-events-none">
+                                    <CasheaIcon size={80} />
+                                </div>
+                            </div>
+                        )}
 
                         {/* FAVOR */}
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm relative overflow-hidden group">
@@ -294,10 +382,10 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
                     </div>
 
                     {/* CARD: SALUD */}
-                    <div className="md:col-span-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center">
+                    <div className={`${cliente.casheaDeuda > 0 ? 'md:col-span-3' : 'md:col-span-4'} bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-center`}>
                         <div className="flex justify-between items-end mb-2">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salud Crediticia</p>
-                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${porcentajePagado >= 90 ? 'bg-emerald-100 text-emerald-700' : porcentajePagado >= 50 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${porcentajePagado >= 90 ? 'bg-emerald-100 text-emerald-700' : porcentajePagado >= 50 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
                                 {porcentajePagado.toFixed(0)}% PAGADO
                             </span>
                         </div>
@@ -313,7 +401,7 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
                     </div>
 
                     {/* CARD: ACTION */}
-                    <div className="md:col-span-3 flex items-center justify-end">
+                    <div className={`${cliente.casheaDeuda > 0 ? 'md:col-span-2' : 'md:col-span-3'} flex items-center justify-end`}>
                         <button
                             onClick={() => setShowAbono(true)}
                             disabled={(cliente.deuda || 0) <= 0.01}
@@ -537,7 +625,7 @@ export default function ModalHistorialCliente({ cliente: clienteProp, onClose })
                 </div>
 
                 {/* 🖨️ TICKETS OCULTOS PARA IMPRESIÓN */}
-                <div style={{ display: 'none' }}>
+                <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0', height: '0', overflow: 'hidden' }}>
                     <Ticket ref={ticketRef} data={reprintData} />
                     <TicketSaldoFavor ref={ticketSaldoRef} data={reprintData} />
                 </div>

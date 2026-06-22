@@ -19,7 +19,7 @@ import { useConfigStore } from '../stores/useConfigStore';
 import UserCard from '../components/login/UserCard';
 import LoginPinModal from '../components/login/LoginPinModal';
 import LoginFeedbackModal from '../components/login/LoginFeedbackModal';
-import LegalModal from '../components/auth/LegalModal';
+const LegalModal = React.lazy(() => import('../components/auth/LegalModal'));
 
 const PIN_LENGTH = 6;
 
@@ -321,11 +321,13 @@ export default function LoginScreen() {
             </motion.div>
 
             {/* 🟢 LEGAL MODAL */}
-            <LegalModal
-                isOpen={legalModalState.isOpen}
-                docType={legalModalState.docType}
-                onClose={() => setLegalModalState(prev => ({ ...prev, isOpen: false }))}
-            />
+            <React.Suspense fallback={null}>
+                <LegalModal
+                    isOpen={legalModalState.isOpen}
+                    docType={legalModalState.docType}
+                    onClose={() => setLegalModalState(prev => ({ ...prev, isOpen: false }))}
+                />
+            </React.Suspense>
 
         </div>
     );

@@ -12,7 +12,6 @@ import { useSyncEngine } from './useSyncEngine';
 import { useStore } from '../../context/StoreContext';
 import { dbClient } from '../../services/firebase'; // ✅ Explicit Client DB
 import { serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { useCajaEstado } from '../caja/useCajaEstado';
 
@@ -28,82 +27,108 @@ export const useListoGoSync = () => {
     const { syncSnapshot } = useSyncEngine();
     const [lastSyncStatus, setLastSyncStatus] = useState('idle');
 
-    // 2. EXTRA DATA (Async Logic via Dexie)
-    const extraStats = useLiveQuery(async () => {
-        // A. Total Deuda Clientes & Lista
-        let totalDeuda = 0;
-        const deudores = [];
+    // 2. EXTRA DATA (Async Logic via Dexie - Polled every 30s instead of live query)
+    const [extraStats, setExtraStats] = useState({
+        totalDeuda: 0,
+        anuladas: 0,
+        topDeudores: [],
+        totalVentasActivasHoy: 0,
+        metodosPagoHoy: {},
+        recentPayments: []
+    });
 
-        await db.clientes.each(c => {
-            const d = parseFloat(c.deuda || 0);
-            if (d > 0) {
-                totalDeuda += d;
-                deudores.push({
-                    id: c.id,
-                    nombre: c.nombre,
-                    telefono: c.telefono,
-                    deuda: d
-                });
-            }
-        });
+    useEffect(() => {
+        let active = true;
+        
+        const fetchExtraStats = async () => {
+            try {
+                // A. Total Deuda Clientes & Lista
+                let totalDeuda = 0;
+                const deudores = [];
 
-        // Sort descending & limit top 50
-        deudores.sort((a, b) => b.deuda - a.deuda);
-        const topDeudores = deudores.slice(0, 50);
-
-        // B. Alertas de Anulación (Hoy)
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-
-        const anuladas = await db.ventas
-            .where('fecha').between(startOfDay, endOfDay)
-            .filter(v => v.status === 'ANULADA')
-            .count();
-
-        // C. Feed de Pagos Recientes (Monitor de Tesorería)
-        const paymentFeed = [];
-        let totalVentasActivasHoy = 0;
-        const metodosPagoHoy = {};
-
-        // TODO: Add composite index [fecha+status] in Dexie schema for better performance
-        const ventasActivas = await db.ventas
-            .where('fecha').between(startOfDay, endOfDay)
-            .filter(v => v.status !== 'ANULADA')
-            .reverse()
-            .limit(500) // Cap to prevent memory issues on high-volume days
-            .toArray();
-
-        ventasActivas.forEach(v => {
-            totalVentasActivasHoy += v.total || 0;
-            if (v.pagos && Array.isArray(v.pagos)) {
-                v.pagos.forEach((p, idx) => {
-                    // Update Stats
-                    if (p.metodo && p.monto) {
-                        metodosPagoHoy[p.metodo] = (metodosPagoHoy[p.metodo] || 0) + p.monto;
-                    }
-
-                    // Feed Collection (Only with Reference)
-                    if (p.referencia && p.referencia.length >= 2) {
-                        paymentFeed.push({
-                            id: `${v.id}_${idx}`,
-                            hora: v.fecha,
-                            metodo: p.metodo,
-                            monto: p.monto,
-                            referencia: p.referencia,
-                            cliente: v.clienteNombre || 'Cliente'
+                await db.clientes.each(c => {
+                    const d = parseFloat(c.deuda || 0);
+                    if (d > 0) {
+                        totalDeuda += d;
+                        deudores.push({
+                            id: c.id,
+                            nombre: c.nombre,
+                            telefono: c.telefono,
+                            deuda: d
                         });
                     }
                 });
+
+                // Sort descending & limit top 50
+                deudores.sort((a, b) => b.deuda - a.deuda);
+                const topDeudores = deudores.slice(0, 50);
+
+                // B. Alertas de Anulación (Hoy)
+                const now = new Date();
+                const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+                const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+                const anuladas = await db.ventas
+                    .where('fecha').between(startOfDay, endOfDay)
+                    .filter(v => v.status === 'ANULADA')
+                    .count();
+
+                // C. Feed de Pagos Recientes (Monitor de Tesorería)
+                const paymentFeed = [];
+                let totalVentasActivasHoy = 0;
+                const metodosPagoHoy = {};
+
+                const ventasActivas = await db.ventas
+                    .where('fecha').between(startOfDay, endOfDay)
+                    .filter(v => v.status !== 'ANULADA')
+                    .reverse()
+                    .limit(500) // Cap to prevent memory issues on high-volume days
+                    .toArray();
+
+                ventasActivas.forEach(v => {
+                    totalVentasActivasHoy += v.total || 0;
+                    if (v.pagos && Array.isArray(v.pagos)) {
+                        v.pagos.forEach((p, idx) => {
+                            // Update Stats
+                            if (p.metodo && p.monto) {
+                                metodosPagoHoy[p.metodo] = (metodosPagoHoy[p.metodo] || 0) + p.monto;
+                            }
+
+                            // Feed Collection (Only with Reference)
+                            if (p.referencia && p.referencia.length >= 2) {
+                                paymentFeed.push({
+                                    id: `${v.id}_${idx}`,
+                                    hora: v.fecha,
+                                    metodo: p.metodo,
+                                    monto: p.monto,
+                                    referencia: p.referencia,
+                                    cliente: v.clienteNombre || 'Cliente'
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Sort feed desc by time just in case, limit 15
+                paymentFeed.sort((a, b) => new Date(b.hora) - new Date(a.hora));
+                const recentPayments = paymentFeed.slice(0, 15);
+
+                if (active) {
+                    setExtraStats({ totalDeuda, anuladas, topDeudores, totalVentasActivasHoy, metodosPagoHoy, recentPayments });
+                }
+            } catch (err) {
+                console.warn('[useListoGoSync] Error querying stats:', err);
             }
-        });
+        };
 
-        // Sort feed desc by time just in case, limit 15
-        paymentFeed.sort((a, b) => new Date(b.hora) - new Date(a.hora));
-        const recentPayments = paymentFeed.slice(0, 15);
+        fetchExtraStats();
+        const interval = setInterval(fetchExtraStats, 30000); // ⏱️ 30s Polling
 
-        return { totalDeuda, anuladas, topDeudores, totalVentasActivasHoy, metodosPagoHoy, recentPayments };
-    }, []) || { totalDeuda: 0, anuladas: 0, topDeudores: [], recentPayments: [] };
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
+    }, []);
 
     // 3. REF Y DEBOUNCE
     const timeoutRef = useRef(null);

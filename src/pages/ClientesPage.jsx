@@ -18,6 +18,7 @@ const getSwal = async () => {
 import ModalAbono from '../components/clientes/ModalAbono';
 import ModalHistorialCliente from '../components/clientes/ModalHistorialCliente';
 import ModalClienteForm from '../components/clientes/ModalClienteForm';
+import CasheaIcon from '../components/CasheaIcon';
 
 // ✅ SEGURIDAD
 import { ActionGuard } from '../components/security/ActionGuard';
@@ -92,9 +93,10 @@ export default function ClientesPage() {
   const abrirFormulario = (c = null) => { setClienteEditando(c); setModalFormOpen(true); };
 
   // Componente de Saldo Quadrants
-  const QuadrantsBadge = ({ deuda, favor }) => {
+  const QuadrantsBadge = ({ deuda, favor, casheaDeuda }) => {
     const d = parseFloat(deuda || 0);
     const f = parseFloat(favor || 0);
+    const cd = parseFloat(casheaDeuda || 0);
 
     return (
       <div className="flex flex-col gap-1 items-start">
@@ -103,12 +105,17 @@ export default function ClientesPage() {
             <AlertCircle size={10} /> Deuda: ${d.toFixed(2)}
           </span>
         )}
+        {cd > 0.01 && (
+          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-100 uppercase tracking-tighter w-full">
+            <CasheaIcon size={10} /> Cashea: ${cd.toFixed(2)}
+          </span>
+        )}
         {f > 0.01 && (
           <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-100 uppercase tracking-tighter w-full">
             <UserCheck size={10} /> Favor: ${f.toFixed(2)}
           </span>
         )}
-        {d <= 0.01 && f <= 0.01 && (
+        {d <= 0.01 && cd <= 0.01 && f <= 0.01 && (
           <span className="text-slate-400 font-medium text-[10px] bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">Solvente</span>
         )}
       </div>
@@ -223,7 +230,7 @@ export default function ClientesPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1 items-start">
-                        <QuadrantsBadge deuda={c.deuda} favor={c.favor} />
+                        <QuadrantsBadge deuda={c.deuda} favor={c.favor} casheaDeuda={c.casheaDeuda} />
                         {(c.deuda > 0) && (
                           <span className="text-[10px] font-bold text-slate-400 pl-1">
                             ≈ Bs {(c.deuda * configuracion.tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}

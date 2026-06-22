@@ -230,8 +230,8 @@ export default function SalesHistoryPage() {
             className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
           >
             <option value="TODOS">Todas las Ventas</option>
-            <option value="APROBADA">✅ Solo Válidas</option>
-            <option value="ANULADA">🗑️ Solo Anuladas</option>
+            <option value="APROBADA">Solo Válidas</option>
+            <option value="ANULADA">Solo Anuladas</option>
           </select>
         </div>
       </div>

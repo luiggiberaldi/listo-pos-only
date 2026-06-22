@@ -106,7 +106,7 @@ export const useSyncEngine = () => {
 
   // 3. CICLO DE VIDA (Heartbeat)
   useEffect(() => {
-    const intervalo = setInterval(procesarCola, 10000); // Cada 10 segundos
+    const intervalo = setInterval(procesarCola, 30000); // Cada 30 segundos
 
     // Listeners de red para reactivar inmediato
     const handleOnline = () => procesarCola();

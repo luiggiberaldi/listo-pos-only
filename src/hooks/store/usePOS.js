@@ -116,7 +116,7 @@ export const usePOS = (
                     precioEsperado = parseFloat(p.jerarquia?.paquete?.precio || 0);
                 } else if (item.unidadVenta === 'unidad' && p.jerarquia?.unidad?.activo) {
                     precioEsperado = parseFloat(p.jerarquia?.unidad?.precio || p.precio);
-                } else if (item.tipoUnidad === 'peso') {
+                } else if (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') {
                     precioEsperado = parseFloat(p.precio);
                 }
 

@@ -276,6 +276,7 @@ const Ticket = React.forwardRef(({ data, configOverride }, ref) => {
                     let prefijo = '';
                     let cantidadVisual = item.cantidad;
                     if (item.tipoUnidad === 'peso') { prefijo = 'Kg'; cantidadVisual = item.cantidad?.toFixed(3); }
+                    else if (item.tipoUnidad === 'litro') { prefijo = 'Lt'; cantidadVisual = item.cantidad?.toFixed(3); }
 
                     const precioFinal = item.importe || (item.precio * item.cantidad);
 
@@ -349,12 +350,20 @@ const Ticket = React.forwardRef(({ data, configOverride }, ref) => {
                     )}
 
                     {/* CREDIT / CHANGE INFO */}
-                    {data.esCredito && data.deudaPendiente > 0 && (
+                    {(data.tipo === 'VENTA_CASHEA' || data.esCashea) && data.deudaPendiente > 0 && (
+                      <div className="mt-2 pt-2 border-t border-dashed border-black">
+                        <div className="flex justify-between font-bold text-[1.1em]"><span>PAGADO HOY (Inicial):</span><span>${(displayTotal - data.deudaPendiente).toFixed(2)}</span></div>
+                        <div className="flex justify-between font-black text-[1.1em] bg-black text-white px-1"><span>FINANCIADO CASHEA:</span><span>${Number(data.deudaPendiente).toFixed(2)}</span></div>
+                      </div>
+                    )}
+
+                    {!data.esCashea && data.tipo !== 'VENTA_CASHEA' && data.esCredito && data.deudaPendiente > 0 && (
                       <div className="mt-2 pt-2 border-t border-dashed border-black">
                         <div className="flex justify-between font-bold text-[1.1em]"><span>PAGADO:</span><span>${(displayTotal - data.deudaPendiente).toFixed(2)}</span></div>
                         <div className="flex justify-between font-black text-[1.2em] bg-black text-white px-1"><span>RESTANTE A CRÉDITO:</span><span>${Number(data.deudaPendiente).toFixed(2)}</span></div>
                       </div>
                     )}
+
                     {/* VUELTO */}
                     {(() => {
                       const changeTotal = (Number(data.distribucionVuelto?.usd) || 0) + (Number(data.distribucionVuelto?.bs) / tasaVenta || 0) + (Number(data.appliedToWallet) || 0);

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ListaMetodos from '../../components/config/ListaMetodos';
 import Swal from 'sweetalert2';
+import CasheaIcon from '../../components/CasheaIcon';
 
 export default function ConfigFinanzas({ form, handleChange, handleGuardar, setForm, readOnly }) {
   // ✅ LÓGICA INTACTA: Usamos el contexto para acceder a la función real
@@ -372,6 +373,63 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
                   className="w-full text-lg font-black bg-surface-light dark:bg-slate-900 border-2 border-border-subtle dark:border-slate-700 rounded-xl px-4 py-3 focus:border-status-warning focus:ring-4 focus:ring-status-warning/10 outline-none transition-all text-content-main dark:text-content-inverse"
                 />
                 <span className="absolute right-4 top-9 text-content-secondary font-bold">%</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🏪 ZONA DE CONFIGURACIÓN CASHEA */}
+        {!readOnly && (
+          <div className="mb-8 p-6 bg-surface-light dark:bg-surface-dark rounded-2xl shadow-sm border border-border-subtle dark:border-slate-700 animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg">
+                <CasheaIcon size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-content-main dark:text-content-inverse">Módulo Cashea (BNPL)</h3>
+                <p className="text-sm text-content-secondary">Permite a tus clientes comprar ahora y pagar después con financiamiento Cashea.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6 items-center">
+              {/* TOGGLE ACTIVAR */}
+              <div
+                onClick={() => setForm(prev => ({ ...prev, casheaActivo: !prev.casheaActivo }))}
+                className={`flex-1 w-full flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${form.casheaActivo
+                  ? 'bg-purple-50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-800'
+                  : 'bg-app-light border-border-subtle dark:bg-slate-800 dark:border-slate-700 hover:border-purple-300'
+                  }`}
+              >
+                <div>
+                  <span className="font-bold text-content-main dark:text-content-inverse block">Habilitar Cashea</span>
+                  <span className="text-xs text-content-secondary">Permitir este método de pago en caja</span>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${form.casheaActivo ? 'bg-purple-600' : 'bg-slate-300'}`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${form.casheaActivo ? 'translate-x-6' : ''}`} />
+                </div>
+              </div>
+
+              {/* INPUT MONTO MÍNIMO */}
+              <div className={`flex-1 w-full relative ${!form.casheaActivo && 'opacity-50 pointer-events-none'}`}>
+                <label className="text-xs font-bold text-content-secondary uppercase mb-1 block">Monto Mínimo de Venta (USD)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.casheaMinimo !== undefined && form.casheaMinimo !== null ? form.casheaMinimo : ''}
+                  onChange={e => {
+                      const val = e.target.value;
+                      setForm({ ...form, casheaMinimo: val === '' ? '' : parseFloat(val) });
+                  }}
+                  onFocus={e => e.target.select()}
+                  onBlur={() => {
+                      if (form.casheaMinimo === '' || form.casheaMinimo === undefined || form.casheaMinimo === null) {
+                          setForm({ ...form, casheaMinimo: 0 });
+                      }
+                  }}
+                  className="w-full text-lg font-black bg-surface-light dark:bg-slate-900 border-2 border-border-subtle dark:border-slate-700 rounded-xl px-4 py-3 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all text-content-main dark:text-content-inverse"
+                />
+                <span className="absolute right-4 top-9 text-content-secondary font-bold">$</span>
               </div>
             </div>
           </div>

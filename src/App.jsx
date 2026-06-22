@@ -21,22 +21,21 @@ import { initSupabase } from './services/supabaseClient';
 // 👻 GHOST UI HIDDEN
 // import { ghostService } from './services/ghostAI';
 
-// Layouts (eager - needed immediately)
+// Layouts and Pages (eager - imported statically for instant 0ms tab switches)
 import MainLayout from './layout/MainLayout';
 import LoginScreen from './pages/LoginScreen';
+import Dashboard from './pages/Dashboard';
+import PosPage from './pages/PosPage';
+import InventarioPage from './pages/InventarioPage';
+import NotFound from './pages/NotFound';
 
-// 🚀 LAZY LOADED PAGES (Route-based code splitting)
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const PosPage = lazy(() => import('./pages/PosPage'));
-const InventarioPage = lazy(() => import('./pages/InventarioPage'));
-const ConfigPage = lazy(() => import('./pages/ConfigPage'));
-const CierrePage = lazy(() => import('./pages/CierrePage'));
-const ClientesPage = lazy(() => import('./pages/ClientesPage'));
-const TotalDiarioPage = lazy(() => import('./pages/TotalDiarioPage'));
-const ReportesPage = lazy(() => import('./pages/ReportesPage'));
-const SimulationPage = lazy(() => import('./pages/SimulationPage'));
+const ConfigPage       = lazy(() => import('./pages/ConfigPage'));
+const CierrePage       = lazy(() => import('./pages/CierrePage'));
+const ClientesPage     = lazy(() => import('./pages/ClientesPage'));
+const TotalDiarioPage  = lazy(() => import('./pages/TotalDiarioPage'));
+const ReportesPage     = lazy(() => import('./pages/ReportesPage'));
+const SimulationPage   = lazy(() => import('./pages/SimulationPage'));
 const SalesHistoryPage = lazy(() => import('./pages/SalesHistoryPage'));
-const NotFound = lazy(() => import('./pages/NotFound'));
 
 
 // Bounded error buffer (module-scoped, not on window)
@@ -61,11 +60,11 @@ function PlanGatedHome() {
   return <Dashboard />;
 }
 
-function App() {
-  const { isAuthenticated } = useSecurity();
-  useMasterTelemetry(); // 📡 ALWAYS ON: Monitoring for Remote PIN Resets & Telemetry
-  useListoGoSync();     // 🔄 ALWAYS ON: Syncing Sales/Inventory to Mobile App
-  useRemoteLockListener(); // 🔓 ALWAYS ON: Monitoring for Remote Unlock (Panic Release)
+// ⚡ PERFORMANCE: Background services initialized only after successful authentication
+const PostAuthServices = React.memo(() => {
+  useMasterTelemetry(); // 📡 ALWAYS ON (POST-AUTH): Monitoring for Remote PIN Resets & Telemetry
+  useListoGoSync();     // 🔄 ALWAYS ON (POST-AUTH): Syncing Sales/Inventory to Mobile App
+  useRemoteLockListener(); // 🔓 ALWAYS ON (POST-AUTH): Monitoring for Remote Unlock (Panic Release)
 
   // 📡 LAN MULTI-CAJA: Sync inventario entre PCs offline
   const lanConfig = React.useMemo(() => {
@@ -74,6 +73,12 @@ function App() {
     } catch { return {}; }
   }, []);
   useLanSync(lanConfig.role || 'principal', lanConfig.targetIP || '');
+
+  return null;
+});
+
+function App() {
+  const { isAuthenticated } = useSecurity();
 
   // 🔒 RUNTIME INTEGRITY CHECK (Fiscal Lock)
   React.useEffect(() => {
@@ -170,7 +175,7 @@ function App() {
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 </>
               ) : (
-                <Route path="/" element={<MainLayout />}>
+                <Route path="/" element={<><PostAuthServices /><MainLayout /></>}>
 
                   {/* 🏠 INICIO — Dashboard si Minimarket, POS si no */}
                   <Route index element={<PlanGatedHome />} />

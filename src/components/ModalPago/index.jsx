@@ -35,6 +35,10 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         val
     } = usePaymentState(initialClient, metodosActivos, isTouch);
 
+    // 🏪 CASHEA CHECKOUT STATES
+    const [casheaActive, setCasheaActive] = useState(false);
+    const [casheaPercent, setCasheaPercent] = useState(60);
+
     // 2️⃣ CALCULATIONS CORE (Financial Controller)
     const {
         montoIGTF,
@@ -46,7 +50,8 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         faltaPorPagar,
         faltaPorPagarBS,
         cambioUSD,
-        tasaSegura
+        tasaSegura,
+        casheaAmountUsd
     } = usePaymentCalculations({
         totalUSD,
         totalBS,
@@ -55,7 +60,9 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
         configuracion,
         metodosActivos,
         val,
-        pagoSaldoFavor
+        pagoSaldoFavor,
+        casheaActive,
+        casheaPercent
     });
 
     // 3️⃣ LOCAL UI STATE
@@ -206,6 +213,22 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
     const procesarPago = (imprimir = false) => {
         try {
             // Validations
+            if (casheaActive && !clienteSeleccionado) {
+                return Swal.fire('Cliente Requerido', 'Para realizar una venta con financiamiento Cashea, debe seleccionar un cliente.', 'warning');
+            }
+
+            if (casheaActive) {
+                const pagoHoy = math.round(totalPagadoGlobalUSD - casheaAmountUsd);
+                const inicialRequerida = math.round(totalUSD - casheaAmountUsd);
+                if (pagoHoy < inicialRequerida - 0.01) {
+                    return Swal.fire({
+                        icon: 'error',
+                        title: 'Inicial Insuficiente',
+                        text: `El cliente debe pagar al menos la inicial de $${inicialRequerida.toFixed(2)}. Pago actual: $${pagoHoy.toFixed(2)}.`
+                    });
+                }
+            }
+
             if (modo === 'contado' && faltaPorPagar > 0.01) return Swal.fire({ icon: 'error', title: 'Falta dinero', text: `Restan $${faltaPorPagar.toFixed(2)} por cobrar.`, timer: 1500, showConfirmButton: false });
             if (modo === 'credito' && !clienteSeleccionado) return Swal.fire('Atención', 'Para vender a crédito, debe seleccionar un cliente.', 'warning');
             if (parseFloat(pagoSaldoFavor || 0) > 0 && !clienteSeleccionado) return Swal.fire('Error', "PAGO MIXTO INVÁLIDO: Para usar saldo a favor debe tener un cliente activo.", 'error');
@@ -240,22 +263,35 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                 referencia: referencias[m.id] || ''
             }));
 
+            if (casheaActive && casheaAmountUsd > 0) {
+                pagosFinales.push({
+                    metodo: 'Cashea',
+                    metodoId: 'cashea',
+                    monto: casheaAmountUsd,
+                    tipo: 'DIVISA',
+                    medium: 'INTERNAL',
+                    referencia: referencias['cashea'] || 'FINANCIADO'
+                });
+            }
+
             const clienteObj = Array.isArray(clientes) ? clientes.find(c => c.id === clienteSeleccionado) : null;
             const nombreClienteFinal = clienteObj ? clienteObj.nombre : (clienteSeleccionado ? 'Cliente' : null);
 
             onPagar({
                 metodos: pagosFinales,
-                cambio: modo === 'credito' ? 0 : cambioUSD,
+                cambio: (modo === 'credito' || casheaActive) ? 0 : cambioUSD,
                 distribucionVuelto: distribucionFinal,
                 montoVueltoDigital: montoVueltoDigital,
                 esCredito: modo === 'credito',
                 clienteId: clienteSeleccionado || null,
                 clienteNombre: nombreClienteFinal,
                 cliente: clienteObj || null,
-                deudaPendiente: deudaCliente,
+                deudaPendiente: casheaActive ? casheaAmountUsd : deudaCliente,
                 igtfTotal: montoIGTF,
                 vueltoCredito: isChangeCredited,
-                montoSaldoFavor: parseFloat(pagoSaldoFavor) || 0
+                montoSaldoFavor: parseFloat(pagoSaldoFavor) || 0,
+                esCashea: casheaActive,
+                tipoVenta: casheaActive ? 'VENTA_CASHEA' : undefined
             }, imprimir);
 
         } catch (error) {
@@ -310,6 +346,11 @@ export default function ModalPago({ totalUSD, totalBS, totalImpuesto, tasa, onPa
                             isVueltoValido={isVueltoValido}
                             clientSearchTrigger={clientSearchTrigger}
                             onFinishSelection={handleFinishSelection}
+                            casheaActive={casheaActive}
+                            setCasheaActive={setCasheaActive}
+                            casheaPercent={casheaPercent}
+                            setCasheaPercent={setCasheaPercent}
+                            casheaAmountUsd={casheaAmountUsd}
                         />
 
                         {/* 🟢 COLUMNA DERECHA: INPUTS DE PAGO */}

@@ -28,7 +28,7 @@ export default function ProductoRow({ p, actions, configuracion, showCosts = fal
   }
 
   const [vistaActual, setVistaActual] = useState(vistas[0]?.id || 'unidad');
-  const esPeso = p.tipoUnidad === 'peso';
+  const esPeso = p.tipoUnidad === 'peso' || p.tipoUnidad === 'litro';
 
   const getFinanzas = () => {
     const costoBase = parseFloat(p.costo) || 0;

@@ -16,50 +16,50 @@ export const FinancialController = {
     calculateCartTotals: (items, taxRate = 0, exchangeRate = 1) => {
         let subtotalBase = 0;
         let totalImpuesto = 0;
+        let totalUSD_Sum = 0;
         let totalBS_Sum = 0;
         let totalExento = 0;
 
         const processedItems = items.map(item => {
             const precio = math.round(item.precio);
-            const cantidad = math.round(item.cantidad, 4); // Allow decimals for weight
-            const subtotalItemUSD = math.mul(precio, cantidad);
+            const cantidad = math.round(item.cantidad, 4);
+            
+            // Redondear subtotal del ítem a 2 decimales en USD
+            const subtotalItemUSD = math.round(math.mul(precio, cantidad), 2);
 
             let impuestoItem = 0;
             if (!item.exento && item.aplicaIva !== false) {
-                impuestoItem = math.mul(subtotalItemUSD, math.div(taxRate, 100));
+                impuestoItem = math.round(math.mul(subtotalItemUSD, math.div(taxRate, 100)), 2);
             } else {
                 totalExento = math.add(totalExento, subtotalItemUSD);
             }
 
-            // 🛡️ Pre-rounding totals per item as per Fénix Protocol
-            const totalItemUSD = math.round(math.add(subtotalItemUSD, impuestoItem), 2);
+            // Total del ítem en USD (suma de partes redondeadas)
+            const totalItemUSD = math.add(subtotalItemUSD, impuestoItem);
+            
+            // Total del ítem en BS (conversión directa y redondeada a 2 decimales)
             const totalItemBS = math.round(math.mul(totalItemUSD, exchangeRate), 2);
 
             subtotalBase = math.add(subtotalBase, subtotalItemUSD);
             totalImpuesto = math.add(totalImpuesto, impuestoItem);
+            totalUSD_Sum = math.add(totalUSD_Sum, totalItemUSD);
             totalBS_Sum = math.add(totalBS_Sum, totalItemBS);
 
             return {
                 ...item,
-                subtotalUSD: subtotalItemUSD, // Raw subtotal
+                subtotalUSD: subtotalItemUSD,
                 impuestoUSD: impuestoItem,
-                totalUSD: totalItemUSD, // Rounded
-                totalBS: totalItemBS // Rounded
+                totalUSD: totalItemUSD,
+                totalBS: totalItemBS
             };
         });
-
-        // Sum of rounded items (The "Ticket" truth)
-        const totalUSD = processedItems.reduce((acc, item) => math.add(acc, item.totalUSD), 0);
-
-        // Sum of rounded BS items (Visual consistency)
-        const totalBS = totalBS_Sum;
 
         return {
             subtotalBase: math.round(subtotalBase),
             totalImpuesto: math.round(totalImpuesto),
             totalExento: math.round(totalExento),
-            totalUSD: math.round(totalUSD),
-            totalBS: math.round(totalBS),
+            totalUSD: math.round(totalUSD_Sum),
+            totalBS: math.round(totalBS_Sum),
             processedItems
         };
     },
@@ -82,10 +82,10 @@ export const FinancialController = {
         payments.filter(p => p.amount > 0).forEach(p => {
             const amount = math.round(p.amount);
 
-            // Normalize to USD for totals
+            // Normalizar pago en Bs a dólares redondeando a 2 decimales
             let valInUSD = amount;
             if (p.currency === 'VES' || p.currency === 'BS' || p.tipo === 'BS') {
-                valInUSD = exchangeRate > 0 ? math.div(amount, exchangeRate) : 0;
+                valInUSD = exchangeRate > 0 ? math.round(math.div(amount, exchangeRate), 2) : 0;
                 totalPagadoBS = math.add(totalPagadoBS, amount);
             } else {
                 totalPagadoUSD = math.add(totalPagadoUSD, amount);
@@ -152,9 +152,10 @@ export const FinancialController = {
      * @param {number} changeToWallet - (+Change sent to Wallet)
      * @param {number} walletUsed - (-Wallet used to pay)
      */
-    simulateCustomerUpdate: (client, newDebtDelta = 0, changeToWallet = 0, walletUsed = 0) => {
+    simulateCustomerUpdate: (client, newDebtDelta = 0, changeToWallet = 0, walletUsed = 0, esCashea = false) => {
         let deuda = client.deuda || 0;
         let favor = client.favor || 0;
+        let casheaDeuda = client.casheaDeuda || 0;
 
         // 1. Consume Wallet (Pay with Favor)
         if (walletUsed > 0) {
@@ -164,7 +165,11 @@ export const FinancialController = {
 
         // 2. Add New Debt (Credit Sale)
         if (newDebtDelta > 0) {
-            deuda = math.add(deuda, newDebtDelta);
+            if (esCashea) {
+                casheaDeuda = math.add(casheaDeuda, newDebtDelta);
+            } else {
+                deuda = math.add(deuda, newDebtDelta);
+            }
         }
 
         // 3. Add Change to Wallet (Favor Increase)
@@ -199,7 +204,8 @@ export const FinancialController = {
 
         return {
             deuda: math.round(deuda),
-            favor: math.round(favor)
+            favor: math.round(favor),
+            casheaDeuda: math.round(casheaDeuda)
         };
     }
 };

@@ -181,6 +181,23 @@ const applySchema = (dbInstance) => {
   dbInstance.version(23).stores({
     ventas: '++id, fecha, corteId, clienteId, status, cajaId, idempotencyKey'
   });
+
+  // ⚡ V. 24: CASHEA SUPPORT (BNPL)
+  dbInstance.version(24).stores({
+    clientes: '++id, nombre, documento, deuda, favor, casheaDeuda'
+  }).upgrade(tx => {
+    return tx.table('clientes').toCollection().modify(cliente => {
+      if (cliente.casheaDeuda === undefined) {
+        cliente.casheaDeuda = 0;
+      }
+    });
+  });
+
+  // ⚡ V. 25: PERFORMANCE OPTIMIZED COMPOUND INDICES
+  dbInstance.version(25).stores({
+    ventas: '++id, fecha, corteId, clienteId, status, cajaId, idempotencyKey, [fecha+status], [fecha+clienteId]',
+    logs:   '++id, tipo, fecha, usuarioId, productId, producto, [tipo+fecha]'
+  });
 };
 
 // 🏭 DATABASE INSTANCE CREATION

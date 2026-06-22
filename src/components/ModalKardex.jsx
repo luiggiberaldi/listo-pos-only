@@ -6,7 +6,6 @@ import {
     ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { useStore } from '../context/StoreContext';
 
 // --- UTILS UI ---
 const getSafeType = (val) => {
@@ -16,8 +15,7 @@ const getSafeType = (val) => {
     } catch (e) { return 'ERROR'; }
 };
 
-export default function ModalKardex({ movimientos = [], productos = [], onClose }) {
-    const { eliminarMovimientos, eliminarMovimiento } = useStore();
+export default function ModalKardex({ movimientos = [], productos = [], eliminarMovimiento, eliminarMovimientos, onClose }) {
 
     // Filtros
     const [busqueda, setBusqueda] = useState('');
@@ -344,7 +342,7 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                         value={productoSeleccionado}
                         onChange={e => setProductoSeleccionado(e.target.value)}
                     >
-                        <option value="todos">📦 Todos los Productos</option>
+                        <option value="todos">Todos los Productos</option>
                         {
                             opcionesFiltro.productos.map((p) => (
                                 <option key={p.id} value={p.id}>{p.nombre}</option>
@@ -358,7 +356,7 @@ export default function ModalKardex({ movimientos = [], productos = [], onClose 
                         value={usuarioFiltro}
                         onChange={e => setUsuarioFiltro(e.target.value)}
                     >
-                        <option value="todos">👤 Todos los Usuarios</option>
+                        <option value="todos">Todos los Usuarios</option>
                         {opcionesFiltro.usuarios.map((n, i) => <option key={i} value={n}>{n}</option>)}
                     </select >
 

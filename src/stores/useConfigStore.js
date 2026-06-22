@@ -19,6 +19,7 @@ const DEFAULTS = {
     monedaBase: 'USD',
     porcentajeIva: 16, ivaActivo: false,
     igtfActivo: false, igtfTasa: 3.00,
+    casheaActivo: false, casheaMinimo: 0,
     pinAdmin: '123456',
     pinEmpleado: '000000',
     modoOscuro: false, tamanoLetra: 'normal',
@@ -140,7 +141,7 @@ export const useConfigStore = create(
                     {
                         id: 'GOOGLE_SCRIPTS',
                         nombre: 'Google Cloud (BCV)',
-                        url: 'https://script.google.com/macros/s/AKfycbxT9sKz_XWRWuQx_XP-BJ33T0hoAgJsLwhZA00v6nPt4Ij4jRjq-90mDGLVCsS6FXwW9Q/exec?token=Lvbp1994',
+                        url: 'https://script.google.com/macros/s/AKfycbx0N47Hg6XebPBhgSLnfkaFyR4ez9_UWFTCS0mcb978i5r-iraxcM5svMJao2HMtrtiAA/exec?token=Lvbp1994',
                         parser: (json, moneda) => moneda === 'EUR' ? (json.euro?.price || 0) : (json.bcv?.price || 0)
                     },
                     {
@@ -153,22 +154,30 @@ export const useConfigStore = create(
 
                 let valFinal = null;
                 let fuenteExitosa = null;
-                for (const prov of proveedores) {
+
+                const fetchProvider = async (prov) => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000);
                     try {
-                        const controller = new AbortController();
-                        setTimeout(() => controller.abort(), 8000);
                         const res = await fetch(prov.url, { signal: controller.signal });
                         if (!res.ok) throw new Error("HTTP " + res.status);
-
                         const json = await res.json();
                         const val = prov.parser(json, tipoMoneda);
-
                         if (val > 0) {
-                            valFinal = val;
-                            fuenteExitosa = prov.nombre;
-                            break;
+                            return { val, nombre: prov.nombre };
                         }
-                    } catch (e) { console.warn("Provider fail", prov.nombre); }
+                        throw new Error("Tasa inválida");
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
+                };
+
+                try {
+                    const result = await Promise.any(proveedores.map(prov => fetchProvider(prov)));
+                    valFinal = result.val;
+                    fuenteExitosa = result.nombre;
+                } catch (e) {
+                    console.warn("Todos los proveedores de tasa fallaron:", e);
                 }
 
                 if (valFinal) {

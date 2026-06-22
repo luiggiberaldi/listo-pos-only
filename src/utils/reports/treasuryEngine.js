@@ -42,7 +42,7 @@ export const agruparPorMetodo = (ventas = []) => {
             listaPagos.forEach(pago => {
                 // 🟢 CHANGE: Allow CREDIT and WALLET for Sales Breakdown (Pie Chart)
                 // We only skip INTERNAL system transfers that aren't sales
-                if (pago.medium === 'INTERNAL' && pago.tipo !== 'WALLET') return;
+                if (pago.medium === 'INTERNAL' && pago.tipo !== 'WALLET' && pago.metodoId !== 'cashea' && pago.id !== 'cashea' && (pago.metodo || '').toLowerCase() !== 'cashea') return;
 
                 // Normalize Method Name
                 let metodo = pago.metodo || pago.nombre || 'Otros';
@@ -165,7 +165,7 @@ export const agruparMetodosNativos = (ventas = []) => {
             listaPagos.forEach(pago => {
                 // 🟢 CHANGE: Allow CREDIT and WALLET for detailed native breakdown
                 // Only skip INTERNAL system transfers
-                if (pago.medium === 'INTERNAL' && pago.tipo !== 'WALLET') return;
+                if (pago.medium === 'INTERNAL' && pago.tipo !== 'WALLET' && pago.metodoId !== 'cashea' && pago.id !== 'cashea' && (pago.metodo || '').toLowerCase() !== 'cashea') return;
 
                 let metodo = pago.metodo || pago.nombre || 'Otros';
                 // Force "Crédito" label

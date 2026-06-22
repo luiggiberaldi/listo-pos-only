@@ -19,33 +19,39 @@ function computeCalcState(carrito, configuracion) {
         : new Decimal(0);
     const ivaDivisor = ivaGlobal.div(100);
 
-    // ✅ PERF H-6: Una sola iteración en lugar de dos .reduce() separados
-    const { subtotalUSD, totalImpuestoUSD, carritoBS, totalBS_Sum } = carrito.reduce((acc, item, index) => {
+    const { subtotalUSD, totalImpuestoUSD, totalUSD, carritoBS, totalBS_Sum } = carrito.reduce((acc, item, index) => {
         const precioUnitario = d(item.precio);
         const cantidad = d(item.cantidad);
-        const subtotalItemUSD = precioUnitario.times(cantidad);
+        
+        // 1. Redondear el subtotal de la línea en USD a 2 decimales inmediatamente
+        const subtotalItemUSD = precioUnitario.times(cantidad).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
+        // 2. Calcular el impuesto sobre la base ya redondeada del ítem y redondearlo a 2 decimales
         let impuestoItemUSD = d(0);
         if (!item.exento && item.aplicaIva !== false) {
-            impuestoItemUSD = subtotalItemUSD.times(ivaDivisor);
+            impuestoItemUSD = subtotalItemUSD.times(ivaDivisor).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
         }
 
-        const totalItemUSD = subtotalItemUSD.plus(impuestoItemUSD).toDecimalPlaces(4);
-        const totalItemBS = totalItemUSD.times(tasa).toDecimalPlaces(2);
+        // 3. El total de la línea es la suma exacta de sus partes redondeadas a 2 decimales
+        const totalItemUSD = subtotalItemUSD.plus(impuestoItemUSD);
+        
+        // 4. Convertir el total exacto de la línea a BS y redondear a 2 decimales
+        const totalItemBS = totalItemUSD.times(tasa).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
         acc.carritoBS[index] = totalItemBS.toNumber();
 
+        // 5. Acumular los totales usando las bases e impuestos ya redondeados individualmente
         acc.subtotalUSD = acc.subtotalUSD.plus(subtotalItemUSD);
         acc.totalImpuestoUSD = acc.totalImpuestoUSD.plus(impuestoItemUSD);
+        acc.totalUSD = acc.totalUSD.plus(totalItemUSD);
         acc.totalBS_Sum = acc.totalBS_Sum.plus(totalItemBS);
+        
         return acc;
-    }, { subtotalUSD: d(0), totalImpuestoUSD: d(0), carritoBS: [], totalBS_Sum: d(0) });
-
-    const totalRawUSD = subtotalUSD.plus(totalImpuestoUSD);
+    }, { subtotalUSD: d(0), totalImpuestoUSD: d(0), totalUSD: d(0), carritoBS: [], totalBS_Sum: d(0) });
 
     return {
         subtotalBase: subtotalUSD.toNumber(),
         totalImpuesto: totalImpuestoUSD.toNumber(),
-        totalUSD: totalRawUSD.toDecimalPlaces(2).toNumber(),
+        totalUSD: totalUSD.toNumber(), // Libre de drift fila-vs-total
         totalBS: totalBS_Sum.toNumber(),
         carritoBS,
         tasa: tasa.toNumber(),

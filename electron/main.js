@@ -515,7 +515,7 @@ ipcMain.handle('search-product-image', async (event, query) => {
     const [tuzonaResults, cocoResults, instaResults] = await Promise.all([
       searchProvider(`https://tuzonamarket.com/carabobo/buscar?q=${q}`, '.item-img img', 'TuZona'),
       searchProvider(`https://www.cocomercado.com/search?q=${q}`, '.card__img img', 'Coco'),
-      searchProvider(`https://instamarketca.com/?s=${q}&post_type=product`, '.product-image img', 'InstaMarket')
+      searchProvider(`https://instamarketca.com/?s=${q}&post_type=product`, '.box-image img', 'InstaMarket')
     ]);
 
     const allResults = [...tuzonaResults, ...cocoResults, ...instaResults];

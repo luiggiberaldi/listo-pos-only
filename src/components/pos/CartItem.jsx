@@ -1,5 +1,5 @@
 import React, { memo, useRef, useEffect } from 'react';
-import { Layers, Package, Scale, Calculator, X, Minus, Plus, AlertTriangle } from 'lucide-react';
+import { Layers, Package, Scale, Calculator, X, Minus, Plus, AlertTriangle, Droplet } from 'lucide-react';
 
 const CartItem = memo(({
     item,
@@ -24,7 +24,7 @@ const CartItem = memo(({
     // 🌟 Auto-scroll cuando se selecciona por teclado
     useEffect(() => {
         if (isKeyboardSelected && itemRef.current) {
-            itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            itemRef.current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
         }
     }, [isKeyboardSelected]);
 
@@ -35,6 +35,8 @@ const CartItem = memo(({
         Badge = <span className="text-[9px] font-black uppercase text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Package size={9} /> PACK x{item.jerarquia?.paquete?.contenido || 1}</span>;
     } else if (item.tipoUnidad === 'peso') {
         Badge = <span className="text-[9px] font-black uppercase text-orange-800 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Scale size={9} /> PESO</span>;
+    } else if (item.tipoUnidad === 'litro') {
+        Badge = <span className="text-[9px] font-black uppercase text-sky-800 bg-sky-100 border border-sky-200 px-1.5 py-0.5 rounded flex items-center gap-1"><Droplet size={9} /> LITRO</span>;
     }
 
     const precioItem = parseFloat(item.precio) || 0;
@@ -46,7 +48,7 @@ const CartItem = memo(({
     const isMin = item.cantidad <= minQty;
 
     // 🛑 ALERTAS
-    const isHighQty = item.cantidad >= 10 && item.tipoUnidad !== 'peso';
+    const isHighQty = item.cantidad >= 10 && item.tipoUnidad !== 'peso' && item.tipoUnidad !== 'litro';
     const isHighValue = totalItem > 100;
     const isSuspicious = isHighQty || isHighValue;
 
@@ -112,7 +114,7 @@ const CartItem = memo(({
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                         {Badge}
-                        {item.cantidad === 1 && item.tipoUnidad !== 'peso' && !isProcessing ? (
+                        {item.cantidad === 1 && item.tipoUnidad !== 'peso' && item.tipoUnidad !== 'litro' && !isProcessing ? (
                             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 border border-slate-200 dark:border-slate-700">
                                 {/* UNIDAD */}
                                 <button

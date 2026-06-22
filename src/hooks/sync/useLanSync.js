@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../db';
 import { useLicenseGuard } from '../security/useLicenseGuard';
 
-const POLLING_INTERVAL = 30000;
+const POLLING_INTERVAL = 60000;
 const SYNC_PORT = 3847;
 const TOKEN_KEY = 'listo-lan-auth-token';
 

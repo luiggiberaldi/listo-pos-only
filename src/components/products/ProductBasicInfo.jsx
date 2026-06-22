@@ -227,7 +227,7 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
           </div>
         </div>
 
-        {form.tipoUnidad !== 'peso' && (
+        {form.tipoUnidad !== 'peso' && form.tipoUnidad !== 'litro' && (
           <div className="col-span-2 md:col-span-1 group">
             <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">
               Vencimiento (Opcional)

@@ -45,9 +45,11 @@ export const SalesService = {
                 }
             }
         } catch (error) {
-            console.warn("⚠️ SalesService: Could not load ConfigStore. Quota check will use defaults.", error);
-            // License defaults to { isDemo: false } which means no quota enforcement
-            // This is intentional fail-safe: if store unavailable, allow sales
+            console.warn("⚠️ SalesService: Could not load ConfigStore. Falling back to localStorage.", error);
+            // Secure fallback to localStorage values to prevent bypassing demo limits
+            const lsIsDemo = localStorage.getItem('listo_isDemo') === 'true';
+            const lsQuotaLimit = parseInt(localStorage.getItem('listo_quotaLimit') || '100', 10);
+            license = { isDemo: lsIsDemo, quotaLimit: lsQuotaLimit };
         }
 
         if (license && license.isDemo) {
@@ -66,7 +68,7 @@ export const SalesService = {
 
             for (const item of itemsAProcesar) {
                 const id = item.id;
-                if (item.tipoUnidad === 'peso') continue;
+                if (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') continue;
 
                 let factor = 1;
                 if (item.unidadVenta === 'bulto') {
@@ -105,11 +107,16 @@ export const SalesService = {
         }
 
         // --- INICIO TRANSACCIÓN ACID ---
-        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, async () => {
+        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, db.config, db.audit_chain, async () => {
 
             const rawPagos = ventaFinal.pagos || ventaFinal.metodos || [];
             const totalFactura = math.round(ventaFinal.total || 0);
             const tasaVenta = math.round(ventaFinal.tasa || 1, 4);
+
+            const esVentaCashea = ventaFinal.esCashea || rawPagos.some(p => p.metodoId === 'cashea' || (p.metodo || '').toLowerCase() === 'cashea');
+            const casheaFinanciado = esVentaCashea ? rawPagos
+                .filter(p => p.metodoId === 'cashea' || (p.metodo || '').toLowerCase() === 'cashea')
+                .reduce((sum, p) => sum + (parseFloat(p.amount || p.monto) || 0), 0) : 0;
 
             // 🔢 CROSS-VALIDATION: Verify subtotal + IGTF = total
             const subtotalExpected = math.round(ventaFinal.subtotal || 0);
@@ -229,13 +236,15 @@ export const SalesService = {
 
                         const result = FinancialController.simulateCustomerUpdate(
                             c,
-                            ventaFinal.esCredito ? (ventaFinal.deudaPendiente || 0) : 0,
+                            esVentaCashea ? casheaFinanciado : (ventaFinal.esCredito ? (ventaFinal.deudaPendiente || 0) : 0),
                             remanenteVueltoUSD,
-                            consumoSaldo
+                            consumoSaldo,
+                            esVentaCashea
                         );
 
                         c.deuda = result.deuda;
                         c.favor = result.favor;
+                        c.casheaDeuda = result.casheaDeuda || 0;
 
                         if (remanenteVueltoUSD > 0 && oldDebt > 0) {
                             appliedToDebt = Math.min(remanenteVueltoUSD, oldDebt);
@@ -263,6 +272,9 @@ export const SalesService = {
                 status: 'COMPLETADA',
                 corteId: null,
                 cajaId,
+                tipo: esVentaCashea ? 'VENTA_CASHEA' : (ventaFinal.tipo || 'VENTA'),
+                tipoVenta: esVentaCashea ? 'VENTA_CASHEA' : (ventaFinal.tipoVenta || 'VENTA'),
+                casheaUsd: esVentaCashea ? casheaFinanciado : undefined,
 
                 payments: pagosProcesados,
                 change: vueltosProcesados,
@@ -303,7 +315,7 @@ export const SalesService = {
      * Anula una venta existente.
      */
     anularVenta: async (id, motivo, usuario, transaccionAnulacion, actualizarBalances) => {
-        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, async () => {
+        return await db.transaction('rw', db.ventas, db.productos, db.logs, db.clientes, db.caja_sesion, db.config, db.audit_chain, async () => {
             const venta = await db.ventas.get(id);
             if (!venta) throw new Error("Venta no encontrada.");
             if (venta.status === 'ANULADA') return { success: false, message: 'Ya anulada' };
@@ -403,7 +415,7 @@ export const SalesService = {
         const sesion = await db.caja_sesion.get(cajaId);
         if (!sesion || !sesion.isAbierta) throw new Error("Caja cerrada. Abra turno.");
 
-        return await db.transaction('rw', db.ventas, db.logs, db.clientes, db.caja_sesion, async () => {
+        return await db.transaction('rw', db.ventas, db.logs, db.clientes, db.caja_sesion, db.config, db.audit_chain, async () => {
             const targetClienteId = parseInt(clienteId);
             const cliente = await db.clientes.get(targetClienteId);
             if (!cliente) throw new Error("Cliente no encontrado");
@@ -508,7 +520,7 @@ export const SalesService = {
      * Sanea la cuenta de un cliente (Ajuste Administrativo).
      */
     sanearCuentaCliente: async (clienteId, tipo, motivo, usuario, generarCorrelativo) => {
-        return await db.transaction('rw', db.ventas, db.clientes, db.logs, async () => {
+        return await db.transaction('rw', db.ventas, db.clientes, db.logs, db.config, db.audit_chain, async () => {
             const targetClienteId = parseInt(clienteId);
             const cliente = await db.clientes.get(targetClienteId);
             if (!cliente) throw new Error("Cliente no encontrado");

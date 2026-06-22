@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Scale, DollarSign, CheckSquare, Square, TrendingUp } from 'lucide-react';
+import { Box, Scale, DollarSign, CheckSquare, Square, TrendingUp, Droplet } from 'lucide-react';
 import { fixFloat } from '../../utils/mathUtils';
 
 export default function ProductPricing({ form, updateField, tasa, getFactores, showCosts = false }) {
@@ -8,7 +8,7 @@ export default function ProductPricing({ form, updateField, tasa, getFactores, s
     const [precioPesoBS, setPrecioPesoBS] = useState('');
 
     const obtenerFactorMaximo = () => {
-        if (form.tipoUnidad === 'peso') return 1;
+        if (form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') return 1;
         const paqPorBulto = parseFloat(form.jerarquia?.bulto?.contenido) || 1;
         const undPorPaq = parseFloat(form.jerarquia?.paquete?.contenido) || 1;
         if (form.jerarquia?.bulto?.activo) return paqPorBulto * (form.jerarquia?.paquete?.activo ? undPorPaq : 1);
@@ -18,6 +18,7 @@ export default function ProductPricing({ form, updateField, tasa, getFactores, s
 
     const getNombreJerarquia = () => {
         if (form.tipoUnidad === 'peso') return "POR KILO";
+        if (form.tipoUnidad === 'litro') return "POR LITRO";
         if (form.jerarquia?.bulto?.activo) return "DEL BULTO";
         if (form.jerarquia?.paquete?.activo) return "DEL PAQUETE";
         return "DE LA UNIDAD";
@@ -38,7 +39,7 @@ export default function ProductPricing({ form, updateField, tasa, getFactores, s
             setCostoInputBS(costoVisual > 0 ? calculatedCostoBs.toFixed(2) : '');
         }
 
-        if (form.tipoUnidad === 'peso') {
+        if (form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') {
             const calculatedPrecioBs = precioVisualUSD * tasa;
             if (parseFloat(precioPesoBS) !== parseFloat(calculatedPrecioBs.toFixed(2))) {
                 setPrecioPesoBS(precioVisualUSD > 0 ? calculatedPrecioBs.toFixed(2) : '');
@@ -104,6 +105,13 @@ export default function ProductPricing({ form, updateField, tasa, getFactores, s
                 >
                     <Scale size={16} /> Por Peso (Kg)
                 </button>
+                <button
+                    type="button"
+                    onClick={() => updateField('tipoUnidad', 'litro')}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${form.tipoUnidad === 'litro' ? 'bg-surface-light dark:bg-slate-800 text-content-main dark:text-white shadow-sm ring-1 ring-border-subtle dark:ring-slate-700' : 'text-content-secondary hover:text-content-main'}`}
+                >
+                    <Droplet size={16} /> Por Litro (Lt)
+                </button>
             </div>
 
             {/* TARJETA DE COSTO FINANCIERO (RBAC PROTECTED) */}
@@ -146,11 +154,13 @@ export default function ProductPricing({ form, updateField, tasa, getFactores, s
                 </div>
             )}
 
-            {/* SECCIÓN ESPECIAL PARA PESO */}
-            {form.tipoUnidad === 'peso' && (
+            {/* SECCIÓN ESPECIAL PARA PESO / LITRO */}
+            {(form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') && (
                 <div className="p-5 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl bg-indigo-50/50 dark:bg-indigo-900/10 animate-in fade-in">
                     <div className="flex justify-between items-center mb-4">
-                        <label className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Precio Venta (Kg)</label>
+                        <label className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                            Precio Venta ({form.tipoUnidad === 'litro' ? 'Lt' : 'Kg'})
+                        </label>
                         <div className="bg-white dark:bg-slate-900 px-2 py-1 rounded-lg shadow-sm border border-indigo-100 dark:border-indigo-900/50">
                             <span className="text-[10px] text-slate-400 uppercase font-bold mr-2">Margen</span>
                             <span className={`text-xs font-bold ${parseFloat(margenPeso) < 20 ? 'text-red-500' : 'text-emerald-500'}`}>{margenPeso}%</span>

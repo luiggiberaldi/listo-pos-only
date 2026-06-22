@@ -97,6 +97,27 @@ function testCartTotals() {
     );
     assertClose(r5.totalExento, 10, 'CART_EXENTO_TRACKED');
     assert(r5.totalImpuesto > 0, 'CART_GRAVADO_HAS_TAX');
+
+    // T6: Precision drift test (5 items of $1.005 should equal $5.05, not $5.03)
+    const r6 = FinancialController.calculateCartTotals(
+        [
+            { precio: 1.005, cantidad: 1, exento: true },
+            { precio: 1.005, cantidad: 1, exento: true },
+            { precio: 1.005, cantidad: 1, exento: true },
+            { precio: 1.005, cantidad: 1, exento: true },
+            { precio: 1.005, cantidad: 1, exento: true }
+        ], 0, 1
+    );
+    assertClose(r6.totalUSD, 5.05, 'CART_LINE_ITEM_DRIFT');
+
+    // T7: VES conversion drift test ($5.45 * 1.5 @ 36.52 rate should equal 298.73 Bs, not 298.55 Bs)
+    const r7 = FinancialController.calculateCartTotals(
+        [
+            { precio: 5.45, cantidad: 1.5, exento: true }
+        ], 0, 36.52
+    );
+    assertClose(r7.totalUSD, 8.18, 'CART_VES_DRIFT_USD');
+    assertClose(r7.totalBS, 298.73, 'CART_VES_DRIFT_BS');
 }
 
 // ═══════════════════════════════════════════

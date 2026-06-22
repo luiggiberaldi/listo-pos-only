@@ -51,6 +51,20 @@ const CartSidebar = ({
 
   const lastAddedIndex = carrito.length - 1;
 
+  // 🚀 PERF: Pre-calcular el total de consumo por cada ID de producto en O(N) para evitar O(N^2) en el render
+  const totalsMap = React.useMemo(() => {
+    const map = {};
+    carrito.forEach(i => {
+      let f = 1;
+      if (i.unidadVenta === 'bulto') f = parseFloat(i.jerarquia?.bulto?.contenido || 1);
+      else if (i.unidadVenta === 'paquete') f = parseFloat(i.jerarquia?.paquete?.contenido || 1);
+      
+      const qty = parseFloat(i.cantidad) || 0;
+      map[i.id] = (map[i.id] || 0) + (qty * f);
+    });
+    return map;
+  }, [carrito]);
+
   return (
     <div className="w-[340px] lg:w-[380px] xl:w-[420px] 2xl:w-[460px] bg-surface-light dark:bg-surface-dark border-l border-border-subtle flex flex-col shadow-2xl z-20 relative transition-all">
 
@@ -104,15 +118,8 @@ const CartSidebar = ({
 
             // Stock Logic
             const stockActual = parseFloat(item.stock) || 0;
-            const itemsMismoId = carrito.filter(i => i.id === item.id);
-            let totalConsumo = 0;
-            itemsMismoId.forEach(i => {
-              let f = 1;
-              if (i.unidadVenta === 'bulto') f = parseFloat(i.jerarquia?.bulto?.contenido || 1);
-              else if (i.unidadVenta === 'paquete') f = parseFloat(i.jerarquia?.paquete?.contenido || 1);
-              totalConsumo += (i.cantidad * f);
-            });
-            const isExceeded = item.tipoUnidad !== 'peso' && totalConsumo > stockActual;
+            const totalConsumo = totalsMap[item.id] || 0;
+            const isExceeded = item.tipoUnidad !== 'peso' && item.tipoUnidad !== 'litro' && totalConsumo > stockActual;
 
             const precioItem = parseFloat(item.precio) || 0;
             const totalItem = precioItem * (parseFloat(item.cantidad) || 0);

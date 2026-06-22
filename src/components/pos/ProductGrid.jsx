@@ -12,6 +12,8 @@ import { usePosActionsStore } from '../../stores/usePosActionsStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { useConfigStore } from '../../stores/useConfigStore';
 
+const GRID_STYLE = { height: '100%' };
+
 const ProductGrid = ({
   setRef,           // Imperative ref setter (from parent)
   compactMode = false
@@ -32,7 +34,7 @@ const ProductGrid = ({
       virtuosoRef.current.scrollToIndex({
         index: selectedIndex,
         align: 'center',
-        behavior: 'smooth'
+        behavior: 'auto'
       });
     }
   }, [selectedIndex]);
@@ -66,7 +68,7 @@ const ProductGrid = ({
         ) : (
           <VirtuosoGrid
             ref={virtuosoRef}
-            style={{ height: '100%' }}
+            style={GRID_STYLE}
             totalCount={filtrados.length}
             components={{
               List: GridContainer,
@@ -80,7 +82,7 @@ const ProductGrid = ({
                   key={p.id}
                   data={filtrados}
                   index={index}
-                  style={{ height: '100%' }}
+                  style={GRID_STYLE}
                   onSelectProducto={prepararAgregar}
                   tasa={tasa}
                   setRef={setRef}

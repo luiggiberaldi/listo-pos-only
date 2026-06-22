@@ -12,7 +12,7 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
 
       let b = 0, p = 0, u = 0;
 
-      if (form.tipoUnidad === 'peso') {
+      if (form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') {
         u = resto;
       } else {
         // 1. Calcular Bultos
@@ -34,7 +34,7 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
   }, [productoEditar, form]);
 
   const calcularStockTotal = () => {
-    if (form.tipoUnidad === 'peso') return parseFloat(ingreso.unidades) || parseFloat(form.stock) || 0;
+    if (form.tipoUnidad === 'peso' || form.tipoUnidad === 'litro') return parseFloat(ingreso.unidades) || parseFloat(form.stock) || 0;
 
     const { factorBulto, factorPaquete } = getFactores();
     const b = parseInt(ingreso.bultos) || 0;
@@ -76,6 +76,7 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
 
   const renderTotalJerarquico = (totalUnidades) => {
     if (form.tipoUnidad === 'peso') return `${totalUnidades.toFixed(3)} Kg`;
+    if (form.tipoUnidad === 'litro') return `${totalUnidades.toFixed(3)} Lt`;
 
     const { factorBulto, factorPaquete } = getFactores();
     const items = [];
@@ -121,7 +122,7 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
         </div>
       </div>
 
-      {form.tipoUnidad === 'unidad' ? (
+      {(form.tipoUnidad !== 'peso' && form.tipoUnidad !== 'litro') ? (
         <div className="grid grid-cols-3 gap-4">
           {form.jerarquia?.bulto?.activo && (
             <div className="bg-surface-light dark:bg-slate-800 p-3 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
@@ -171,7 +172,9 @@ export default function ProductStockInput({ form, productoEditar, getFactores, o
         </div>
       ) : (
         <div className="bg-surface-light dark:bg-slate-800 p-4 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm">
-          <label className="text-xs font-bold text-content-secondary uppercase block mb-2 text-center">Peso Total (Kilogramos)</label>
+          <label className="text-xs font-bold text-content-secondary uppercase block mb-2 text-center">
+            {form.tipoUnidad === 'litro' ? 'Volumen Total (Litros)' : 'Peso Total (Kilogramos)'}
+          </label>
           <input
             type="number"
             step="0.001"

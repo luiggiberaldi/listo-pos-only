@@ -17,6 +17,28 @@ import { canAddCaja } from '../../config/planTiers';
 
 const LAN_PORT = 3847;
 
+// Helper para decodificar JWT sin depender de jsrsasign en el navegador (evita fallos de ESM/globals)
+const decodeJWT = (token) => {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const binaryStr = atob(base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const utf8Decoder = new TextDecoder('utf-8');
+        return JSON.parse(utf8Decoder.decode(bytes));
+    } catch (e) {
+        console.error("Error decoding JWT:", e);
+        return null;
+    }
+};
+
 export default function LicenseGate({ children }) {
     // Consumimos el estado consolidado del Guardián
     const { status: localStatus, machineId, isSuspended, plan } = useLicenseGuard();
@@ -386,7 +408,8 @@ export default function LicenseGate({ children }) {
                 if (userKey.includes('.')) {
                     const isValid = KJUR.jws.JWS.verify(userKey, FENIX_PUBLIC_KEY, ['RS256']);
                     if (isValid) {
-                        const payload = KJUR.jws.JWS.readSafeJSONString(userKey.split('.')[1]);
+                        const payload = decodeJWT(userKey);
+                        if (!payload) throw new Error("No se pudo decodificar el payload de la licencia.");
                         if (payload.id === currentId) {
                             // ✅ ÉXITO V2
                             SecureStorage.set('listo_license_key', userKey);

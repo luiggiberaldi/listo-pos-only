@@ -79,27 +79,31 @@ const ConfigSeguridad = ({ readOnly }) => {
                 <FileText size={16} /> Reporte Nómina
               </button>
             )}
-            <button
-              onClick={() => setViewMode('TESTER')}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'TESTER' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
-            >
-              <FlaskConical size={16} /> System Tester
-            </button>
-            <button
-              onClick={() => setViewMode('DAYTESTER')}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'DAYTESTER' ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
-            >
-              <CalendarDays size={16} /> Day Tester
-            </button>
+            {import.meta.env.DEV && (
+              <>
+                <button
+                  onClick={() => setViewMode('TESTER')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'TESTER' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                >
+                  <FlaskConical size={16} /> System Tester
+                </button>
+                <button
+                  onClick={() => setViewMode('DAYTESTER')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${viewMode === 'DAYTESTER' ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-500/30' : 'text-slate-400 hover:bg-white hover:text-slate-600'}`}
+                >
+                  <CalendarDays size={16} /> Day Tester
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {viewMode === 'TESTER' ? (
+      {viewMode === 'TESTER' && import.meta.env.DEV ? (
         <React.Suspense fallback={<div className="text-center py-20 text-slate-400">Cargando System Tester...</div>}>
           <SystemTesterView />
         </React.Suspense>
-      ) : viewMode === 'DAYTESTER' ? (
+      ) : viewMode === 'DAYTESTER' && import.meta.env.DEV ? (
         <React.Suspense fallback={<div className="text-center py-20 text-slate-400">Cargando Day Tester...</div>}>
           <DayTesterView />
         </React.Suspense>

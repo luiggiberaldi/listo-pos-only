@@ -25,8 +25,8 @@ export const ShiftService = {
         if (!sesion || !sesion.isAbierta) throw new Error("Caja ya está cerrada.");
 
         try {
-            // Transaction Scope: Ventas, Logs, Caja, Cortes
-            const nuevoCorte = await db.transaction('rw', db.ventas, db.logs, db.caja_sesion, db.cortes, async () => {
+            // Transaction Scope: Ventas, Logs, Caja, Cortes, Audit Chain
+            const nuevoCorte = await db.transaction('rw', db.ventas, db.logs, db.caja_sesion, db.cortes, db.audit_chain, async () => {
                 const ventasFrescas = await db.ventas.toArray();
 
                 // Filter pending sales for Z Cut

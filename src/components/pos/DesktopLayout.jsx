@@ -136,14 +136,14 @@ export default function DesktopLayout({
 
             {cajaAbierta && (
                 <Suspense fallback={<div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
-                    {activeModal === 'PESAJE' && modalData && <ModalPesaje producto={modalData} tasa={tasa} onConfirm={(d) => { agregarAlCarrito(modalData, d.peso, 'peso', d.precioTotal / d.peso); closeModal(); }} onClose={closeModal} />}
+                    {activeModal === 'PESAJE' && modalData && <ModalPesaje producto={modalData} tasa={tasa} onConfirm={(d) => { agregarAlCarrito(modalData, d.peso, modalData.tipoUnidad, d.precioTotal / d.peso); closeModal(); }} onClose={closeModal} />}
                     {activeModal === 'JERARQUIA' && modalData && <ModalJerarquia producto={modalData} onSelect={(f) => { agregarAlCarrito(modalData, 1, f, modalData.jerarquia[f].precio); closeModal(); }} onClose={closeModal} />}
                     {activeModal === 'PAGO' && <ModalPago totalUSD={totalUSD} totalBS={totalBS} totalImpuesto={totalImpuesto} tasa={tasa} onPagar={usePosActionsStore.getState().finalizarVenta} initialClient={clientePreseleccionado} onClose={closeModal} />}
                     {activeModal === 'ESPERA' && <ModalEspera tickets={ticketsEspera} onRecuperar={handleRecuperarTicket} onEliminar={eliminarTicketEspera} onClose={closeModal} />}
                 </Suspense>
             )}
 
-            <div style={{ display: 'none' }}>
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0', height: '0', overflow: 'hidden' }}>
                 {Ticket ? <Ticket ref={ticketRef} data={ticketData} /> : null}
                 {TicketSaldoFavor ? <TicketSaldoFavor ref={ticketSaldoRef} data={ticketData} /> : null}
             </div>

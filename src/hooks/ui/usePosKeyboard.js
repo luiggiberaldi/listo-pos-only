@@ -70,12 +70,13 @@ export const usePosKeyboard = ({
 
             // ACCIÓN: Agregar con Peso (Forzamos tipoUnidad 'peso' para lógica de precio)
             // Nota: El precio base se toma del producto, agregarAlCarrito calculará el total.
-            actions.agregarAlCarrito(productoEncontrado, pesoCalculado, 'peso', productoEncontrado.precio);
+            actions.agregarAlCarrito(productoEncontrado, pesoCalculado, productoEncontrado.tipoUnidad || 'peso', productoEncontrado.precio);
 
             if (actions.playSound) actions.playSound('BEEP');
 
             const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
-            Toast.fire({ icon: 'success', title: `${pesoCalculado.toFixed(3)} Kg encontrados`, text: productoEncontrado.nombre });
+            const sufijo = productoEncontrado.tipoUnidad === 'litro' ? 'Lt' : 'Kg';
+            Toast.fire({ icon: 'success', title: `${pesoCalculado.toFixed(3)} ${sufijo} encontrados`, text: productoEncontrado.nombre });
             return;
           }
         }
@@ -92,7 +93,11 @@ export const usePosKeyboard = ({
       // 2. Bloqueo por Modales (Si hay un modal, el teclado global se apaga)
       if (Object.values(modalesAbiertos).some(isOpen => isOpen)) return;
 
-      const isTyping = document.activeElement === searchInputRef.current;
+      const isTyping = document.activeElement && (
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA' ||
+        document.activeElement.isContentEditable
+      );
 
       // --- COMANDOS DE FUNCIÓN ---
       if (e.key === 'F2' || (e.key === 'Enter' && !isTyping)) {
@@ -129,11 +134,11 @@ export const usePosKeyboard = ({
         // Acciones sobre el item seleccionado
         if (e.key === '+' || e.key === 'Add') {
           e.preventDefault();
-          actions.cambiarCant(idx, item.cantidad + (item.tipoUnidad === 'peso' ? 0.05 : 1));
+          actions.cambiarCant(idx, item.cantidad + ((item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? 0.05 : 1));
         }
         if (e.key === '-' || e.key === 'Subtract') {
           e.preventDefault();
-          actions.cambiarCant(idx, item.cantidad - (item.tipoUnidad === 'peso' ? 0.05 : 1));
+          actions.cambiarCant(idx, item.cantidad - ((item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') ? 0.05 : 1));
         }
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
@@ -189,7 +194,7 @@ export const usePosKeyboard = ({
 
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [cajaAbierta, tieneAccesoPos, isProcessing, modalesAbiertos, carrito, busqueda, cartSelectedIndex]);
+  }, [cajaAbierta, tieneAccesoPos, isProcessing, modalesAbiertos, carrito, busqueda, cartSelectedIndex, selectedIndex, setSelectedIndex, actions]);
 
   // --- ATAJOS DE BÚSQUEDA (Input Focus) ---
   const handleSearchInputKeyDown = (e) => {
@@ -204,7 +209,7 @@ export const usePosKeyboard = ({
         if (carrito.length === 0) return;
         const idx = carrito.length - 1;
         const item = carrito[idx];
-        if (item.tipoUnidad === 'peso') return;
+        if (item.tipoUnidad === 'peso' || item.tipoUnidad === 'litro') return;
 
         // Lógica de ciclo de Jerarquía
         const current = item.unidadVenta || 'unidad';
@@ -309,7 +314,8 @@ export const usePosKeyboard = ({
 
     const width = window.innerWidth;
     let cols = 2;
-    if (width >= 1536) cols = 4;
+    if (width >= 1536) cols = 5;
+    else if (width >= 1280) cols = 4;
     else if (width >= 768) cols = 3;
 
     const total = filtrados.length;

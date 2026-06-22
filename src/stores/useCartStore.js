@@ -97,7 +97,7 @@ export const useCartStore = create(
                 // Thus we just add it to 'consumoOtros'.
                 consumoTotalProyectado += (cantidadDestino * factorDestino);
 
-                if (producto.tipoUnidad !== 'peso') {
+                if (producto.tipoUnidad !== 'peso' && producto.tipoUnidad !== 'litro') {
                     if (consumoTotalProyectado > stockActual) {
                         if (!permitirSinStock) {
                             Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: '¡No hay Stock!', timer: 3000, showConfirmButton: false });
@@ -187,7 +187,7 @@ export const useCartStore = create(
                     const nuevoConsumoEsteItem = nuevaCant * factor;
                     const totalProyectado = consumoOtros + nuevoConsumoEsteItem;
 
-                    if (it.tipoUnidad !== 'peso' && totalProyectado > stockActual) {
+                    if (it.tipoUnidad !== 'peso' && it.tipoUnidad !== 'litro' && totalProyectado > stockActual) {
                         if (!permitirSinStock) {
                             const restanteParaEsteItem = stockActual - consumoOtros;
                             const maximoPermitido = Math.floor(restanteParaEsteItem / factor);
@@ -241,7 +241,7 @@ export const useCartStore = create(
 
                     const consumoNuevo = item.cantidad * nuevoFactor;
 
-                    if (item.tipoUnidad !== 'peso' && (consumoOtros + consumoNuevo) > stockActual) {
+                    if (item.tipoUnidad !== 'peso' && item.tipoUnidad !== 'litro' && (consumoOtros + consumoNuevo) > stockActual) {
                         if (!permitirSinStock) {
                             Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Stock Insuficiente', text: 'No puedes cambiar a una unidad mayor.', timer: 3000, showConfirmButton: false });
                             return { carrito: prev };

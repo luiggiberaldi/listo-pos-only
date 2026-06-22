@@ -22,6 +22,9 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
         if (p.tipoUnidad === 'peso') {
             stockLabel = `${stock.toFixed(3)} Kg`;
             stockColor = isPoco ? 'bg-status-warningBg text-status-warning' : 'bg-primary-light text-primary';
+        } else if (p.tipoUnidad === 'litro') {
+            stockLabel = `${stock.toFixed(3)} Lt`;
+            stockColor = isPoco ? 'bg-status-warningBg text-status-warning' : 'bg-primary-light text-primary';
         } else if (isPoco) {
             stockLabel = `QUEDAN ${stock}`;
             stockColor = 'bg-status-warningBg text-status-warning';
@@ -72,7 +75,7 @@ const ProductCard = memo(({ data, index, style, onSelectProducto, tasa, setRef, 
                     <div>
                         <div className="flex items-baseline gap-1">
                             <span className="text-lg font-extrabold text-content-main">${precioVisual.toFixed(2)}</span>
-                            {p.tipoUnidad === 'peso' && <span className="text-[10px] text-content-secondary">/Kg</span>}
+                            {(p.tipoUnidad === 'peso' || p.tipoUnidad === 'litro') && <span className="text-[10px] text-content-secondary">/{p.tipoUnidad === 'litro' ? 'Lt' : 'Kg'}</span>}
                         </div>
                         <div className="text-sm font-black text-primary mt-0.5">
                             Bs {Math.round(precioVisual * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2 })}

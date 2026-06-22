@@ -21,6 +21,7 @@ export const useCustomers = () => {
       saldo: 0,
       deuda: 0,
       favor: 0,
+      casheaDeuda: 0,
       activo: true,
       fechaRegistro: new Date().toISOString(),
       _lww_updated_at: Date.now(),
@@ -51,6 +52,7 @@ export const useCustomers = () => {
   const eliminarCliente = async (id) => {
     const c = await db.clientes.get(id);
     if (c && Math.abs(c.saldo) > 0.01) throw new Error(`No se puede eliminar: Tiene saldo pendiente ($${c.saldo.toFixed(2)}).`);
+    if (c && (c.casheaDeuda || 0) > 0.01) throw new Error(`No se puede eliminar: Tiene deuda Cashea pendiente ($${c.casheaDeuda.toFixed(2)}).`);
     await db.clientes.delete(id);
   };
 
@@ -65,11 +67,78 @@ export const useCustomers = () => {
     }
   };
 
+  const convertDeudaToCashea = async (id, amount) => {
+    return await db.transaction('rw', db.clientes, db.audit_chain, async () => {
+      const c = await db.clientes.get(id);
+      if (!c) throw new Error("Cliente no encontrado.");
+      
+      const deudaActual = c.deuda || 0;
+      if (deudaActual < amount) throw new Error("Monto a convertir excede la deuda actual del cliente.");
+      
+      const nuevaDeuda = Math.round((deudaActual - amount) * 100) / 100;
+      const nuevaCasheaDeuda = Math.round(((c.casheaDeuda || 0) + amount) * 100) / 100;
+      
+      await db.clientes.update(id, {
+        deuda: nuevaDeuda,
+        casheaDeuda: nuevaCasheaDeuda,
+        saldo: Math.round((nuevaDeuda - (c.favor || 0)) * 100) / 100,
+        _lww_updated_at: Date.now()
+      });
+
+      const updated = await db.clientes.get(id);
+      if (updated) dispatchClientChanged(updated);
+
+      try {
+        const { appendAuditEntry } = await import('../../utils/auditChain');
+        await appendAuditEntry('CLIENT_DEBT_CONVERTED_CASHEA', {
+          clienteId: id,
+          clienteNombre: c.nombre,
+          montoConvertido: amount,
+          nuevaDeuda,
+          nuevaCasheaDeuda
+        });
+      } catch (err) {
+        console.warn("Error writing audit chain entry:", err);
+      }
+    });
+  };
+
+  const clearCasheaDeuda = async (id) => {
+    return await db.transaction('rw', db.clientes, db.audit_chain, async () => {
+      const c = await db.clientes.get(id);
+      if (!c) throw new Error("Cliente no encontrado.");
+      
+      const casheaDeudaActual = c.casheaDeuda || 0;
+      if (casheaDeudaActual <= 0) return;
+
+      await db.clientes.update(id, {
+        casheaDeuda: 0,
+        _lww_updated_at: Date.now()
+      });
+
+      const updated = await db.clientes.get(id);
+      if (updated) dispatchClientChanged(updated);
+
+      try {
+        const { appendAuditEntry } = await import('../../utils/auditChain');
+        await appendAuditEntry('CLIENT_CASHEA_DEBT_CLEARED', {
+          clienteId: id,
+          clienteNombre: c.nombre,
+          montoSaldado: casheaDeudaActual
+        });
+      } catch (err) {
+        console.warn("Error writing audit chain entry:", err);
+      }
+    });
+  };
+
   return {
     clientes,
     agregarCliente,
     editarCliente,
     eliminarCliente,
-    actualizarSaldoCliente
+    actualizarSaldoCliente,
+    convertDeudaToCashea,
+    clearCasheaDeuda
   };
 };

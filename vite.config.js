@@ -100,7 +100,10 @@ export default defineConfig({
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
 
           // UI libraries
-          'vendor-ui': ['lucide-react', 'sweetalert2', 'framer-motion'],
+          'vendor-ui': ['lucide-react', 'framer-motion'],
+
+          // Alerts (heavy UI dependency)
+          'vendor-alerts': ['sweetalert2'],
 
           // Database
           'vendor-db': ['dexie', 'dexie-react-hooks'],

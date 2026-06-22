@@ -19,8 +19,15 @@ export const usePosSearchStore = create(ghostMiddleware((set, get) => ({
     filtrados: [],
 
     // --- SETTERS ---
-    setBusqueda: (val) => {
+    setBusqueda: (val, immediate = false) => {
         set({ busqueda: val });
+
+        if (immediate || val === '') {
+            clearTimeout(_debounceTimer);
+            set({ debouncedBusqueda: val, selectedIndex: -1 });
+            get()._recalcFiltrados();
+            return;
+        }
 
         // Debounce: schedule filtrado after 300ms of inactivity
         clearTimeout(_debounceTimer);
