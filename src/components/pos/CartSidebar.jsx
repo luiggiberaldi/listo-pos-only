@@ -202,7 +202,7 @@ const CartSidebar = ({
           </button>
         </div>
 
-        <div className="text-center text-[9px] text-content-secondary opacity-60 px-2 pb-1 leading-tight">
+        <div className="text-center text-[9px] text-content-secondary opacity-60 px-2 pb-1 leading-tight mt-3">
           ⚠️ LISTO POS es una herramienta de gestión interna. No sustituye la facturación fiscal SENIAT.
         </div>
       </div>
