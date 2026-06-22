@@ -3,6 +3,7 @@ import { X, Plus, Trash2, CheckCircle, Wallet, AlertTriangle, ArrowRightLeft, Pr
 import { useStore } from '../../context/StoreContext';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
+import CustomSelect from '../common/CustomSelect';
 import Ticket from '../Ticket';
 
 export default function ModalAbono({ cliente, onClose }) {
@@ -223,15 +224,12 @@ export default function ModalAbono({ cliente, onClose }) {
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <div className="flex-1">
                                         <label className="text-xs font-bold text-slate-500 mb-1 block uppercase tracking-wider">Método de Pago</label>
-                                        <select
+                                        <CustomSelect
                                             value={metodo}
-                                            onChange={(e) => setMetodo(e.target.value)}
+                                            onChange={val => setMetodo(val)}
                                             className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-[#6366f1] outline-none shadow-sm"
-                                        >
-                                            {availableMethods.map((m, idx) => {
-                                                return <option key={idx} value={m.nombre}>{m.nombre}</option>;
-                                            })}
-                                        </select>
+                                            options={availableMethods.map(m => ({ value: m.nombre, label: m.nombre }))}
+                                        />
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">

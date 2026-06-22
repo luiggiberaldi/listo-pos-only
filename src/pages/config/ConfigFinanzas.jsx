@@ -8,6 +8,7 @@ import {
 import ListaMetodos from '../../components/config/ListaMetodos';
 import Swal from 'sweetalert2';
 import CasheaIcon from '../../components/CasheaIcon';
+import CustomSelect from '../../components/common/CustomSelect';
 
 export default function ConfigFinanzas({ form, handleChange, handleGuardar, setForm, readOnly }) {
   // ✅ LÓGICA INTACTA: Usamos el contexto para acceder a la función real
@@ -511,35 +512,25 @@ export default function ConfigFinanzas({ form, handleChange, handleGuardar, setF
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-content-secondary uppercase mb-1.5 block">Moneda</label>
-                  <div className="relative">
-                    <select
-                      className="w-full p-3 bg-app-light dark:bg-slate-700 border border-border-subtle dark:border-slate-600 rounded-xl appearance-none focus:ring-2 focus:ring-primary outline-none text-content-main dark:text-content-inverse pr-10"
-                      value={metodoForm.tipo}
-                      onChange={e => setMetodoForm({ ...metodoForm, tipo: e.target.value })}
-                    >
-                      <option value="BS">Bolívares</option>
-                      <option value="DIVISA">Divisa</option>
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-content-secondary">
-                      <ChevronDown size={16} />
-                    </div>
-                  </div>
+                  <CustomSelect
+                    className="p-3 bg-app-light dark:bg-slate-700 border border-border-subtle dark:border-slate-600 text-content-main dark:text-content-inverse text-xs rounded-xl"
+                    value={metodoForm.tipo}
+                    onChange={val => setMetodoForm({ ...metodoForm, tipo: val })}
+                    options={[
+                      { value: "BS", label: "Bolívares" },
+                      { value: "DIVISA", label: "Divisa" }
+                    ]}
+                  />
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-content-secondary uppercase mb-1.5 block">Icono Visual</label>
-                  <div className="relative">
-                    <select
-                      className="w-full p-3 bg-app-light dark:bg-slate-700 border border-border-subtle dark:border-slate-600 rounded-xl appearance-none focus:ring-2 focus:ring-primary outline-none text-content-main dark:text-content-inverse pr-10"
-                      value={metodoForm.icono}
-                      onChange={e => setMetodoForm({ ...metodoForm, icono: e.target.value })}
-                    >
-                      {Object.keys(iconList).map(ic => <option key={ic} value={ic}>{iconNombres[ic] || ic}</option>)}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-content-secondary">
-                      <ChevronDown size={16} />
-                    </div>
-                  </div>
+                  <CustomSelect
+                    className="p-3 bg-app-light dark:bg-slate-700 border border-border-subtle dark:border-slate-600 text-content-main dark:text-content-inverse text-xs rounded-xl"
+                    value={metodoForm.icono}
+                    onChange={val => setMetodoForm({ ...metodoForm, icono: val })}
+                    options={Object.keys(iconList).map(ic => ({ value: ic, label: iconNombres[ic] || ic }))}
+                  />
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-# AUDITORÍA COMPLETA - LISTO POS v1.5.3
+# AUDITORÍA COMPLETA - LISTO POS v1.5.4
 **Fecha:** 25 de abril 2026
 **Auditor:** Claude Code (Opus 4.6)
 **Alcance:** Código fuente completo, configuración, seguridad, tests, scripts, deployment

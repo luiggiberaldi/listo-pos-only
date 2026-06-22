@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, AlertTriangle, Tag, Barcode, Type, Image as ImageIcon, Upload, X, Search } from 'lucide-react';
 import { compressImage } from '../../utils/imageUtils';
 import Swal from 'sweetalert2';
+import CustomSelect from '../common/CustomSelect';
 
 export default function ProductBasicInfo({ form, onChange, categorias }) {
   const [dragActive, setDragActive] = useState(false);
@@ -214,17 +215,14 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
 
         <div className="group">
           <label className="text-xs font-bold text-content-secondary mb-1.5 block group-focus-within:text-primary transition-colors">Categoría</label>
-          <div className="relative">
-            <Tag size={18} className="absolute left-3.5 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-            <select
-              className="w-full pl-10 pr-4 py-3 bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none text-content-main dark:text-white cursor-pointer"
-              value={form.categoria}
-              onChange={e => onChange('categoria', e.target.value)}
-            >
-              {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <div className="absolute right-3.5 top-4 pointer-events-none text-content-secondary text-[10px]">▼</div>
-          </div>
+          <CustomSelect
+            className="w-full bg-app-light dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-xl text-content-main dark:text-white"
+            value={form.categoria}
+            onChange={val => onChange('categoria', val)}
+            icon={Tag}
+            iconSize={18}
+            options={categorias}
+          />
         </div>
 
         {form.tipoUnidad !== 'peso' && form.tipoUnidad !== 'litro' && (
@@ -236,39 +234,37 @@ export default function ProductBasicInfo({ form, onChange, categorias }) {
             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center divide-x divide-slate-200 dark:divide-slate-700 overflow-hidden relative transition-all focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500">
               {/* Month Selector */}
               <div className="relative flex-1">
-                <select
+                <CustomSelect
                   value={form.fechaVencimiento ? form.fechaVencimiento.split('-')[1] : ''}
-                  onChange={(e) => {
-                    const m = e.target.value;
+                  onChange={(m) => {
                     const currentY = form.fechaVencimiento ? form.fechaVencimiento.split('-')[0] : new Date().getFullYear();
                     onChange('fechaVencimiento', `${currentY}-${m}`);
                   }}
-                  className="w-full pl-3 pr-6 py-3 bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 outline-none appearance-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-center"
-                >
-                  <option value="" disabled>Mes</option>
-                  {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
-                    <option key={m} value={m}>{new Date(2000, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'short' }).toUpperCase()}</option>
-                  ))}
-                </select>
+                  className="w-full bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 border-none hover:bg-slate-100 dark:hover:bg-slate-800 text-center"
+                  placeholder="Mes"
+                  options={['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => ({
+                    value: m,
+                    label: new Date(2000, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'short' }).toUpperCase()
+                  }))}
+                />
               </div>
 
               {/* Year Selector */}
               <div className="relative flex-1">
-                <select
+                <CustomSelect
                   value={form.fechaVencimiento ? form.fechaVencimiento.split('-')[0] : ''}
-                  onChange={(e) => {
-                    const y = e.target.value;
+                  onChange={(y) => {
                     const currentM = form.fechaVencimiento ? form.fechaVencimiento.split('-')[1] : new Date().getMonth() + 1;
                     const mStr = String(currentM).padStart(2, '0');
                     onChange('fechaVencimiento', `${y}-${mStr}`);
                   }}
-                  className="w-full pl-3 pr-6 py-3 bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 outline-none appearance-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-center"
-                >
-                  <option value="" disabled>Año</option>
-                  {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() + i).map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  className="w-full bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 border-none hover:bg-slate-100 dark:hover:bg-slate-800 text-center"
+                  placeholder="Año"
+                  options={Array.from({ length: 11 }, (_, i) => {
+                    const y = new Date().getFullYear() + i;
+                    return { value: y, label: String(y) };
+                  })}
+                />
               </div>
 
               {/* Clear Button */}

@@ -6,6 +6,7 @@ import { useStore } from '../../../../context/StoreContext';
 import { ActionGuard } from '../../../../components/security/ActionGuard';
 import { PERMISSIONS } from '../../../../config/permissions'; // [FIX PERM-1]
 import Swal from 'sweetalert2';
+import CustomSelect from '../../../../components/common/CustomSelect';
 
 export default function EmployeeDetail({ usuario: empleado, onClose }) {
     const { configuracion, actualizarUsuario, usuario } = useStore(); // [FIX ARQ-2] Added usuario
@@ -320,15 +321,12 @@ export default function EmployeeDetail({ usuario: empleado, onClose }) {
                     </div>
                     <div className="flex-1 space-y-1">
                         <label className="text-[10px] font-bold text-indigo-400 uppercase">Frecuencia</label>
-                        <select
+                        <CustomSelect
                             value={formData.frecuenciaPago}
-                            onChange={e => setFormData({ ...formData, frecuenciaPago: e.target.value })}
-                            className="w-full p-2 rounded-lg border border-indigo-200 text-sm font-bold"
-                        >
-                            <option value="Semanal">Semanal</option>
-                            <option value="Quincenal">Quincenal</option>
-                            <option value="Mensual">Mensual</option>
-                        </select>
+                            onChange={val => setFormData({ ...formData, frecuenciaPago: val })}
+                            className="w-full p-2 rounded-lg border border-indigo-200 text-xs font-bold text-slate-700 dark:text-white"
+                            options={['Semanal', 'Quincenal', 'Mensual']}
+                        />
                     </div>
                 </div>
             )}

@@ -9,6 +9,7 @@ import {
     Coins, CreditCard
 } from 'lucide-react';
 import TicketPreview from '../../components/config/TicketPreview';
+import CustomSelect from '../../components/common/CustomSelect';
 
 export default function ConfigTicket({ form, setForm, handleGuardar, readOnly }) {
 
@@ -48,16 +49,13 @@ export default function ConfigTicket({ form, setForm, handleGuardar, readOnly })
     const SelectControl = ({ label, value, onChange, options }) => (
         <div className="mb-4">
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{label}</label>
-            <select
+            <CustomSelect
                 value={value}
-                onChange={(e) => !readOnly && onChange(e.target.value)}
-                className="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-bold border-none outline-none focus:ring-2 focus:ring-emerald-500"
+                onChange={(val) => !readOnly && onChange(val)}
+                className="w-full p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-bold border-none"
                 disabled={readOnly}
-            >
-                {options.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-            </select>
+                options={options}
+            />
         </div>
     );
 

@@ -71,9 +71,27 @@ export const restaurarCapsulaDeTiempo = async (data) => {
         }
     });
 
-    // 3. RESTAURACIÓN LOCALSTORAGE
-    console.log("💾 [RESTORE] Restaurando LocalStorage...");
+    // 3. RESTAURACIÓN LOCALSTORAGE (Excluyendo claves de identidad y licencia)
+    console.log("💾 [RESTORE] Restaurando LocalStorage (omitiendo claves de identidad/licencia)...");
+    const excludedKeys = [
+        'listo_license_key',
+        '_sig_listo_license_key',
+        'sys_installation_id',
+        'sys_machine_id_cache',
+        'sys_recovery_hash',
+        'listo_plan',
+        '_sig_listo_plan',
+        'listo_isDemo',
+        'listo_quotaLimit',
+        'listo_owner_lock',
+        'listo_contract_signed'
+    ];
+
     Object.entries(data.localStorage).forEach(([key, val]) => {
+        if (excludedKeys.includes(key)) {
+            console.log(`ℹ️ [RESTORE] Preservando clave local y omitiendo la del respaldo: ${key}`);
+            return;
+        }
         if (val) localStorage.setItem(key, val);
     });
 

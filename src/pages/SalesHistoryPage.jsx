@@ -12,6 +12,7 @@ import ModalDetalleVenta from '../components/ventas/ModalDetalleVenta';
 import { useStore } from '../context/StoreContext';
 import { timeProvider } from '../utils/TimeProvider';
 import { generateSalesHistoryPDF } from '../utils/pdf/generateSalesHistoryPDF';
+import CustomSelect from '../components/common/CustomSelect';
 
 export default function SalesHistoryPage() {
   const { configuracion } = useStore();
@@ -224,15 +225,16 @@ export default function SalesHistoryPage() {
         {/* Filtro Estado */}
         <div className="md:col-span-3">
           <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Estado</label>
-          <select
+          <CustomSelect
             value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-          >
-            <option value="TODOS">Todas las Ventas</option>
-            <option value="APROBADA">Solo Válidas</option>
-            <option value="ANULADA">Solo Anuladas</option>
-          </select>
+            onChange={val => setFiltroEstado(val)}
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white"
+            options={[
+              { value: "TODOS", label: "Todas las Ventas" },
+              { value: "APROBADA", label: "Solo Válidas" },
+              { value: "ANULADA", label: "Solo Anuladas" }
+            ]}
+          />
         </div>
       </div>
 

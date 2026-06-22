@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, ShieldCheck, ChevronDown } from 'lucide-react';
+import CustomSelect from '../../common/CustomSelect';
 
 export default function KYCForm({ kycData, onChange, error, onBack, onConfirm, submitting }) {
     return (
@@ -46,22 +47,16 @@ export default function KYCForm({ kycData, onChange, error, onBack, onConfirm, s
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">RIF o Cédula *</label>
                             <div className="flex gap-2">
                                 <div className="relative">
-                                    <select
+                                    <CustomSelect
                                         value={kycData.rif ? kycData.rif.split('-')[0] : 'V'}
-                                        onChange={(e) => {
-                                            const type = e.target.value;
+                                        onChange={(val) => {
                                             const number = kycData.rif ? kycData.rif.split('-')[1] || '' : '';
-                                            onChange({ target: { name: 'rif', value: `${type}-${number}` } });
+                                            onChange({ target: { name: 'rif', value: `${val}-${number}` } });
                                         }}
-                                        className="appearance-none bg-slate-950 border border-slate-700 rounded-lg pl-4 pr-10 py-3 text-white focus:border-emerald-500 outline-none font-bold cursor-pointer transition-colors hover:border-slate-500"
-                                    >
-                                        {['V', 'E', 'J', 'G', 'P', 'C'].map(t => (
-                                            <option key={t} value={t}>{t}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-white">
-                                        <ChevronDown size={14} strokeWidth={3} />
-                                    </div>
+                                        className="w-24 px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg text-white font-bold"
+                                        options={['V', 'E', 'J', 'G', 'P', 'C']}
+                                        dropdownWidth="w-24"
+                                    />
                                 </div>
                                 <input
                                     type="text"

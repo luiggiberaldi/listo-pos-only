@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlus, Briefcase, Eye, EyeOff } from 'lucide-react';
+import CustomSelect from '../../../../components/common/CustomSelect';
 
 export default function EmployeeRegistrationForm({ formState, setFormState, onSubmit, readOnly, maxEmpleados, currentCount, isBasicPlan }) {
     const [showPin, setShowPin] = useState(false);
@@ -42,25 +43,22 @@ export default function EmployeeRegistrationForm({ formState, setFormState, onSu
 
                     <div className="space-y-2">
                         <label className="text-[11px] font-bold text-content-secondary uppercase tracking-widest ml-1">Función / Cargo</label>
-                        <div className="relative group/select">
-                            <select
-                                disabled={readOnly}
-                                className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-900/50 rounded-xl font-bold text-content-secondary dark:text-slate-400 outline-none border border-transparent focus:border-primary/50 appearance-none cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-colors"
-                                value={formState.rol === 'Cajero' || formState.rol === 'Encargado' ? formState.rol : (isBasicPlan ? 'Cajero' : 'Personalizado')}
-                                onChange={e => {
-                                    const val = e.target.value;
-                                    if (val === 'Personalizado') setFormState({ ...formState, rol: '' });
-                                    else setFormState({ ...formState, rol: val });
-                                }}
-                            >
-                                <option value="Cajero">Cajero (Ventas Básicas)</option>
-                                <option value="Encargado">Encargado (Supervisión)</option>
-                                {!isBasicPlan && <option value="Personalizado">Personalizado / Otro...</option>}
-                            </select>
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-hover/select:text-slate-400 transition-colors">
-                                <Briefcase size={20} />
-                            </div>
-                        </div>
+                        <CustomSelect
+                            disabled={readOnly}
+                            className="w-full p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl font-bold text-content-secondary dark:text-slate-400 hover:bg-white dark:hover:bg-slate-900 transition-colors border border-transparent focus:border-primary/50"
+                            value={formState.rol === 'Cajero' || formState.rol === 'Encargado' ? formState.rol : (isBasicPlan ? 'Cajero' : 'Personalizado')}
+                            onChange={val => {
+                                if (val === 'Personalizado') setFormState({ ...formState, rol: '' });
+                                else setFormState({ ...formState, rol: val });
+                            }}
+                            icon={Briefcase}
+                            iconSize={20}
+                            options={[
+                                { value: "Cajero", label: "Cajero (Ventas Básicas)" },
+                                { value: "Encargado", label: "Encargado (Supervisión)" },
+                                ...(!isBasicPlan ? [{ value: "Personalizado", label: "Personalizado / Otro..." }] : [])
+                            ]}
+                        />
                     </div>
 
                     {/* INPUT CONDICIONAL: NOMBRE DEL CARGO PERSONALIZADO — Solo Minimarket */}
@@ -93,15 +91,12 @@ export default function EmployeeRegistrationForm({ formState, setFormState, onSu
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[11px] font-bold text-content-secondary uppercase tracking-widest ml-1">Frecuencia</label>
-                                <select
-                                    className="w-full p-4 bg-app-light dark:bg-slate-900/50 rounded-xl font-bold text-content-main dark:text-white outline-none focus:ring-2 focus:ring-primary-focus/50 focus:border-primary transition-all border border-border-subtle/50 hover:border-border-subtle cursor-pointer appearance-none"
+                                <CustomSelect
+                                    className="w-full p-4 bg-app-light dark:bg-slate-900/50 rounded-xl font-bold text-content-main dark:text-white border border-border-subtle/50 hover:border-border-subtle focus:ring-2 focus:ring-primary-focus/50 focus:border-primary"
                                     value={formState.frecuenciaPago || 'Semanal'}
-                                    onChange={e => setFormState({ ...formState, frecuenciaPago: e.target.value })}
-                                >
-                                    <option value="Semanal">Semanal</option>
-                                    <option value="Quincenal">Quincenal</option>
-                                    <option value="Mensual">Mensual</option>
-                                </select>
+                                    onChange={val => setFormState({ ...formState, frecuenciaPago: val })}
+                                    options={['Semanal', 'Quincenal', 'Mensual']}
+                                />
                             </div>
                         </div>
                     )}

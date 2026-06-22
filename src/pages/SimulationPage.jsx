@@ -19,6 +19,7 @@ import {
 } from '../simulation/SimEngine';
 import { limpiarDatosSimulacion, obtenerResumenSimulacion } from '../simulation/SimAnalyzer';
 import { simTimekeeper } from '../simulation/SimTimekeeper';
+import CustomSelect from '../components/common/CustomSelect';
 
 // ── Estado inicial ──
 const DEFAULT_CONFIG = {
@@ -201,34 +202,36 @@ const SimulationPage = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-500 uppercase">Días</label>
-                    <select
+                    <label className="text-[10px] text-slate-500 uppercase mb-1 block">Días</label>
+                    <CustomSelect
                       value={config.dias}
-                      onChange={e => setConfig(p => ({ ...p, dias: parseInt(e.target.value) }))}
+                      onChange={val => setConfig(p => ({ ...p, dias: parseInt(val) }))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
                       disabled={isRunning}
-                    >
-                      <option value={1}>1 día</option>
-                      <option value={7}>1 semana</option>
-                      <option value={30}>1 mes</option>
-                      <option value={90}>3 meses</option>
-                      <option value={180}>6 meses</option>
-                      <option value={365}>1 año</option>
-                    </select>
+                      options={[
+                        { value: 1, label: "1 día" },
+                        { value: 7, label: "1 semana" },
+                        { value: 30, label: "1 mes" },
+                        { value: 90, label: "3 meses" },
+                        { value: 180, label: "6 meses" },
+                        { value: 365, label: "1 año" }
+                      ]}
+                    />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 uppercase">Velocidad</label>
-                    <select
+                    <label className="text-[10px] text-slate-500 uppercase mb-1 block">Velocidad</label>
+                    <CustomSelect
                       value={config.velocidad}
-                      onChange={e => setConfig(p => ({ ...p, velocidad: parseInt(e.target.value) }))}
+                      onChange={val => setConfig(p => ({ ...p, velocidad: parseInt(val) }))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
                       disabled={isRunning}
-                    >
-                      <option value={1}>Ultra rápido (1s/día)</option>
-                      <option value={3}>Rápido (3s/día)</option>
-                      <option value={5}>Normal (5s/día)</option>
-                      <option value={10}>Lento (10s/día)</option>
-                    </select>
+                      options={[
+                        { value: 1, label: "Ultra rápido (1s/día)" },
+                        { value: 3, label: "Rápido (3s/día)" },
+                        { value: 5, label: "Normal (5s/día)" },
+                        { value: 10, label: "Lento (10s/día)" }
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

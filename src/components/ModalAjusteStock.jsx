@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, ArrowUpCircle, ArrowDownCircle, Save, Minus, Plus, Package, Box, Layers, Calendar } from 'lucide-react';
+import CustomSelect from './common/CustomSelect';
 
 // ⚡ [MJ-5] Lazy-load Swal para mejorar bundle splitting
 let _swal = null;
@@ -238,16 +239,13 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
 
           <div>
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Razón del Ajuste <span className="text-red-500">*</span></label>
-            <select
-              className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
+            <CustomSelect
+              className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950 dark:text-white"
               value={motivoTipo}
-              onChange={e => setMotivoTipo(e.target.value)}
-            >
-              <option value="">-- Seleccionar Causa --</option>
-              {(tipo === 'entrada' ? motivosEntrada : motivosSalida).map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              onChange={val => setMotivoTipo(val)}
+              placeholder="-- Seleccionar Causa --"
+              options={(tipo === 'entrada' ? motivosEntrada : motivosSalida)}
+            />
           </div>
 
           <div className="space-y-3">
@@ -319,41 +317,37 @@ export default function ModalAjusteStock({ producto, onClose, onConfirm }) {
               <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl p-1.5 flex gap-2">
                 {/* Month Selector */}
                 <div className="relative flex-1">
-                  <select
+                  <CustomSelect
                     value={nuevaFecha ? nuevaFecha.split('-')[1] : ''}
-                    onChange={(e) => {
-                      const m = e.target.value;
+                    onChange={(m) => {
                       const currentY = nuevaFecha ? nuevaFecha.split('-')[0] : new Date().getFullYear();
                       setNuevaFecha(`${currentY}-${m}`);
                     }}
-                    className="w-full pl-3 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>Mes</option>
-                    {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
-                      <option key={m} value={m}>{new Date(2000, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'short' }).toUpperCase()}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2 top-2.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
+                    className="w-full pl-3 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200"
+                    placeholder="Mes"
+                    options={['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => ({
+                      value: m,
+                      label: new Date(2000, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'short' }).toUpperCase()
+                    }))}
+                  />
                 </div>
 
                 {/* Year Selector */}
                 <div className="relative flex-1">
-                  <select
+                  <CustomSelect
                     value={nuevaFecha ? nuevaFecha.split('-')[0] : ''}
-                    onChange={(e) => {
-                      const y = e.target.value;
+                    onChange={(y) => {
                       const currentM = nuevaFecha ? nuevaFecha.split('-')[1] : new Date().getMonth() + 1;
                       const mStr = String(currentM).padStart(2, '0');
                       setNuevaFecha(`${y}-${mStr}`);
                     }}
-                    className="w-full pl-3 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-indigo-500 appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>Año</option>
-                    {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() + i).map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-2 top-2.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
+                    className="w-full pl-3 pr-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200"
+                    placeholder="Año"
+                    options={Array.from({ length: 6 }, (_, i) => {
+                      const y = new Date().getFullYear() + i;
+                      return { value: y, label: String(y) };
+                    })}
+                  />
                 </div>
 
                 {/* Clear Button */}

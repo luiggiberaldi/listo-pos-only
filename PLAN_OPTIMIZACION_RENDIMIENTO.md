@@ -1,4 +1,4 @@
-# Plan de Optimización de Rendimiento — Listo POS v1.5.3
+![alt text](image.png)# Plan de Optimización de Rendimiento — Listo POS v1.5.4
 
 > Auditoría profunda + plan de acción priorizado. Fecha: 2026-06-21
 > Stack: Electron 33 + React 19 + Vite 6 + Zustand 5 + Dexie 4 (IndexedDB) + Firebase/Supabase (sync)
